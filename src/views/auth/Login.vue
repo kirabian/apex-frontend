@@ -2,15 +2,14 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../store/auth";
-import { Eye, EyeOff, Lock, Mail, Building2, Loader2 } from "lucide-vue-next";
+import { Eye, EyeOff, Lock, User, Loader2 } from "lucide-vue-next";
 
 const router = useRouter();
 const authStore = useAuthStore();
 
 const form = ref({
-  email: "",
+  username: "",
   password: "",
-  branch: "",
 });
 
 const showPassword = ref(false);
@@ -18,16 +17,7 @@ const rememberMe = ref(false);
 const isLoading = ref(false);
 const error = ref("");
 
-// Demo branches
-const branches = [
-  { id: 1, name: "Pusat Jakarta" },
-  { id: 2, name: "Cabang Bandung" },
-  { id: 3, name: "Cabang Surabaya" },
-  { id: 4, name: "Cabang Medan" },
-  { id: 5, name: "Gudang Pusat" },
-];
-
-const isFormValid = computed(() => form.value.email && form.value.password);
+const isFormValid = computed(() => form.value.username && form.value.password);
 
 async function handleLogin() {
   if (!isFormValid.value) return;
@@ -37,15 +27,15 @@ async function handleLogin() {
 
   try {
     const result = await authStore.login({
-      email: form.value.email,
+      username: form.value.username,
       password: form.value.password,
-      branch_id: form.value.branch,
     });
 
     if (result.success) {
       router.push("/");
     } else {
-      error.value = result.error || "Login gagal. Periksa email dan password.";
+      error.value =
+        result.error || "Login gagal. Periksa username dan password.";
     }
   } catch (err) {
     error.value = "Terjadi kesalahan. Silakan coba lagi.";
@@ -57,11 +47,11 @@ async function handleLogin() {
 // Demo login shortcuts
 function demoLogin(role) {
   const demos = {
-    admin: { email: "admin@apexpos.com", password: "demo123" },
-    kasir: { email: "kasir@apexpos.com", password: "demo123" },
-    gudang: { email: "gudang@apexpos.com", password: "demo123" },
+    admin: { username: "admin", password: "demo123" },
+    kasir: { username: "kasir", password: "demo123" },
+    gudang: { username: "gudang", password: "demo123" },
   };
-  form.value.email = demos[role].email;
+  form.value.username = demos[role].username;
   form.value.password = demos[role].password;
 }
 </script>
@@ -85,7 +75,7 @@ function demoLogin(role) {
       <div class="max-w-lg text-center">
         <div class="inline-flex items-center gap-4 mb-8">
           <div
-            class="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl shadow-2xl shadow-blue-500/30 flex items-center justify-center text-white font-black text-3xl"
+            class="w-16 h-16 bg-blue-600 rounded-2xl shadow-2xl shadow-blue-500/30 flex items-center justify-center text-white font-black text-3xl"
           >
             A
           </div>
@@ -128,7 +118,7 @@ function demoLogin(role) {
         <div class="lg:hidden text-center mb-8">
           <div class="inline-flex items-center gap-3 mb-4">
             <div
-              class="w-12 h-12 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center text-white font-black text-xl"
+              class="w-12 h-12 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center text-white font-black text-xl"
             >
               A
             </div>
@@ -156,20 +146,20 @@ function demoLogin(role) {
           </div>
 
           <form @submit.prevent="handleLogin" class="space-y-5">
-            <!-- Email -->
+            <!-- Username -->
             <div>
               <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Email</label
+                >ID Login / Username</label
               >
               <div class="relative">
-                <Mail
+                <User
                   class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
                   :size="18"
                 />
                 <input
-                  v-model="form.email"
-                  type="email"
-                  placeholder="nama@perusahaan.com"
+                  v-model="form.username"
+                  type="text"
+                  placeholder="Masukkan ID atau username"
                   class="input pl-12"
                   required
                 />
@@ -201,32 +191,6 @@ function demoLogin(role) {
                   <Eye v-if="!showPassword" :size="18" />
                   <EyeOff v-else :size="18" />
                 </button>
-              </div>
-            </div>
-
-            <!-- Branch Selection -->
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Cabang (Opsional)</label
-              >
-              <div class="relative">
-                <Building2
-                  class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                  :size="18"
-                />
-                <select
-                  v-model="form.branch"
-                  class="input pl-12 appearance-none cursor-pointer"
-                >
-                  <option value="">Pilih Cabang</option>
-                  <option
-                    v-for="branch in branches"
-                    :key="branch.id"
-                    :value="branch.id"
-                  >
-                    {{ branch.name }}
-                  </option>
-                </select>
               </div>
             </div>
 

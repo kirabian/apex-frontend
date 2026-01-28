@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
                 'admin': {
                     id: 1,
                     name: 'Fabian Syah',
-                    email: 'admin@apexpos.com',
+                    username: 'admin',
                     role: 'super_admin',
                     branch: { id: 1, name: 'Pusat Jakarta' },
                     permissions: ['*'] // All permissions
@@ -55,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
                 'kasir': {
                     id: 2,
                     name: 'Ahmad Kasir',
-                    email: 'kasir@apexpos.com',
+                    username: 'kasir',
                     role: 'inventory_kasir',
                     branch: { id: 2, name: 'Cabang Bandung' },
                     permissions: ['pos.access', 'inventory.view', 'transactions.create']
@@ -63,14 +63,24 @@ export const useAuthStore = defineStore('auth', () => {
                 'gudang': {
                     id: 3,
                     name: 'Budi Gudang',
-                    email: 'gudang@apexpos.com',
+                    username: 'gudang',
                     role: 'gudang',
                     branch: { id: 3, name: 'Gudang Pusat' },
                     permissions: ['inventory.manage', 'inventory.transfer']
                 }
             }
 
-            const mockUser = mockUsers[credentials.email.split('@')[0]] || mockUsers['admin']
+            const mockUser = mockUsers[credentials.username]
+
+            if (!mockUser) {
+                throw { response: { data: { message: 'Username tidak ditemukan' } } }
+            }
+
+            // Simple password check (demo)
+            if (credentials.password !== 'demo123') {
+                throw { response: { data: { message: 'Password salah' } } }
+            }
+
             const mockToken = 'demo_token_' + Date.now()
 
             // Set auth data
