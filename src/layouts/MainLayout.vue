@@ -47,7 +47,7 @@ function toggleMobileMenu() {
 // Menu configuration
 const menuItems = [
   { id: "dashboard", path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { id: "pos", path: "/pos", label: "Kasir (POS)", icon: ShoppingCart },
+  //   { id: "pos", path: "/pos", label: "Kasir (POS)", icon: ShoppingCart },
   { id: "inventory", path: "/inventory", label: "Inventory", icon: Box },
   { id: "products", path: "/products", label: "Produk", icon: Package },
   { id: "users", path: "/users", label: "Staff & Role", icon: Users },
