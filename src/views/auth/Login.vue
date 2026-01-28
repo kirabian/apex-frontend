@@ -98,13 +98,13 @@ function demoLogin(role) {
           Enterprise Point of Sale
         </h1>
         <p class="text-slate-400 text-lg leading-relaxed">
-          Sistem POS modern untuk mengelola 70+ cabang dengan real-time sync,
+          Sistem POS modern untuk mengelola 60+ cabang dengan real-time sync,
           multi-role access, dan analytics terintegrasi.
         </p>
 
         <div class="mt-12 grid grid-cols-3 gap-6">
           <div class="text-center">
-            <div class="text-3xl font-bold text-white">70+</div>
+            <div class="text-3xl font-bold text-white">60+</div>
             <div class="text-sm text-slate-500">Cabang</div>
           </div>
           <div class="text-center">

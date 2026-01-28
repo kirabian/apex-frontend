@@ -155,7 +155,7 @@ const getColorClasses = (color) => {
           Executive Overview
         </h1>
         <p class="text-slate-500 mt-1">
-          Real-time data dari 70+ cabang •
+          Real-time data dari 60+ cabang •
           <span class="text-emerald-400">● Online</span>
         </p>
       </div>
