@@ -1,0 +1,214 @@
+// Role definitions and permissions for APEX POS
+// Based on the 12 roles identified from the reference image
+
+export const ROLES = {
+    SUPER_ADMIN: 'super_admin',
+    ANALIST: 'analist',
+    ADMIN_PRODUK: 'admin_produk',
+    AUDIT: 'audit',
+    SECURITY: 'security',
+    LEADER: 'leader',
+    DISTRIBUTION: 'distribution',
+    SALES: 'sales',
+    INVENTORY: 'inventory',
+    GUDANG: 'gudang',
+    INVENTORY_KASIR: 'inventory_kasir',
+    TOKO_ONLINE: 'toko_online'
+}
+
+export const ROLE_LABELS = {
+    [ROLES.SUPER_ADMIN]: 'Super Admin',
+    [ROLES.ANALIST]: 'Analist',
+    [ROLES.ADMIN_PRODUK]: 'Admin Produk',
+    [ROLES.AUDIT]: 'Audit',
+    [ROLES.SECURITY]: 'Security',
+    [ROLES.LEADER]: 'Leader',
+    [ROLES.DISTRIBUTION]: 'Distribution',
+    [ROLES.SALES]: 'Sales',
+    [ROLES.INVENTORY]: 'Inventory',
+    [ROLES.GUDANG]: 'Gudang',
+    [ROLES.INVENTORY_KASIR]: 'Inventory & Kasir',
+    [ROLES.TOKO_ONLINE]: 'Toko Online'
+}
+
+// Permission constants
+export const PERMISSIONS = {
+    // User management
+    USERS_VIEW: 'users.view',
+    USERS_CREATE: 'users.create',
+    USERS_EDIT: 'users.edit',
+    USERS_DELETE: 'users.delete',
+
+    // Branch management
+    BRANCHES_VIEW: 'branches.view',
+    BRANCHES_MANAGE: 'branches.manage',
+
+    // Products
+    PRODUCTS_VIEW: 'products.view',
+    PRODUCTS_CREATE: 'products.create',
+    PRODUCTS_EDIT: 'products.edit',
+    PRODUCTS_DELETE: 'products.delete',
+    PRODUCTS_SET_PRICE: 'products.set_price',
+
+    // Inventory
+    INVENTORY_VIEW: 'inventory.view',
+    INVENTORY_MANAGE: 'inventory.manage',
+    INVENTORY_TRANSFER: 'inventory.transfer',
+    INVENTORY_STOCK_IN: 'inventory.stock_in',
+
+    // POS / Transactions
+    POS_ACCESS: 'pos.access',
+    TRANSACTIONS_VIEW: 'transactions.view',
+    TRANSACTIONS_CREATE: 'transactions.create',
+    TRANSACTIONS_VOID: 'transactions.void',
+
+    // Reports & Analytics
+    REPORTS_VIEW: 'reports.view',
+    REPORTS_SALES: 'reports.sales',
+    REPORTS_PROFIT: 'reports.profit',
+    ANALYTICS_VIEW: 'analytics.view',
+
+    // Audit
+    AUDIT_VIEW: 'audit.view',
+    AUDIT_APPROVE: 'audit.approve',
+
+    // Security
+    SECURITY_BARCODE: 'security.barcode',
+    SECURITY_HISTORY: 'security.history',
+
+    // Distribution
+    DISTRIBUTION_VIEW: 'distribution.view',
+    DISTRIBUTION_SIMULATE: 'distribution.simulate',
+
+    // Online store
+    ONLINE_ORDERS: 'online.orders'
+}
+
+// Role-based permissions mapping
+export const ROLE_PERMISSIONS = {
+    [ROLES.SUPER_ADMIN]: ['*'], // All permissions
+
+    [ROLES.ANALIST]: [
+        PERMISSIONS.REPORTS_VIEW,
+        PERMISSIONS.REPORTS_SALES,
+        PERMISSIONS.REPORTS_PROFIT,
+        PERMISSIONS.ANALYTICS_VIEW,
+        PERMISSIONS.BRANCHES_VIEW
+    ],
+
+    [ROLES.ADMIN_PRODUK]: [
+        PERMISSIONS.PRODUCTS_VIEW,
+        PERMISSIONS.PRODUCTS_CREATE,
+        PERMISSIONS.PRODUCTS_EDIT,
+        PERMISSIONS.PRODUCTS_DELETE,
+        PERMISSIONS.PRODUCTS_SET_PRICE,
+        PERMISSIONS.INVENTORY_VIEW
+    ],
+
+    [ROLES.AUDIT]: [
+        PERMISSIONS.AUDIT_VIEW,
+        PERMISSIONS.AUDIT_APPROVE,
+        PERMISSIONS.TRANSACTIONS_VIEW,
+        PERMISSIONS.BRANCHES_VIEW,
+        PERMISSIONS.USERS_VIEW
+    ],
+
+    [ROLES.SECURITY]: [
+        PERMISSIONS.SECURITY_BARCODE,
+        PERMISSIONS.SECURITY_HISTORY,
+        PERMISSIONS.TRANSACTIONS_VIEW
+    ],
+
+    [ROLES.LEADER]: [
+        PERMISSIONS.TRANSACTIONS_VIEW,
+        PERMISSIONS.REPORTS_VIEW,
+        PERMISSIONS.REPORTS_SALES,
+        PERMISSIONS.BRANCHES_VIEW
+    ],
+
+    [ROLES.DISTRIBUTION]: [
+        PERMISSIONS.DISTRIBUTION_VIEW,
+        PERMISSIONS.DISTRIBUTION_SIMULATE,
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.BRANCHES_VIEW
+    ],
+
+    [ROLES.SALES]: [
+        PERMISSIONS.POS_ACCESS,
+        PERMISSIONS.TRANSACTIONS_CREATE,
+        PERMISSIONS.TRANSACTIONS_VIEW,
+        PERMISSIONS.INVENTORY_VIEW
+    ],
+
+    [ROLES.INVENTORY]: [
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.REPORTS_VIEW
+    ],
+
+    [ROLES.GUDANG]: [
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.INVENTORY_MANAGE,
+        PERMISSIONS.INVENTORY_STOCK_IN
+    ],
+
+    [ROLES.INVENTORY_KASIR]: [
+        PERMISSIONS.POS_ACCESS,
+        PERMISSIONS.TRANSACTIONS_CREATE,
+        PERMISSIONS.TRANSACTIONS_VIEW,
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.INVENTORY_MANAGE,
+        PERMISSIONS.INVENTORY_TRANSFER
+    ],
+
+    [ROLES.TOKO_ONLINE]: [
+        PERMISSIONS.ONLINE_ORDERS,
+        PERMISSIONS.INVENTORY_VIEW
+    ]
+}
+
+// Sidebar menu configuration per role
+export const ROLE_MENUS = {
+    [ROLES.SUPER_ADMIN]: ['dashboard', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'locations', 'distributors', 'channels', 'categories'],
+    [ROLES.ANALIST]: ['dashboard', 'reports'],
+    [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory'],
+    [ROLES.AUDIT]: ['dashboard', 'audit', 'transactions'],
+    [ROLES.SECURITY]: ['dashboard', 'transactions'],
+    [ROLES.LEADER]: ['dashboard', 'transactions', 'reports'],
+    [ROLES.DISTRIBUTION]: ['dashboard', 'inventory', 'reports'],
+    [ROLES.SALES]: ['dashboard', 'pos', 'transactions'],
+    [ROLES.INVENTORY]: ['dashboard', 'inventory'],
+    [ROLES.GUDANG]: ['dashboard', 'inventory'],
+    [ROLES.INVENTORY_KASIR]: ['dashboard', 'pos', 'inventory', 'transactions'],
+    [ROLES.TOKO_ONLINE]: ['dashboard', 'inventory']
+}
+
+// Helper functions
+export function hasPermission(userPermissions, requiredPermission) {
+    if (!userPermissions) return false
+    if (userPermissions.includes('*')) return true
+    return userPermissions.includes(requiredPermission)
+}
+
+export function hasAnyPermission(userPermissions, requiredPermissions) {
+    if (!userPermissions) return false
+    if (userPermissions.includes('*')) return true
+    return requiredPermissions.some(perm => userPermissions.includes(perm))
+}
+
+export function hasAllPermissions(userPermissions, requiredPermissions) {
+    if (!userPermissions) return false
+    if (userPermissions.includes('*')) return true
+    return requiredPermissions.every(perm => userPermissions.includes(perm))
+}
+
+export function getMenuForRole(role) {
+    return ROLE_MENUS[role] || ['dashboard']
+}
+
+export function getPermissionsForRole(role) {
+    return ROLE_PERMISSIONS[role] || []
+}
+
+export function getRoleLabel(role) {
+    return ROLE_LABELS[role] || role
+}
