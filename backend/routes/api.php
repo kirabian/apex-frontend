@@ -17,11 +17,28 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::get('/health-check', function () {
+    // Ambil 5 user terakhir yang aktif (last_seen tidak null)
+    $activeUsers = \App\Models\User::whereNotNull('last_seen')
+        ->orderBy('last_seen', 'desc')
+        ->take(5)
+        ->get()
+        ->map(function ($user) {
+            return [
+                'name' => $user->name,
+                'username' => $user->username,
+                'branch' => $user->branch ? $user->branch->name : 'PStore Pusat',
+                'last_seen' => $user->last_seen->diffForHumans(),
+                'tz' => 'WIB (UTC+7)' // Karena PStore dominan di Indonesia
+            ];
+        });
+
     return response()->json([
         'status' => 'online',
         'database' => DB::connection()->getPdo() ? 'connected' : 'disconnected',
-        'uptime' => '99.9%', // Bisa dikembangkan dengan uptime asli
-        'server_time' => now()->toDateTimeString(),
+        'uptime' => '99.9%',
+        'server_time' => now()->format('H:i:s'),
+        'server_date' => now()->format('d M Y'),
         'memory_usage' => round(memory_get_usage() / 1024 / 1024, 2) . ' MB',
+        'active_personnel' => $activeUsers
     ]);
 });
