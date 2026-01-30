@@ -5,52 +5,58 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
     container_name: apex-api-local
+    restart: always # Agar otomatis nyala jika server reboot
     working_dir: /app
     ports:
-      - "8000:8000" # Akses via http://localhost:8000
-      - "8080:8080" # Port WebSocket untuk Reverb
+      - "8000:8000"
+      - "8080:8080"
     volumes:
       - ./backend:/app
+    # Gunakan file .env untuk environment di production agar lebih aman
+    env_file:
+      - ./backend/.env
     environment:
-      - APP_ENV=local
-      - APP_KEY=base64:avUhQwB6Fp78AqKSCyEH9cQfUz6NRWfRrIMkynx0j4I=
-      - APP_DEBUG=true
-      - APP_URL=http://localhost:8000
-      - DB_CONNECTION=pgsql
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_DATABASE=apex_pos
-      - DB_USERNAME=root
-      - DB_PASSWORD=password
       - OCTANE_SERVER=frankenphp
-      - FRANKENPHP_CONFIG="worker_count=1"
-    # Membersihkan cache konfigurasi sebelum menjalankan Octane
+      - FRANKENPHP_CONFIG="worker_count=4" # Ditambah biar lebih kencang di VPS
     entrypoint: >
-      sh -c "php artisan config:clear && 
+      sh -c "php artisan config:cache && 
+             php artisan route:cache &&
              php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy # Tunggu DB benar-benar siap
+      redis:
+        condition: service_started
 
   # Database PostgreSQL 16
   db:
     image: postgres:16-alpine
     container_name: apex-db-local
+    restart: always
     environment:
       - POSTGRES_DB=apex_pos
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=password
-    ports:
-      - "5432:5432"
+    healthcheck:
+      # Menghindari error "Connection refused" di backend
+      test: [ "CMD-SHELL", "pg_isready -U root -d apex_pos" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Ganti dari ./postgres_data ke named volume agar stabil
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - apex_pgdata:/var/lib/postgresql/data
 
   # Redis untuk Caching & Real-time Reverb
   redis:
     image: redis:alpine
     container_name: apex-redis-local
-    ports:
-      - "6379:6379"
+    restart: always
+
+# Definisikan Named Volume di sini
+volumes:
+  apex_pgdata:
+
 
 networks:
   default:
