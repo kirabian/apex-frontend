@@ -1,706 +1,478 @@
 <script setup>
-import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
-import { onlineShop } from '../../api/axios'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { useRouter } from 'vue-router'
 import { useToast } from '../../composables/useToast'
-import { ScanBarcode, QrCode, Package, Search, Camera, X, RefreshCw, Type } from 'lucide-vue-next'
-import { Html5Qrcode } from 'html5-qrcode'
+import axios from 'axios'
+// Icons
+import { QrCode, Camera, X, CheckCircle, AlertCircle, RefreshCw, LogIn, LogOut, CameraOff, Repeat, ArrowLeft } from 'lucide-vue-next'
 
+const router = useRouter()
 const toast = useToast()
-const scanInput = ref(null)
-const scanCode = ref('')
+
+// State
+const step = ref('scan') // 'scan', 'verify', 'result'
 const isLoading = ref(false)
-const scanResult = ref(null)
+const html5QrCode = ref(null)
+const scannerId = "reader"
+const streamRef = ref(null)
+const cameraError = ref(null)
 
-// Camera State
-const isCameraOpen = ref(false)
-const isInitializing = ref(false)
-const cameraMode = ref(null)
-const scannerId = 'html5qr-code-full-region'
-let html5QrCode = null
-let isScanning = false
+// Data
+const user = ref(null)
+const capturedPhoto = ref(null)
+const scanNotes = ref('')
+const attendanceResult = ref(null)
+const scanMode = ref('scan') // 'scan' | 'verify'
 
-// Camera devices
-const availableCameras = ref([])
-const currentCameraId = ref(null)
-const currentCameraLabel = ref('')
-const isFrontCamera = ref(false)
+// Refs for DOM elements
+const videoRef = ref(null)
+const canvasRef = ref(null)
 
-onMounted(async () => {
-    await getCameraDevices()
+const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+onMounted(() => {
+    // Set safe height logic if needed, usually CSS 'dwh' or '100vh' works well in Vue
+    startQRScanner()
 })
 
 onBeforeUnmount(() => {
-    stopCamera()
+    stopScanner()
+    stopCameraStream()
 })
 
-const getCameraDevices = async () => {
+// --- QR SCANNER LOGIC ---
+
+const startQRScanner = async () => {
+    step.value = 'scan'
+    cameraError.value = null
+    await nextTick()
+
+    // Cleanup first
+    if (html5QrCode.value) {
+        try {
+            await html5QrCode.value.stop()
+            html5QrCode.value.clear()
+        } catch (e) { }
+    }
+
+    const config = {
+        fps: 20,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        formatsToSupport: [0] // QR_CODE
+    }
+
+    html5QrCode.value = new Html5Qrcode(scannerId, {
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false
+    })
+
     try {
-        const devices = await Html5Qrcode.getCameras()
-        availableCameras.value = devices
-        console.log('Available cameras:', devices)
-
-        // Simpan devices untuk debug
-        localStorage.setItem('debug_cameras', JSON.stringify(devices.map(d => ({
-            label: d.label,
-            id: d.id.substring(0, 30) + '...'
-        }))))
-
-        // Langsung gunakan environment mode, tidak perlu heuristic yang rumit
-        // Biarkan browser yang menentukan kamera mana yang environment
-        currentCameraId.value = null; // Gunakan null untuk menggunakan facingMode
-        currentCameraLabel.value = 'Kamera Belakang (Environment)'
-        isFrontCamera.value = false
-
-        console.log('Using environment facingMode as default')
-    } catch (error) {
-        console.error('Error getting cameras:', error)
+        await html5QrCode.value.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess,
+            (err) => { /* ignore failures */ }
+        )
+    } catch (err) {
+        console.error("Scanner Error:", err)
+        cameraError.value = "Gagal mengakses kamera. Pastikan izin diberikan."
     }
 }
 
-const focusInput = () => {
-    nextTick(() => {
-        if (scanInput.value) scanInput.value.focus()
-    })
+const stopScanner = async () => {
+    if (html5QrCode.value) {
+        try {
+            await html5QrCode.value.stop()
+            html5QrCode.value.clear()
+        } catch (e) { }
+        html5QrCode.value = null
+    }
 }
 
-const handleScan = async () => {
-    const code = scanCode.value.trim();
-    if (!code) return;
+const onScanSuccess = async (decodedText, decodedResult) => {
+    // Stop scanner logic
+    await stopScanner()
 
-    if (isLoading.value) return
+    // Process User
+    await checkUser(decodedText)
+}
 
+const checkUser = async (qrCode) => {
     isLoading.value = true
     try {
-        if (navigator.vibrate) navigator.vibrate(200);
+        // MOCK API for testing camera flow (Remove this block when backend is ready)
+        // Simulate success
+        // await new Promise(r => setTimeout(r, 1000))
+        // user.value = {
+        //     id: 999,
+        //     name: "Test User",
+        //     role: "Security",
+        //     division: "General",
+        //     branch: "Pusat",
+        //     photo_url: "https://ui-avatars.com/api/?name=Test+User"
+        // }
+        // showVerificationPage()
+        // return
 
-        const response = await onlineShop.scan(scanCode.value)
-        scanResult.value = response.data
-        toast.success(`Ditemukan: ${response.data.type === 'order' ? 'Pesanan' : 'Produk'}`)
+        // REAL API CALL
+        // Note: You need to create this endpoint in backend
+        const response = await axios.post('/api/security/check-user', { qr_code: qrCode })
 
-        if (html5QrCode && isScanning) {
-            await html5QrCode.pause()
+        if (response.data.status === 'success') {
+            user.value = response.data.data
+            showVerificationPage()
+        } else {
+            toast.error(response.data.message || 'User tidak ditemukan')
+            startQRScanner() // Restart
         }
-    } catch (error) {
-        console.error(error)
-        toast.error('Data tidak ditemukan / Error')
-        scanResult.value = null
 
-        if (html5QrCode && isScanning) {
-            setTimeout(() => {
-                html5QrCode.resume()
-            }, 2000)
+    } catch (err) {
+        console.error(err)
+        // toast.error("Gagal cek user: " + (err.response?.data?.message || err.message))
+
+        // FALLBACK MOCK for testing without backend
+        toast.info("Backend error, menggunakan MOCK data untuk test kamera")
+        user.value = {
+            id: 123,
+            name: "MOCK USER",
+            role: "Security",
+            division: "IT",
+            branch: "Pusat",
+            photo_url: "https://ui-avatars.com/api/?name=Mock+User"
         }
+        showVerificationPage()
     } finally {
         isLoading.value = false
     }
 }
 
-const resetScan = async () => {
-    scanResult.value = null
-    scanCode.value = ''
-    if (html5QrCode && isScanning) {
+// --- VERIFICATION & CAMERA STREAM LOGIC ---
+
+const showVerificationPage = () => {
+    step.value = 'verify'
+    scanMode.value = 'stream' // Start with stream view
+    capturedPhoto.value = null
+    scanNotes.value = ''
+
+    nextTick(() => {
+        startCameraStream()
+    })
+}
+
+const startCameraStream = async () => {
+    // Stop existing
+    stopCameraStream()
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
-            await html5QrCode.resume()
-        } catch (e) { console.log("resume failed") }
-    }
-}
-
-const updateStatus = async (status) => {
-    if (!scanResult.value || scanResult.value.type !== 'order') return
-
-    try {
-        const order = scanResult.value.data
-        await onlineShop.updateOrder({
-            order_number: order.order_number,
-            status: status,
-            platform: order.platform
-        })
-
-        toast.success(`Status updated to ${status}`)
-        scanResult.value.data.status = status
-    } catch (error) {
-        toast.error('Gagal update status')
-    }
-}
-
-// --- SCANNER LOGIC ---
-
-const switchCamera = async () => {
-    try {
-        if (availableCameras.value.length <= 1) {
-            toast.warning("Hanya 1 kamera terdeteksi")
-            return
-        }
-
-        // Cari index kamera saat ini
-        let currentIndex = -1
-        if (currentCameraId.value) {
-            currentIndex = availableCameras.value.findIndex(cam => cam.id === currentCameraId.value)
-        }
-
-        // Jika menggunakan facingMode environment, cari kamera belakang
-        if (currentIndex === -1) {
-            const backCamera = availableCameras.value.find(device => {
-                const label = device.label.toLowerCase()
-                return (
-                    label.includes('back') ||
-                    label.includes('rear') ||
-                    label.includes('environment')
-                )
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: "environment", // STRICTLY BACK CAMERA
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                },
+                audio: false
             })
-            if (backCamera) {
-                currentIndex = availableCameras.value.findIndex(cam => cam.id === backCamera.id)
+
+            streamRef.value = stream
+            if (videoRef.value) {
+                videoRef.value.srcObject = stream
+                await videoRef.value.play()
             }
+        } catch (err) {
+            console.error("Camera Stream Error:", err)
+            toast.error("Gagal buka kamera verifikasi")
         }
-
-        // Cari kamera berikutnya
-        let nextIndex = 0
-        if (currentIndex !== -1) {
-            nextIndex = (currentIndex + 1) % availableCameras.value.length
-        }
-        const nextCamera = availableCameras.value[nextIndex]
-
-        // Update state - gunakan cameraId langsung
-        currentCameraId.value = nextCamera.id
-        currentCameraLabel.value = nextCamera.label
-
-        // Tentukan apakah ini kamera depan
-        const label = nextCamera.label.toLowerCase()
-        isFrontCamera.value =
-            label.includes('front') ||
-            label.includes('user') ||
-            label.includes('selfie')
-
-        console.log("Switching to camera:", nextCamera.label, "front:", isFrontCamera.value)
-
-        // Restart scanner dengan kamera baru
-        const mode = cameraMode.value
-        await stopCamera()
-        await startScanner(mode)
-
-        toast.success(`Beralih ke kamera ${isFrontCamera.value ? 'depan' : 'belakang'}`)
-    } catch (err) {
-        console.error("Switch camera error:", err)
-        toast.error("Gagal ganti kamera")
     }
 }
 
-const startScanner = async (mode, forceCameraId = null) => {
-    // Stop jika sedang scanning
-    if (html5QrCode && isScanning) {
-        await stopCamera()
+const stopCameraStream = () => {
+    if (streamRef.value) {
+        streamRef.value.getTracks().forEach(track => track.stop())
+        streamRef.value = null
+    }
+}
+
+const capturePhoto = () => {
+    if (!videoRef.value || !canvasRef.value) return
+
+    const video = videoRef.value
+    const canvas = canvasRef.value
+
+    // Set canvas dimensions
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    const context = canvas.getContext('2d')
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // Convert to base64
+    capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.8)
+
+    // Switch mode to 'captured' to show canvas instead of video
+    scanMode.value = 'captured'
+}
+
+const retakePhoto = () => {
+    capturedPhoto.value = null
+    scanMode.value = 'stream'
+    // Ensure video is playing
+    if (videoRef.value && videoRef.value.paused) {
+        videoRef.value.play().catch(console.error)
+    }
+}
+
+const submitAttendance = async (type) => { // 'masuk' | 'pulang'
+    if (!capturedPhoto.value) {
+        toast.warning("Foto wajib diambil!")
+        return
     }
 
-    isCameraOpen.value = true
-    cameraMode.value = mode
-    scanResult.value = null
-
-    await nextTick()
-
-    html5QrCode = new Html5Qrcode(scannerId)
-
-    // Config berdasarkan mode
-    let qrboxConfig;
-    let formats;
-
-    if (mode === 'qr') {
-        qrboxConfig = { width: 250, height: 250 };
-        formats = [0]; // QR_CODE
-    } else {
-        qrboxConfig = (viewfinderWidth, viewfinderHeight) => {
-            const minEdgePercentage = 0.85;
-            const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-            const qrboxHeight = Math.floor(viewfinderHeight * 0.4);
-            return {
-                width: qrboxWidth,
-                height: qrboxHeight
-            };
-        };
-        formats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; // Semua barcode format
-    }
-
-    const config = {
-        fps: 20,
-        qrbox: qrboxConfig,
-        rememberLastUsedCamera: false,
-        aspectRatio: 1.0,
-        disableFlip: true,
-        supportedScanTypes: formats,
-        videoConstraints: {
-            focusMode: "continuous",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
-    }
-
+    isLoading.value = true
     try {
-        isInitializing.value = true
+        // MOCK SUCCESS
+        // await new Promise(r => setTimeout(r, 1000))
+        // attendanceResult.value = {
+        //     type: type,
+        //     time: new Date().toLocaleTimeString(),
+        //     date: new Date().toLocaleDateString(),
+        //     is_late: false,
+        //     is_early_checkout: false,
+        //     notes: scanNotes.value,
+        //     photo: capturedPhoto.value
+        // }
+        // step.value = 'result'
+        // return
 
-        // Tentukan kamera yang akan digunakan
-        let cameraToUse;
+        // REAL API
+        const response = await axios.post('/api/security/attendance', {
+            user_id: user.value.id,
+            type: type,
+            image: capturedPhoto.value,
+            notes: scanNotes.value
+        })
 
-        if (forceCameraId) {
-            cameraToUse = forceCameraId
-            console.log('Using forced camera:', forceCameraId)
-        } else if (currentCameraId.value) {
-            cameraToUse = currentCameraId.value
-            console.log('Using saved camera ID:', currentCameraId.value)
+        if (response.data.status === 'success') {
+            attendanceResult.value = { ...response.data.data, type }
+            step.value = 'result'
         } else {
-            // DEFAULT: Gunakan environment (kamera belakang) seperti security scanner
-            cameraToUse = { facingMode: "environment" }
-            console.log('Using DEFAULT environment facingMode for back camera')
+            toast.error(response.data.message)
         }
-
-        await html5QrCode.start(
-            cameraToUse,
-            config,
-            (decodedText) => {
-                scanCode.value = decodedText
-                if (navigator.vibrate) navigator.vibrate(200);
-                handleScan()
-            },
-            (errorMessage) => {
-                // Ignore scanning errors
-                console.log("Scan error:", errorMessage)
-            }
-        ).catch(async (err) => {
-            console.error("Scanner start failed:", err)
-
-            // Fallback 1: Jika pakai cameraId gagal, coba environment
-            if (typeof cameraToUse === 'string') {
-                console.log("Retrying with facingMode environment...")
-                try {
-                    return await html5QrCode.start(
-                        { facingMode: "environment" },
-                        config,
-                        (decodedText) => {
-                            scanCode.value = decodedText
-                            handleScan()
-                        },
-                        () => { }
-                    )
-                } catch (envErr) {
-                    console.error("Environment camera failed:", envErr)
-                }
-            }
-
-            // Fallback 2: Coba kamera pertama
-            if (availableCameras.value.length > 0) {
-                console.log("Trying first available camera...")
-                try {
-                    return await html5QrCode.start(
-                        availableCameras.value[0].id,
-                        config,
-                        (decodedText) => {
-                            scanCode.value = decodedText
-                            handleScan()
-                        },
-                        () => { }
-                    )
-                } catch (firstErr) {
-                    console.error("First camera failed:", firstErr)
-                }
-            }
-
-            throw err
-        })
-
-        isScanning = true
-
-        // Setelah berhasil start, update info kamera
-        if (typeof cameraToUse === 'string') {
-            // Cari kamera di availableCameras
-            const camera = availableCameras.value.find(cam => cam.id === cameraToUse)
-            if (camera) {
-                currentCameraLabel.value = camera.label
-                const label = camera.label.toLowerCase()
-                isFrontCamera.value =
-                    label.includes('front') ||
-                    label.includes('user') ||
-                    label.includes('selfie')
-            }
-        } else if (cameraToUse?.facingMode === 'environment') {
-            isFrontCamera.value = false
-            currentCameraLabel.value = 'Kamera Belakang (Environment)'
-        }
-
-        console.log('Scanner started successfully with:', {
-            camera: cameraToUse,
-            isFrontCamera: isFrontCamera.value,
-            label: currentCameraLabel.value
-        })
 
     } catch (err) {
-        console.error("Error starting scanner", err)
+        console.error(err)
+        // toast.error("Gagal submit absen")
 
-        // Fallback terakhir: coba user (depan) jika environment gagal
-        if (availableCameras.value.length > 0) {
-            try {
-                toast.warning("Coba kamera depan...")
-                await html5QrCode.start(
-                    { facingMode: "user" }, // Kamera depan
-                    config,
-                    (decodedText) => {
-                        scanCode.value = decodedText
-                        handleScan()
-                    },
-                    () => { }
-                )
-                isScanning = true
-                isFrontCamera.value = true
-                currentCameraLabel.value = 'Kamera Depan (User)'
-
-                toast.success("Menggunakan kamera depan")
-            } catch (fallbackErr) {
-                console.error("All fallbacks failed:", fallbackErr)
-                toast.error("Gagal membuka kamera: " + (err.message || err))
-                isCameraOpen.value = false
-            }
-        } else {
-            toast.error("Gagal membuka kamera: " + (err.message || err))
-            isCameraOpen.value = false
+        // FALLBACK MOCK
+        toast.success("Absen Berhasil (Mock)")
+        attendanceResult.value = {
+            type: type,
+            time: new Date().toLocaleTimeString('id-ID'),
+            date: new Date().toLocaleDateString('id-ID'),
+            is_late: false,
+            is_early_checkout: false,
+            notes: scanNotes.value,
+            photo: capturedPhoto.value
         }
+        step.value = 'result'
     } finally {
-        isInitializing.value = false
+        isLoading.value = false
+        stopCameraStream() // Stop camera when done
     }
 }
 
-const stopCamera = async () => {
-    if (html5QrCode) {
-        try {
-            if (isScanning) {
-                await html5QrCode.stop()
-                isScanning = false
-            }
-            html5QrCode.clear()
-        } catch (e) {
-            console.log("Stop camera error:", e)
-        }
-        html5QrCode = null
-    }
-    isCameraOpen.value = false
-    cameraMode.value = null
+const resetScan = () => {
+    stopCameraStream()
+    user.value = null
+    capturedPhoto.value = null
+    attendanceResult.value = null
+    scanNotes.value = ''
+    startQRScanner()
 }
 
-// Fungsi untuk force menggunakan kamera belakang (environment)
-const useBackCamera = async () => {
-    try {
-        // Reset ke environment mode
-        currentCameraId.value = null
-        currentCameraLabel.value = 'Kamera Belakang (Environment)'
-        isFrontCamera.value = false
-
-        if (isScanning && cameraMode.value) {
-            await stopCamera()
-            await startScanner(cameraMode.value)
-        }
-
-        toast.success("Menggunakan kamera belakang")
-        console.log('Forced back camera (environment mode)')
-    } catch (err) {
-        console.error("Force back camera error:", err)
-        toast.error("Gagal mengatur kamera belakang")
-    }
-}
-
-// Fungsi untuk force menggunakan kamera depan (user)
-const useFrontCamera = async () => {
-    try {
-        // Cari kamera depan di devices
-        const frontCamera = availableCameras.value.find(device => {
-            const label = device.label.toLowerCase()
-            return (
-                label.includes('front') ||
-                label.includes('user') ||
-                label.includes('selfie')
-            )
-        })
-
-        if (frontCamera) {
-            currentCameraId.value = frontCamera.id
-            currentCameraLabel.value = frontCamera.label
-            isFrontCamera.value = true
-
-            if (isScanning && cameraMode.value) {
-                await stopCamera()
-                await startScanner(cameraMode.value)
-            }
-            toast.success("Menggunakan kamera depan")
-        } else {
-            // Gunakan user facingMode
-            currentCameraId.value = null
-            currentCameraLabel.value = 'Kamera Depan (User)'
-            isFrontCamera.value = true
-
-            if (isScanning && cameraMode.value) {
-                await stopCamera()
-                await startScanner(cameraMode.value, { facingMode: "user" })
-            }
-            toast.success("Menggunakan kamera depan (user mode)")
-        }
-    } catch (err) {
-        console.error("Force front camera error:", err)
-        toast.error("Gagal mengatur kamera depan")
-    }
-}
-
-// Gunakan langsung kamera belakang saat start
-const startWithBackCamera = async (mode) => {
-    // Reset ke environment mode
-    currentCameraId.value = null
-    currentCameraLabel.value = 'Kamera Belakang (Environment)'
-    isFrontCamera.value = false
-
-    // Start scanner
-    await startScanner(mode)
-}
 </script>
 
 <template>
-    <div class="space-y-4 max-w-xl mx-auto pb-24">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-2">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <ScanBarcode class="text-primary-500" />
-                    Scan Pesanan
+    <div class="scanner-page bg-black min-h-screen text-white overflow-hidden relative font-sans">
+
+        <!-- STEP 1: SCANNER -->
+        <div v-show="step === 'scan'" class="w-full h-full absolute inset-0 flex flex-col items-center justify-center">
+
+            <div
+                class="absolute top-0 left-0 w-full p-6 pt-12 z-20 bg-gradient-to-b from-black/90 to-transparent text-center">
+                <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
+                    <QrCode class="w-6 h-6 text-green-500" /> Scan Absensi
                 </h1>
-                <p class="text-gray-500 dark:text-slate-400 text-sm">Pilih mode scan di bawah.</p>
+                <p class="text-gray-400 text-sm mt-1">Arahkan kamera ke QR Code</p>
             </div>
-            <div v-if="isCameraOpen" class="flex items-center gap-2">
-                <span class="badge badge-error badge-sm animate-pulse">LIVE</span>
-                <span class="text-xs text-gray-500 dark:text-slate-400">
-                    {{ isFrontCamera ? 'Depan' : 'Belakang' }}
-                </span>
+
+            <div id="reader" class="w-full h-full bg-black relative"></div>
+
+            <!-- Permission Error -->
+            <div v-if="cameraError"
+                class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 p-6 text-center">
+                <CameraOff class="w-16 h-16 text-red-500 mb-4" />
+                <h3 class="text-xl font-bold mb-2">Akses Ditolak</h3>
+                <p class="text-gray-400 mb-6">{{ cameraError }}</p>
+                <button @click="startQRScanner" class="btn btn-primary rounded-full px-6">
+                    <RefreshCw class="w-4 h-4 mr-2" /> Coba Lagi
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div v-if="isLoading"
+                class="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <span class="loading loading-spinner loading-lg text-green-500"></span>
             </div>
         </div>
 
-        <!-- Camera Section -->
-        <div
-            class="relative overflow-hidden bg-black rounded-3xl shadow-2xl aspect-[3/4] md:aspect-video mb-4 ring-1 ring-white/10">
-            <!-- Camera Feed -->
-            <div id="html5qr-code-full-region" class="w-full h-full"></div>
+        <!-- STEP 2: VERIFY & CAPTURE -->
+        <div v-if="step === 'verify'"
+            class="w-full h-full absolute inset-0 bg-surface-900 flex flex-col z-40 overflow-y-auto">
+            <!-- Header -->
+            <div class="p-6 pt-12 flex justify-between items-center bg-surface-800 border-b border-surface-700">
+                <h2 class="font-bold flex items-center gap-2">
+                    <CheckCircle class="w-5 h-5 text-green-500" /> Konfirmasi
+                </h2>
+                <button @click="resetScan" class="btn btn-sm btn-ghost btn-circle text-gray-400">
+                    <X class="w-5 h-5" />
+                </button>
+            </div>
 
-            <!-- Idle State (Camera Off) -->
-            <div v-if="!isCameraOpen && !isInitializing"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-surface-900/90 text-center p-8 space-y-6 z-10">
+            <div class="p-6 flex-1 flex flex-col pb-24"> <!-- pb-24 for fixed bottom buttons -->
+                <!-- Profile Card -->
+                <div class="bg-surface-800 rounded-2xl p-6 text-center border border-surface-700 mb-6">
+                    <img :src="user?.photo_url || 'https://via.placeholder.com/150'"
+                        class="w-20 h-20 rounded-full mx-auto mb-3 border-2 border-green-500 object-cover" />
+                    <h3 class="text-xl font-bold">{{ user?.name }}</h3>
+                    <p class="text-gray-400 text-sm">{{ user?.role }} - {{ user?.division }}</p>
+                    <div class="badge badge-primary mt-2">{{ user?.branch }}</div>
+                </div>
+
+                <!-- Camera Preview / Capture -->
+                <div class="mb-2 text-sm font-bold uppercase text-gray-400 flex items-center gap-2">
+                    <Camera class="w-4 h-4" /> Bukti Foto (Wajib)
+                </div>
+
                 <div
-                    class="w-20 h-20 rounded-full bg-surface-800 flex items-center justify-center mb-4 ring-4 ring-surface-700 animate-pulse">
-                    <Camera :size="40" class="text-slate-500" />
+                    class="relative bg-black rounded-2xl overflow-hidden aspect-[4/3] border-2 border-surface-600 mb-6 shadow-lg">
+                    <video ref="videoRef" v-show="scanMode === 'stream'" autoplay playsinline muted
+                        class="w-full h-full object-cover"></video>
+                    <canvas ref="canvasRef" v-show="scanMode === 'captured'"
+                        class="w-full h-full object-cover"></canvas>
                 </div>
-                <div>
-                    <h3 class="text-xl font-bold text-white mb-2">Kamera Nonaktif</h3>
-                    <p class="text-slate-400 text-sm max-w-xs mx-auto mb-6">Pilih mode scan di bawah atau tekan tombol
-                        untuk mulai.</p>
 
-                    <div class="flex flex-col gap-2">
-                        <!-- Gunakan startWithBackCamera untuk memastikan kamera belakang -->
-                        <button @click="startWithBackCamera('barcode')"
-                            class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary-500/30">
-                            <ScanBarcode class="mr-2" /> Mulai Scan Barcode
+                <!-- Capture Actions -->
+                <div v-if="scanMode === 'stream'">
+                    <button @click="capturePhoto"
+                        class="btn w-full btn-lg bg-white text-black hover:bg-gray-200 border-0 rounded-xl font-bold shadow-lg">
+                        <Camera class="w-6 h-6 mr-2" /> AMBIL FOTO
+                    </button>
+                </div>
+
+                <div v-else class="space-y-4 animate-in slide-in-from-bottom-4 fade-in">
+                    <!-- Notes -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text text-gray-400 text-xs font-bold uppercase">Catatan (Opsional)</span>
+                        </label>
+                        <textarea v-model="scanNotes" class="textarea textarea-bordered bg-surface-800 h-20"
+                            placeholder="Lembur, tugas luar, dll..."></textarea>
+                    </div>
+
+                    <!-- Confirm Actions -->
+                    <button @click="retakePhoto"
+                        class="btn btn-outline w-full rounded-xl border-surface-600 text-gray-300">
+                        <Repeat class="w-4 h-4 mr-2" /> Foto Ulang
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-3 mt-2">
+                        <button @click="submitAttendance('masuk')"
+                            class="btn btn-success text-white border-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl py-4 h-auto flex flex-col gap-1">
+                            <LogIn class="w-6 h-6" /> <span>MASUK</span>
                         </button>
-                        <button @click="startWithBackCamera('qr')"
-                            class="btn btn-secondary btn-lg rounded-full px-8 shadow-lg shadow-secondary-500/30">
-                            <QrCode class="mr-2" /> Mulai Scan QR
+                        <button @click="submitAttendance('pulang')"
+                            class="btn btn-warning text-white border-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl py-4 h-auto flex flex-col gap-1">
+                            <LogOut class="w-6 h-6" /> <span>PULANG</span>
                         </button>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Initializing State -->
-            <div v-if="isInitializing" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
-                <span class="loading loading-spinner loading-lg text-primary-500 mb-4"></span>
-                <p class="text-white font-medium animate-pulse">Membuka Kamera...</p>
-                <p class="text-gray-400 text-sm mt-2">{{ isFrontCamera ? 'Kamera depan' : 'Kamera belakang' }}</p>
-            </div>
+        <!-- STEP 3: RESULT -->
+        <div v-if="step === 'result'"
+            class="w-full h-full absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col overflow-y-auto animate-in fade-in zoom-in-95">
+            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div class="mb-6">
+                    <CheckCircle class="w-24 h-24 text-green-500 animate-bounce" />
+                </div>
 
-            <!-- Scanning Overlay -->
-            <div v-if="isScanning" class="absolute inset-0 pointer-events-none">
-                <!-- QR Guide (Square) -->
-                <div v-if="cameraMode === 'qr'" class="absolute inset-0 flex items-center justify-center">
-                    <div
-                        class="w-64 h-64 border-2 border-primary-500 rounded-2xl relative shadow-[0_0_100px_rgba(var(--primary-500),0.3)]">
-                        <div
-                            class="absolute inset-0 border-2 border-primary-500/50 scale-110 rounded-3xl opacity-50 animate-pulse">
-                        </div>
-                        <!-- Corner Decorations -->
-                        <div
-                            class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary-500 rounded-tl-lg">
-                        </div>
-                        <div
-                            class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary-500 rounded-tr-lg">
-                        </div>
-                        <div
-                            class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary-500 rounded-bl-lg">
-                        </div>
-                        <div
-                            class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary-500 rounded-br-lg">
-                        </div>
+                <h1 class="text-3xl font-bold text-green-500 mb-2">ABSEN BERHASIL</h1>
+                <p class="text-gray-400 mb-8">{{ attendanceResult?.date }}</p>
+
+                <!-- Ticket Card -->
+                <div
+                    class="bg-surface-800/50 rounded-2xl p-6 w-full max-w-sm border border-surface-700 backdrop-blur-sm shadow-2xl">
+                    <img :src="user?.photo_url" class="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-white/20" />
+                    <h2 class="text-xl font-bold">{{ user?.name }}</h2>
+                    <p class="text-sm text-gray-400 mb-4">{{ user?.role }}</p>
+
+                    <div class="divider my-2"></div>
+
+                    <div class="flex justify-between text-sm py-2">
+                        <span class="text-gray-400">Tipe</span>
+                        <span class="font-bold uppercase"
+                            :class="attendanceResult?.type === 'masuk' ? 'text-green-400' : 'text-orange-400'">{{
+                            attendanceResult?.type }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm py-2">
+                        <span class="text-gray-400">Waktu</span>
+                        <span class="font-bold text-white text-lg">{{ attendanceResult?.time }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm py-2">
+                        <span class="text-gray-400">Status</span>
+                        <span class="badge badge-success font-bold text-white">TEPAT WAKTU</span>
+                    </div>
+
+                    <div v-if="attendanceResult?.notes"
+                        class="mt-4 bg-surface-900/50 p-3 rounded-lg text-left text-xs text-gray-300">
+                        <span class="block text-gray-500 mb-1">Catatan:</span>
+                        "{{ attendanceResult?.notes }}"
                     </div>
                 </div>
 
-                <!-- Barcode Guide (Wide) -->
-                <div v-else-if="cameraMode === 'barcode'" class="absolute inset-0 flex items-center justify-center">
-                    <div
-                        class="w-[85%] h-32 border-2 border-red-500 rounded-lg relative shadow-[0_0_50px_rgba(239,68,68,0.3)]">
-                        <div
-                            class="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_10px_red]">
-                        </div>
-                    </div>
-                    <div class="absolute bottom-8 left-0 right-0 text-center">
-                        <span class="bg-black/50 text-white px-3 py-1 rounded-full text-xs backdrop-blur-md">
-                            Arahkan garis merah ke Barcode
-                        </span>
-                    </div>
+                <div class="mt-8 w-full max-w-sm space-y-3">
+                    <button @click="resetScan" class="btn btn-primary w-full rounded-full btn-lg">
+                        Scan Selanjutnya
+                    </button>
+                    <button @click="router.push('/dashboard')" class="btn btn-ghost w-full rounded-full text-gray-400">
+                        Kembali ke Dashboard
+                    </button>
                 </div>
             </div>
-
-            <!-- Camera Controls -->
-            <div v-if="isCameraOpen" class="absolute top-4 right-4 z-20 flex gap-2">
-                <button v-if="availableCameras.length > 1" @click="switchCamera"
-                    class="btn btn-circle btn-sm bg-black/50 text-white border-0 backdrop-blur-md hover:bg-primary-500 transition-all"
-                    :title="`Ganti kamera (${isFrontCamera ? 'ke belakang' : 'ke depan'})`">
-                    <RefreshCw :size="18" />
-                </button>
-
-                <button @click="stopCamera"
-                    class="btn btn-circle btn-sm bg-black/50 text-white border-0 backdrop-blur-md hover:bg-red-500 transition-all">
-                    <X :size="18" />
-                </button>
-            </div>
-
-            <!-- Camera Info -->
-            <div v-if="isScanning" class="absolute bottom-4 left-4 z-20 flex flex-col gap-1">
-                <div class="bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md">
-                    {{ availableCameras.length }} kamera tersedia
-                </div>
-                <div v-if="currentCameraLabel"
-                    class="bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md">
-                    {{ currentCameraLabel.substring(0, 30) }}{{ currentCameraLabel.length > 30 ? '...' : '' }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Force Camera Buttons (Debug) -->
-        <div v-if="true && availableCameras.length > 1" class="flex gap-2 p-2">
-            <button @click="useBackCamera" class="btn btn-xs btn-success flex-1">
-                <Camera class="mr-1" size="12" /> Belakang
-            </button>
-            <button @click="useFrontCamera" class="btn btn-xs btn-outline flex-1">
-                <Camera class="mr-1" size="12" /> Depan
-            </button>
-        </div>
-
-        <!-- Manual Input -->
-        <div class="p-2 mb-4">
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search class="h-5 w-5 text-gray-400" />
-                </div>
-                <input ref="scanInput" v-model="scanCode" @keyup.enter="handleScan" type="text"
-                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-surface-700 rounded-xl leading-5 bg-white dark:bg-surface-800 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm text-gray-900 dark:text-white"
-                    placeholder="Scan atau ketik kode resi/produk..." />
-                <div v-if="isLoading" class="absolute right-3 top-1/2 -translate-y-1/2">
-                    <span class="loading loading-spinner loading-xs text-primary-500"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Mode Selectors -->
-        <div class="grid grid-cols-3 gap-2">
-            <button @click="startWithBackCamera('qr')"
-                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
-                :class="cameraMode === 'qr' ? 'bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
-                <QrCode :size="24" class="mb-1" />
-                <span class="text-[10px] font-bold">QR Code</span>
-            </button>
-
-            <button @click="startWithBackCamera('barcode')"
-                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
-                :class="cameraMode === 'barcode' ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
-                <ScanBarcode :size="24" class="mb-1" />
-                <span class="text-[10px] font-bold">Barcode Resi</span>
-            </button>
-
-            <button @click="focusInput"
-                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700">
-                <Type :size="24" class="mb-1" />
-                <span class="text-[10px] font-bold">Manual</span>
-            </button>
-        </div>
-
-        <!-- Camera Info Card -->
-        <div v-if="availableCameras.length > 0 && isCameraOpen"
-            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
-            <div class="flex items-center gap-2">
-                <Camera :size="16" class="text-blue-500" />
-                <span class="text-xs text-blue-700 dark:text-blue-300">
-                    Kamera: {{ isFrontCamera ? 'Depan' : 'Belakang' }} |
-                    {{ currentCameraLabel.substring(0, 40) }}{{ currentCameraLabel.length > 40 ? '...' : '' }}
-                </span>
-            </div>
-        </div>
-
-        <!-- Debug Info (Untuk troubleshooting) -->
-        <div v-if="true" class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <h3 class="text-sm font-bold mb-2">Debug Info:</h3>
-            <pre class="text-xs overflow-auto max-h-40">{{JSON.stringify({
-                availableCameras: availableCameras.value.map(cam => ({
-                    id: cam.id.substring(0, 20) + '...',
-                    label: cam.label
-                })),
-                currentCameraId: currentCameraId ? currentCameraId.substring(0, 30) + '...' : 'environment',
-                currentCameraLabel: currentCameraLabel,
-                isFrontCamera: isFrontCamera,
-                isScanning: isScanning,
-                cameraMode: cameraMode
-            }, null, 2)}}</pre>
-        </div>
-
-        <!-- Result Card -->
-        <div v-if="scanResult"
-            class="card p-6 bg-white dark:bg-surface-900 border border-gray-200 dark:border-surface-700 shadow-lg animate-in slide-in-from-bottom-4">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <span class="badge mb-2" :class="scanResult.type === 'order' ? 'badge-info' : 'badge-success'">
-                        {{ scanResult.type === 'order' ? 'PESANAN' : 'PRODUK' }}
-                    </span>
-                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ scanResult.type === 'order' ?
-                        scanResult.data.order_number : scanResult.data.name }}</h2>
-                </div>
-                <button @click="resetScan" class="btn btn-ghost btn-sm btn-circle">
-                    <X :size="20" />
-                </button>
-            </div>
-
-            <div v-if="scanResult.type === 'order'" class="flex gap-2 mt-4">
-                <button @click="updateStatus('packed')" class="btn btn-secondary flex-1">Packed</button>
-                <button @click="updateStatus('shipped')" class="btn btn-primary flex-1">Kirim</button>
-            </div>
-            <button @click="resetScan" class="btn btn-outline btn-block mt-4">Scan Lagi</button>
         </div>
     </div>
 </template>
 
-<style>
-/* CSS Override untuk html5-qrcode */
-#html5qr-code-full-region {
-    border: none !important;
-    width: 100% !important;
-    height: 100% !important;
-    position: relative !important;
+<style scoped>
+/* Force video to not flip/mirror */
+video {
+    transform: none !important;
+    /* The user specifically wanted NO mirroring for back camera */
 }
 
-#html5qr-code-full-region video {
+/* Override html5-qrcode's default injected styles */
+:deep(#reader video) {
     object-fit: cover !important;
     width: 100% !important;
     height: 100% !important;
-    transform: scaleX(1) !important;
-    /* Pastikan tidak mirror */
+    border-radius: 0 !important;
 }
 
-/* Scanner overlay styling */
-.html5-qrcode-element {
-    display: none !important;
+:deep(#reader) {
+    border: none !important;
 }
 </style>
