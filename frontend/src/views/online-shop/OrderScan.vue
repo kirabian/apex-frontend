@@ -78,11 +78,15 @@ const startScanner = async () => {
 
     try {
         await html5QrCode.value.start(
-            { facingMode: "environment" }, // FORCE BACK CAMERA
+            // Gunakan constraint yang lebih kuat atau biarkan browser memilih yang terbaik
+            { facingMode: { exact: "environment" } },
             config,
             onScanSuccess,
-            (err) => { /* ignore failures */ }
-        )
+            (err) => { /* ignore */ }
+        ).catch(() => {
+            // Fallback jika 'exact' gagal (misal di laptop/tablet tertentu)
+            return html5QrCode.value.start({ facingMode: "environment" }, config, onScanSuccess);
+        });
     } catch (err) {
         console.error("Scanner Error:", err)
         cameraError.value = "Gagal mengakses kamera. Pastikan izin diberikan."
