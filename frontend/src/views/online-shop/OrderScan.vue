@@ -239,8 +239,19 @@ const toggleCamera = () => {
 
 <template>
   <div class="space-y-4 max-w-xl mx-auto pb-20">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <ScanBarcode class="text-primary-500" />
+          Scan Pesanan
+        </h1>
+        <p class="text-gray-500 dark:text-slate-400 text-sm">Input data via Barcode, OCR, atau Manual.</p>
+      </div>
+    </div>
+
     <!-- Camera Section -->
-    <div class="relative overflow-hidden bg-black rounded-2xl shadow-2xl aspect-[3/4] md:aspect-video mb-4">
+    <div class="relative overflow-hidden bg-black rounded-2xl shadow-2xl aspect-3/4 md:aspect-video mb-4">
         <!-- Camera Feed Container -->
         <div id="html5qr-code-full-region" class="w-full h-full"></div>
         
@@ -305,36 +316,36 @@ const toggleCamera = () => {
     </div>
 
     <!-- Manual Input & Result -->
-    <div class="card p-0 overflow-hidden bg-surface-900 border border-surface-700">
+    <div class="card p-0 overflow-hidden bg-white dark:bg-surface-900 border border-gray-200 dark:border-surface-700 shadow-sm">
       
       <!-- Result View -->
-      <div v-if="scanResult" class="p-6 bg-surface-800 animate-in slide-in-from-top-4 duration-300">
+      <div v-if="scanResult" class="p-6 bg-gray-50 dark:bg-surface-800 animate-in slide-in-from-top-4 duration-300">
            <div class="flex justify-between items-start mb-4">
                 <div>
                     <span class="badge mb-2" :class="scanResult.type === 'order' ? 'badge-info' : 'badge-success'">
                          {{ scanResult.type === 'order' ? 'PESANAN' : 'PRODUK' }}
                     </span>
-                    <h2 class="text-xl font-bold text-white leading-tight">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">
                         {{ scanResult.type === 'order' ? scanResult.data.order_number : scanResult.data.name }}
                     </h2>
-                    <p class="text-slate-400 text-sm mt-1">
+                    <p class="text-gray-500 dark:text-slate-400 text-sm mt-1">
                         {{ scanResult.type === 'order' ? scanResult.data.platform : `SKU: ${scanResult.data.sku}` }}
                     </p>
                 </div>
-                <button @click="resetScan" class="btn btn-sm btn-ghost btn-circle text-slate-400 hover:text-white">
+                <button @click="resetScan" class="btn btn-sm btn-ghost btn-circle text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white">
                     <X :size="20" />
                 </button>
            </div>
            
            <!-- Order Actions -->
             <div v-if="scanResult.type === 'order'" class="space-y-4">
-                 <div class="grid grid-cols-2 gap-3 text-sm bg-surface-900/50 p-3 rounded-xl border border-surface-700/50">
+                 <div class="grid grid-cols-2 gap-3 text-sm bg-white dark:bg-surface-900/50 p-3 rounded-xl border border-gray-200 dark:border-surface-700/50">
                     <div>
-                        <p class="text-slate-500 text-xs">Customer</p>
-                        <p class="text-white font-medium truncate">{{ scanResult.data.customer_name || '-' }}</p>
+                        <p class="text-gray-500 dark:text-slate-500 text-xs">Customer</p>
+                        <p class="text-gray-900 dark:text-white font-medium truncate">{{ scanResult.data.customer_name || '-' }}</p>
                     </div>
                     <div>
-                        <p class="text-slate-500 text-xs">Status</p>
+                        <p class="text-gray-500 dark:text-slate-500 text-xs">Status</p>
                         <span class="badge badge-sm font-bold uppercase mt-1" :class="{
                             'badge-warning': scanResult.data.status === 'pending',
                             'badge-info': scanResult.data.status === 'packed',
@@ -355,15 +366,15 @@ const toggleCamera = () => {
             
             <!-- Product Info -->
             <div v-if="scanResult.type === 'product'" class="space-y-4">
-                 <div class="grid grid-cols-2 gap-4 text-sm bg-surface-900/50 p-4 rounded-xl">
+                 <div class="grid grid-cols-2 gap-4 text-sm bg-white dark:bg-surface-900/50 p-4 rounded-xl border border-gray-200 dark:border-surface-700/50">
                     <div>
-                        <p class="text-slate-500">Harga</p>
-                        <p class="text-white font-mono">{{ formatCurrency(scanResult.data.price) }}</p>
+                        <p class="text-gray-500 dark:text-slate-500">Harga</p>
+                        <p class="text-gray-900 dark:text-white font-mono">{{ formatCurrency(scanResult.data.price) }}</p>
                     </div>
                 </div>
             </div>
             
-             <div class="mt-4 pt-4 border-t border-surface-700 text-center">
+             <div class="mt-4 pt-4 border-t border-gray-200 dark:border-surface-700 text-center">
                 <button @click="resetScan" class="btn btn-outline btn-sm w-full">
                     Scan Berikutnya
                 </button>
@@ -373,13 +384,13 @@ const toggleCamera = () => {
        <!-- Manual Input (Fallback) -->
       <div v-else class="p-4">
          <div class="relative">
-            <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" :size="18" />
+            <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" :size="18" />
             <input
                 ref="scanInput"
                 v-model="scanCode"
                 @keyup.enter="handleScan"
                 type="text"
-                class="w-full bg-surface-800 border border-surface-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all font-mono placeholder:text-slate-600"
+                class="w-full bg-gray-50 dark:bg-surface-800 border border-gray-200 dark:border-surface-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all font-mono placeholder:text-gray-400 dark:placeholder:text-slate-600"
                 placeholder="Ketuk untuk input manual..."
                 :disabled="isLoading"
             />
@@ -389,7 +400,6 @@ const toggleCamera = () => {
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
