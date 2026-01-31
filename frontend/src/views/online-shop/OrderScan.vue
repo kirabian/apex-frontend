@@ -2,9 +2,8 @@
 import { ref, onMounted, nextTick, onBeforeUnmount, computed } from 'vue'
 import { onlineShop } from '../../api/axios'
 import { useToast } from '../../composables/useToast'
-import { ScanBarcode, QrCode, Package, Search, Camera, X, RefreshCw, Type, ArrowRight, StopCircle, Zap, Image as ImageIcon } from 'lucide-vue-next'
+import { ScanBarcode, QrCode, Package, Search, Camera, X, RefreshCw, Type, ArrowRight, StopCircle, Zap } from 'lucide-vue-next'
 import { Html5Qrcode } from 'html5-qrcode'
-import Tesseract from 'tesseract.js'
 
 const toast = useToast()
 const scanInput = ref(null)
@@ -15,7 +14,7 @@ const scanResult = ref(null)
 // Camera State
 const isCameraOpen = ref(false) // Default false (manual start)
 const isInitializing = ref(false) // Loading state
-const cameraMode = ref(null) // 'qr', 'barcode', 'ocr'
+const cameraMode = ref(null) // 'qr', 'barcode'
 const scannerId = 'html5qr-code-full-region'
 let html5QrCode = null
 let isScanning = false
@@ -216,61 +215,6 @@ const startScanner = async (mode, specificCameraId = null) => {
     }
 }
 
-const startOCR = async () => {
-    if (cameraMode.value === 'ocr') return;
-
-    await stopCamera()
-    isCameraOpen.value = true
-    cameraMode.value = 'ocr'
-    scanResult.value = null
-
-    await nextTick()
-
-    html5QrCode = new Html5Qrcode(scannerId)
-    try {
-        await html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 20, qrbox: { width: 300, height: 100 } },
-            () => { }, () => { }
-        )
-        isScanning = true
-    } catch (err) {
-        toast.error("Gagal membuka kamera.")
-        isCameraOpen.value = false
-    }
-}
-
-const captureAndOCR = async () => {
-    const video = document.querySelector(`#${scannerId} video`)
-    if (!video) return
-
-    isLoading.value = true
-    const canvas = document.createElement("canvas")
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    const image = canvas.toDataURL('image/png')
-
-    try {
-        const { data: { text } } = await Tesseract.recognize(image, 'eng')
-        const candidate = text.split(/\s+/).find(w => w.length > 5 && /\d/.test(w))
-
-        if (candidate) {
-            scanCode.value = candidate
-            toast.success(`Text: ${candidate}`)
-            handleScan()
-        } else {
-            toast.error("Tidak terbaca.")
-        }
-    } catch (err) {
-        toast.error("Gagal OCR.")
-    } finally {
-        isLoading.value = false
-    }
-}
-
 const stopCamera = async () => {
     if (html5QrCode) {
         try {
@@ -391,16 +335,6 @@ const toggleCamera = () => {
                     <X :size="18" />
                 </button>
             </div>
-
-            <!-- OCR Capture Button -->
-            <div v-if="cameraMode === 'ocr' && isScanning"
-                class="absolute bottom-6 left-0 right-0 flex justify-center z-20">
-                <button @click="captureAndOCR" class="btn btn-lg btn-circle bg-white text-black ring-4 ring-black/20"
-                    :disabled="isLoading">
-                    <span v-if="isLoading" class="loading loading-spinner"></span>
-                    <Camera v-else :size="28" />
-                </button>
-            </div>
         </div>
 
         <!-- Manual Input (Always Visible) -->
@@ -419,7 +353,7 @@ const toggleCamera = () => {
         </div>
 
         <!-- Mode Selectors (Bottom Bar) -->
-        <div class="grid grid-cols-4 gap-2">
+        <div class="grid grid-cols-3 gap-2">
             <button @click="startScanner('qr')"
                 class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
                 :class="cameraMode === 'qr' ? 'bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
@@ -432,13 +366,6 @@ const toggleCamera = () => {
                 :class="cameraMode === 'barcode' ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
                 <ScanBarcode :size="24" class="mb-1" />
                 <span class="text-[10px] font-bold">Barcode Resi</span>
-            </button>
-
-            <button @click="startOCR()"
-                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
-                :class="cameraMode === 'ocr' ? 'bg-blue-500 text-white border-blue-600 shadow-lg shadow-blue-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
-                <ImageIcon :size="24" class="mb-1" />
-                <span class="text-[10px] font-bold">Foto/OCR</span>
             </button>
 
             <button @click="focusInput"
