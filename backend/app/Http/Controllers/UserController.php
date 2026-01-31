@@ -14,13 +14,13 @@ class UserController extends Controller
         $user = $request->user();
         $query = User::with(['branch', 'roles']);
 
-        // Jika bukan superadmin, hanya tampilkan user dari branch yang sama
-        if (!$user->hasRole('superadmin')) {
+        // Jika bukan super_admin, hanya tampilkan user dari branch yang sama
+        if (!$user->hasRole('super_admin')) {
             $query->where('branch_id', $user->branch_id);
         }
 
-        // Filter by branch_id if provided (for superadmin filtering)
-        if ($request->has('branch_id') && $user->hasRole('superadmin')) {
+        // Filter by branch_id if provided (for super_admin filtering)
+        if ($request->has('branch_id') && $user->hasRole('super_admin')) {
             $query->where('branch_id', $request->branch_id);
         }
 
@@ -51,24 +51,24 @@ class UserController extends Controller
         ]);
 
         $branchId = $validated['branch_id'] ?? null;
-
-        // Force branch_id for non-superadmin
-        if (!$currentUser->hasRole('superadmin')) {
+        if (!$currentUser->hasRole('super_admin')) {
             $branchId = $currentUser->branch_id;
         }
 
+        // 1. Buat User TANPA menyertakan field 'role' ke array create
         $user = User::create([
+            'name' => $validated['full_name'],
             'full_name' => $validated['full_name'],
             'username' => $validated['username'],
-            'password' => $validated['password'], // Removed Hash::make() because Model casts it
+            'password' => $validated['password'],
             'branch_id' => $branchId,
-            'theme_color' => 'dark-blue', // TAMBAHKAN DEFAULT INI
+            'theme_color' => 'dark-blue',
             'address' => $validated['address'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
-            'role' => $validated['role'], // Assign role for simple attribute access if needed
         ]);
 
+        // 2. Aktifkan kembali ini! Ini cara simpan role yang benar di Spatie
         $user->assignRole($validated['role']);
 
         return response()->json(['success' => true, 'data' => $user->load('roles', 'branch')], 201);
@@ -78,7 +78,7 @@ class UserController extends Controller
     {
         $currentUser = request()->user();
 
-        if (!$currentUser->hasRole('superadmin') && $currentUser->branch_id !== $user->branch_id) {
+        if (!$currentUser->hasRole('super_admin') && $currentUser->branch_id !== $user->branch_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -90,7 +90,7 @@ class UserController extends Controller
         $currentUser = $request->user();
 
         // Check scope
-        if (!$currentUser->hasRole('superadmin') && $currentUser->branch_id !== $user->branch_id) {
+        if (!$currentUser->hasRole('super_admin') && $currentUser->branch_id !== $user->branch_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -110,8 +110,8 @@ class UserController extends Controller
             // Removed because model casts 'password' => 'hashed'
         }
 
-        // Prevent changing branch if not superadmin
-        if (!$currentUser->hasRole('superadmin')) {
+        // Prevent changing branch if not super_admin
+        if (!$currentUser->hasRole('super_admin')) {
             unset($validated['branch_id']);
         }
 
@@ -127,7 +127,7 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $currentUser = request()->user();
-        if (!$currentUser->hasRole('superadmin') && $currentUser->branch_id !== $user->branch_id) {
+        if (!$currentUser->hasRole('super_admin') && $currentUser->branch_id !== $user->branch_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
