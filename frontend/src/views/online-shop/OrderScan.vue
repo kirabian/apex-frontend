@@ -107,37 +107,30 @@ const videoDevices = ref([]);
 const currentDeviceIndex = ref(0);
 
 const switchCamera = async () => {
-    if (!html5QrCode) return;
-
     try {
-        // Ambil daftar kamera jika belum ada
-        if (videoDevices.value.length === 0) {
-            const devices = await Html5Qrcode.getCameras();
-            videoDevices.value = devices;
-        }
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 1) {
+            // Cari kamera yang namanya ada "back", "rear", atau "belakang"
+            const backCameras = devices.filter(d =>
+                d.label.toLowerCase().includes('back') ||
+                d.label.toLowerCase().includes('rear') ||
+                d.label.toLowerCase().includes('0') // Biasanya ID 0 atau terakhir adalah kamera utama
+            );
 
-        if (videoDevices.value.length > 1) {
-            // Ganti ke kamera berikutnya
-            currentDeviceIndex.value = (currentDeviceIndex.value + 1) % videoDevices.value.length;
-            const nextCameraId = videoDevices.value[currentDeviceIndex.value].id;
+            // Ganti index berdasarkan daftar semua kamera
+            currentDeviceIndex.value = (currentDeviceIndex.value + 1) % devices.length;
+            const nextCameraId = devices[currentDeviceIndex.value].id;
 
-            // Stop dulu
-            if (html5QrCode && isScanning) {
-                await html5QrCode.stop();
-                html5QrCode.clear();
-                isScanning = false;
-            }
+            console.log("Switching to camera:", devices[currentDeviceIndex.value].label);
 
-            // Kita panggil startScanner dengan ID spesifik
+            await stopCamera();
             await startScanner(cameraMode.value, nextCameraId);
-
-            toast.success("Kamera diganti");
+            toast.success(`Kamera: ${devices[currentDeviceIndex.value].label}`);
         } else {
-            toast.warning("Hanya ada satu kamera yang terdeteksi");
+            toast.warning("Hanya 1 kamera terdeteksi");
         }
     } catch (err) {
-        console.error(err);
-        toast.error("Gagal switch kamera");
+        toast.error("Gagal ganti kamera");
     }
 };
 
@@ -192,7 +185,8 @@ const startScanner = async (mode, specificCameraId = null) => {
     try {
         isInitializing.value = true
 
-        // Use specific ID if provided, otherwise default to environment
+        // Jika ada specificCameraId (hasil switch), pakai ID-nya langsung
+        // Jika tidak ada, pakai facingMode environment biasa (jangan pake exact dulu)
         const cameraIdOrConfig = specificCameraId ? specificCameraId : { facingMode: "environment" };
 
         await html5QrCode.start(
@@ -204,7 +198,8 @@ const startScanner = async (mode, specificCameraId = null) => {
                 handleScan()
             },
             (errorMessage) => { /* ignore */ }
-        )
+        );
+
         isScanning = true
     } catch (err) {
         console.error("Error starting scanner", err)
