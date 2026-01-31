@@ -12,16 +12,66 @@ const isLoading = ref(false)
 const scanResult = ref(null)
 
 // Camera State
-const isCameraOpen = ref(false) // Default false (manual start)
-const isInitializing = ref(false) // Loading state
-const cameraMode = ref(null) // 'qr', 'barcode'
+const isCameraOpen = ref(false)
+const isInitializing = ref(false)
+const cameraMode = ref(null)
 const scannerId = 'html5qr-code-full-region'
 let html5QrCode = null
 let isScanning = false
 
+// Camera devices
+const availableCameras = ref([])
+const currentCameraId = ref(null)
+const isFrontCamera = ref(false)
+
+onMounted(async () => {
+    await getCameraDevices()
+})
+
 onBeforeUnmount(() => {
     stopCamera()
 })
+
+const getCameraDevices = async () => {
+    try {
+        const devices = await Html5Qrcode.getCameras()
+        availableCameras.value = devices
+
+        if (devices.length > 0) {
+            // Cari kamera belakang
+            const backCamera = devices.find(device =>
+                device.label.toLowerCase().includes('back') ||
+                device.label.toLowerCase().includes('rear') ||
+                device.label.toLowerCase().includes('environment') ||
+                device.label.toLowerCase().includes('2') || // Sering kamera belakang ID 2
+                device.label.toLowerCase().includes('1') // Atau ID 1
+            )
+
+            // Cari kamera depan
+            const frontCamera = devices.find(device =>
+                device.label.toLowerCase().includes('front') ||
+                device.label.toLowerCase().includes('user') ||
+                device.label.toLowerCase().includes('0') // Biasanya ID 0
+            )
+
+            // Default ke kamera belakang jika ada
+            if (backCamera) {
+                currentCameraId.value = backCamera.id
+                isFrontCamera.value = false
+            } else if (frontCamera) {
+                // Fallback ke kamera depan
+                currentCameraId.value = frontCamera.id
+                isFrontCamera.value = true
+            } else {
+                // Gunakan kamera pertama
+                currentCameraId.value = devices[0].id
+                isFrontCamera.value = false
+            }
+        }
+    } catch (error) {
+        console.error('Error getting cameras:', error)
+    }
+}
 
 const focusInput = () => {
     nextTick(() => {
@@ -68,9 +118,6 @@ const resetScan = async () => {
         try {
             await html5QrCode.resume()
         } catch (e) { console.log("resume failed") }
-    } else {
-        // If we were scanning, restart the last mode
-        if (cameraMode.value) startScanner(cameraMode.value)
     }
 }
 
@@ -102,40 +149,45 @@ const formatCurrency = (val) => {
 
 // --- SCANNER LOGIC ---
 
-const videoDevices = ref([]);
-const currentDeviceIndex = ref(0);
-
 const switchCamera = async () => {
     try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 1) {
-            // Cari kamera yang namanya ada "back", "rear", atau "belakang"
-            const backCameras = devices.filter(d =>
-                d.label.toLowerCase().includes('back') ||
-                d.label.toLowerCase().includes('rear') ||
-                d.label.toLowerCase().includes('0') // Biasanya ID 0 atau terakhir adalah kamera utama
-            );
-
-            // Ganti index berdasarkan daftar semua kamera
-            currentDeviceIndex.value = (currentDeviceIndex.value + 1) % devices.length;
-            const nextCameraId = devices[currentDeviceIndex.value].id;
-
-            console.log("Switching to camera:", devices[currentDeviceIndex.value].label);
-
-            await stopCamera();
-            await startScanner(cameraMode.value, nextCameraId);
-            toast.success(`Kamera: ${devices[currentDeviceIndex.value].label}`);
-        } else {
-            toast.warning("Hanya 1 kamera terdeteksi");
+        if (availableCameras.value.length <= 1) {
+            toast.warning("Hanya 1 kamera terdeteksi")
+            return
         }
-    } catch (err) {
-        toast.error("Gagal ganti kamera");
-    }
-};
 
-const startScanner = async (mode, specificCameraId = null) => {
+        // Cari index kamera saat ini
+        const currentIndex = availableCameras.value.findIndex(cam => cam.id === currentCameraId.value)
+
+        if (currentIndex === -1) return
+
+        // Cari kamera berikutnya
+        const nextIndex = (currentIndex + 1) % availableCameras.value.length
+        const nextCamera = availableCameras.value[nextIndex]
+
+        // Update state
+        currentCameraId.value = nextCamera.id
+        isFrontCamera.value = nextCamera.label.toLowerCase().includes('front') ||
+            nextCamera.label.toLowerCase().includes('user')
+
+        console.log("Switching to camera:", nextCamera.label)
+
+        // Restart scanner dengan kamera baru
+        const mode = cameraMode.value
+        await stopCamera()
+        await startScanner(mode)
+
+        toast.success(isFrontCamera.value ? "Menggunakan kamera depan" : "Menggunakan kamera belakang")
+    } catch (err) {
+        console.error("Switch camera error:", err)
+        toast.error("Gagal ganti kamera")
+    }
+}
+
+const startScanner = async (mode, forceCameraId = null) => {
+    // Stop jika sedang scanning
     if (html5QrCode && isScanning) {
-        await stopCamera();
+        await stopCamera()
     }
 
     isCameraOpen.value = true
@@ -146,7 +198,7 @@ const startScanner = async (mode, specificCameraId = null) => {
 
     html5QrCode = new Html5Qrcode(scannerId)
 
-    // Config based on mode
+    // Config berdasarkan mode
     let qrboxConfig;
     let formats;
 
@@ -169,47 +221,94 @@ const startScanner = async (mode, specificCameraId = null) => {
     const config = {
         fps: 20,
         qrbox: qrboxConfig,
-        rememberLastUsedCamera: false, // DISABLED to prevent sticking to front camera
+        rememberLastUsedCamera: false,
         aspectRatio: 1.0,
         disableFlip: true,
+        supportedScanTypes: formats,
         videoConstraints: {
             focusMode: "continuous",
-            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : []
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     }
 
     try {
         isInitializing.value = true
 
-        // MATCH OCR LOGIC:
-        // Use specific ID if provided.
-        // If not, use { facingMode: "environment" } exactly like startOCR.
-        // We removed the manual enumeration logic as it was picking the wrong camera.
-        const cameraIdOrConfig = specificCameraId ? specificCameraId : { facingMode: "environment" };
+        // Tentukan kamera yang akan digunakan
+        let cameraToUse;
+
+        if (forceCameraId) {
+            // Jika forceCameraId diberikan, gunakan itu
+            cameraToUse = forceCameraId
+        } else if (currentCameraId.value) {
+            // Gunakan currentCameraId yang sudah ditentukan
+            cameraToUse = currentCameraId.value
+        } else {
+            // Fallback ke environment
+            cameraToUse = { facingMode: "environment" }
+        }
+
+        console.log("Starting scanner with camera:", cameraToUse)
 
         await html5QrCode.start(
-            cameraIdOrConfig,
+            cameraToUse,
             config,
             (decodedText) => {
                 scanCode.value = decodedText
                 if (navigator.vibrate) navigator.vibrate(200);
                 handleScan()
             },
-            (errorMessage) => { /* ignore */ }
+            (errorMessage) => {
+                // Ignore scanning errors
+                console.log("Scan error:", errorMessage)
+            }
         ).catch(err => {
-            // Retry
-            console.warn("Start failed, retrying...");
-            return html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-                scanCode.value = decodedText
-                handleScan()
-            }, () => { });
-        });
+            console.error("Scanner start failed:", err)
+
+            // Fallback: coba dengan facingMode environment
+            if (typeof cameraToUse === 'string') {
+                console.log("Retrying with facingMode environment...")
+                return html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText) => {
+                        scanCode.value = decodedText
+                        handleScan()
+                    },
+                    () => { }
+                )
+            }
+            throw err
+        })
 
         isScanning = true
     } catch (err) {
         console.error("Error starting scanner", err)
-        toast.error("Gagal membuka kamera: " + (err.message || err))
-        isCameraOpen.value = false
+
+        // Fallback ke kamera pertama yang tersedia
+        if (availableCameras.value.length > 0) {
+            try {
+                toast.warning("Mencoba kamera alternatif...")
+                await html5QrCode.start(
+                    availableCameras.value[0].id,
+                    config,
+                    (decodedText) => {
+                        scanCode.value = decodedText
+                        handleScan()
+                    },
+                    () => { }
+                )
+                isScanning = true
+                currentCameraId.value = availableCameras.value[0].id
+            } catch (fallbackErr) {
+                toast.error("Gagal membuka kamera")
+                isCameraOpen.value = false
+            }
+        } else {
+            toast.error("Gagal membuka kamera: " + (err.message || err))
+            isCameraOpen.value = false
+        }
     } finally {
         isInitializing.value = false
     }
@@ -218,19 +317,23 @@ const startScanner = async (mode, specificCameraId = null) => {
 const stopCamera = async () => {
     if (html5QrCode) {
         try {
-            if (isScanning) await html5QrCode.stop()
+            if (isScanning) {
+                await html5QrCode.stop()
+                isScanning = false
+            }
             html5QrCode.clear()
-        } catch (e) { }
+        } catch (e) {
+            console.log("Stop camera error:", e)
+        }
         html5QrCode = null
-        isScanning = false
     }
+    isCameraOpen.value = false
+    cameraMode.value = null
 }
 
 const toggleCamera = () => {
     if (isScanning) {
         stopCamera()
-        isCameraOpen.value = false
-        cameraMode.value = null
     }
 }
 </script>
@@ -246,8 +349,11 @@ const toggleCamera = () => {
                 </h1>
                 <p class="text-gray-500 dark:text-slate-400 text-sm">Pilih mode scan di bawah.</p>
             </div>
-            <div v-if="isCameraOpen" class="animate-pulse">
-                <span class="badge badge-error badge-sm">LIVE</span>
+            <div v-if="isCameraOpen" class="flex items-center gap-2">
+                <span class="badge badge-error badge-sm animate-pulse">LIVE</span>
+                <span class="text-xs text-gray-500 dark:text-slate-400">
+                    {{ isFrontCamera ? 'Depan' : 'Belakang' }}
+                </span>
             </div>
         </div>
 
@@ -269,10 +375,16 @@ const toggleCamera = () => {
                     <p class="text-slate-400 text-sm max-w-xs mx-auto mb-6">Pilih mode scan di bawah atau tekan tombol
                         untuk mulai.</p>
 
-                    <button @click="startScanner('barcode')"
-                        class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary-500/30">
-                        <ScanBarcode class="mr-2" /> Mulai Scan
-                    </button>
+                    <div class="flex flex-col gap-2">
+                        <button @click="startScanner('barcode')"
+                            class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary-500/30">
+                            <ScanBarcode class="mr-2" /> Mulai Scan Barcode
+                        </button>
+                        <button @click="startScanner('qr')"
+                            class="btn btn-secondary btn-lg rounded-full px-8 shadow-lg shadow-secondary-500/30">
+                            <QrCode class="mr-2" /> Mulai Scan QR
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -280,6 +392,7 @@ const toggleCamera = () => {
             <div v-if="isInitializing" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
                 <span class="loading loading-spinner loading-lg text-primary-500 mb-4"></span>
                 <p class="text-white font-medium animate-pulse">Membuka Kamera...</p>
+                <p class="text-gray-400 text-sm mt-2">{{ isFrontCamera ? 'Kamera depan' : 'Kamera belakang' }}</p>
             </div>
 
             <!-- Scanning Overlay -->
@@ -323,21 +436,29 @@ const toggleCamera = () => {
                 </div>
             </div>
 
-            <!-- Close Button & Switcher -->
+            <!-- Camera Controls -->
             <div v-if="isCameraOpen" class="absolute top-4 right-4 z-20 flex gap-2">
-                <button @click="switchCamera"
-                    class="btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-primary-500 transition-colors">
+                <button v-if="availableCameras.length > 1" @click="switchCamera"
+                    class="btn btn-circle btn-sm bg-black/50 text-white border-0 backdrop-blur-md hover:bg-primary-500 transition-all"
+                    :title="isFrontCamera ? 'Ganti ke kamera belakang' : 'Ganti ke kamera depan'">
                     <RefreshCw :size="18" />
                 </button>
 
-                <button @click="toggleCamera"
-                    class="btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-red-500 transition-colors">
+                <button @click="stopCamera"
+                    class="btn btn-circle btn-sm bg-black/50 text-white border-0 backdrop-blur-md hover:bg-red-500 transition-all">
                     <X :size="18" />
                 </button>
             </div>
+
+            <!-- Camera Info -->
+            <div v-if="isScanning" class="absolute bottom-4 left-4 z-20">
+                <div class="bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-md">
+                    {{ availableCameras.length }} kamera tersedia
+                </div>
+            </div>
         </div>
 
-        <!-- Manual Input (Always Visible) -->
+        <!-- Manual Input -->
         <div class="p-2 mb-4">
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -352,7 +473,7 @@ const toggleCamera = () => {
             </div>
         </div>
 
-        <!-- Mode Selectors (Bottom Bar) -->
+        <!-- Mode Selectors -->
         <div class="grid grid-cols-3 gap-2">
             <button @click="startScanner('qr')"
                 class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
@@ -375,6 +496,17 @@ const toggleCamera = () => {
             </button>
         </div>
 
+        <!-- Camera Info Card -->
+        <div v-if="availableCameras.length > 0 && isCameraOpen"
+            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3">
+            <div class="flex items-center gap-2">
+                <Camera :size="16" class="text-blue-500" />
+                <span class="text-xs text-blue-700 dark:text-blue-300">
+                    Kamera: {{ isFrontCamera ? 'Depan' : 'Belakang' }}
+                    ({{ currentCameraId ? currentCameraId.substring(0, 20) + '...' : 'default' }})
+                </span>
+            </div>
+        </div>
 
         <!-- Result Card -->
         <div v-if="scanResult"
@@ -398,19 +530,45 @@ const toggleCamera = () => {
             </div>
             <button @click="resetScan" class="btn btn-outline btn-block mt-4">Scan Lagi</button>
         </div>
+
+        <!-- Debug Info (Hanya untuk development) -->
+        <div v-if="false" class="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <h3 class="text-sm font-bold mb-2">Debug Info:</h3>
+            <pre class="text-xs">{{ JSON.stringify({
+                availableCameras: availableCameras.length,
+                currentCameraId: currentCameraId,
+                isFrontCamera: isFrontCamera,
+                isScanning: isScanning,
+                cameraMode: cameraMode
+            }, null, 2) }}</pre>
+        </div>
     </div>
 </template>
 
 <style>
-/* CSS Override for html5-qrcode video */
-#html5qr-code-full-region video {
-    object-fit: cover !important;
-    border-radius: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-}
-
+/* CSS Override untuk html5-qrcode */
 #html5qr-code-full-region {
     border: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+}
+
+#html5qr-code-full-region video {
+    object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
+    transform: scaleX(1) !important;
+    /* Pastikan tidak mirror */
+}
+
+/* Untuk kamera depan, perlu mirror */
+#html5qr-code-full-region video.camera-front {
+    transform: scaleX(-1) !important;
+}
+
+/* Scanner overlay styling */
+.html5-qrcode-element {
+    display: none !important;
 }
 </style>
