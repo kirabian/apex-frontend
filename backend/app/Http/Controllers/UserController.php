@@ -38,22 +38,20 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
-            // 1. Ambil data, pastikan branch_id jadi null kalau tidak dipilih
             $branchId = $request->branch_id ?: null;
 
-            // 2. Buat User (Hanya kolom yang ada di list Tinker kamu tadi)
             $user = \App\Models\User::create([
-                'name' => $request->full_name, // name wajib ada isi
+                'name' => $request->full_name,
                 'full_name' => $request->full_name,
                 'username' => $request->username,
-                'password' => $request->password, // casting 'hashed' di model akan handle ini
-                'branch_id' => $branchId,          // Harus int8 atau null
+                // TAMBAHKAN INI: Bikin email dummy agar database tidak error
+                'email' => $request->username . '@apexpos.com',
+                'password' => $request->password,
+                'branch_id' => $branchId,
                 'is_active' => $request->is_active ?? true,
                 'theme_color' => 'default',
             ]);
 
-            // 3. Simpan Role (Spatie Logic)
-            // Ini tidak masuk ke tabel users, tapi ke tabel model_has_roles
             if ($request->role) {
                 $user->assignRole($request->role);
             }
@@ -64,7 +62,6 @@ class UserController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            // Balikin pesan error asli biar kita gak nebak-nebak lagi
             return response()->json([
                 'error_message' => $e->getMessage(),
                 'file' => $e->getFile(),
