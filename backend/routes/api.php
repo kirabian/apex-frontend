@@ -14,6 +14,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User Management
     Route::apiResource('users', UserController::class);
+
+    // Tambahkan ini di api.php
+    Route::get('/branches', function () {
+        return \App\Models\Branch::all();
+    });
 });
 
 Route::get('/health-check', function () {
