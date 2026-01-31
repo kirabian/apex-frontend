@@ -70,7 +70,14 @@ const startScanner = async () => {
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.CODE_39,
-        ]
+        ],
+        // CORRECT WAY TO PASS CONSTRAINTS
+        videoConstraints: {
+            facingMode: { exact: "environment" }, // Try exact back camera
+            width: { min: 1024, ideal: 1920 },    // High Res
+            height: { min: 576, ideal: 1080 },
+            focusMode: "continuous"
+        }
     }
 
     // Initialize new instance
@@ -79,48 +86,39 @@ const startScanner = async () => {
         verbose: false
     })
 
-    const tryStart = async (constraints) => {
+    try {
+        // First arg MUST be simple object or straight camera ID
+        // We rely on config.videoConstraints for the heavy lifting
+        await html5QrCode.value.start(
+            { facingMode: { exact: "environment" } },
+            config,
+            onScanSuccess,
+            (err) => { /* ignore frame errors */ }
+        );
+
+    } catch (err) {
+        console.warn("HD/Exact Start Failed, retrying with basic config...", err);
+
         try {
+            // Relax constraints for fallback
+            const basicConfig = {
+                ...config,
+                videoConstraints: {
+                    facingMode: "environment",
+                    focusMode: "continuous"
+                }
+            };
+
             await html5QrCode.value.start(
-                constraints,
-                config,
+                { facingMode: "environment" },
+                basicConfig,
                 onScanSuccess,
                 (err) => { /* ignore frame errors */ }
             );
-            return true;
-        } catch (err) {
-            console.warn("Start failed with constraints:", constraints, err);
-            return false;
+        } catch (fatalErr) {
+            console.error("Scanner Fatal Error:", fatalErr)
+            cameraError.value = "Gagal mengakses kamera. " + (fatalErr.message || "")
         }
-    };
-
-    try {
-        // High Res Attempt
-        const highResConfig = {
-            facingMode: { exact: "environment" },
-            width: { min: 1280, ideal: 1920 },
-            height: { min: 720, ideal: 1080 },
-            focusMode: "continuous"
-        };
-
-        // Standard Attempt (Fallback)
-        const standardConfig = { facingMode: "environment" };
-
-        let success = await tryStart(highResConfig);
-        if (!success) {
-            // Wait a small delay to ensure internal state checks clear
-            await new Promise(r => setTimeout(r, 200));
-            console.log("Falling back to standard config...");
-            success = await tryStart(standardConfig);
-        }
-
-        if (!success) {
-            throw new Error("Gagal memulai kamera dengan semua konfigurasi.");
-        }
-
-    } catch (err) {
-        console.error("Scanner Fatal Error:", err)
-        cameraError.value = "Gagal mengakses kamera. " + (err.message || "")
     }
 }
 
