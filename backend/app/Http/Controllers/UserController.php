@@ -37,41 +37,40 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $currentUser = $request->user();
+        try {
+            // 1. Ambil data, pastikan branch_id jadi null kalau tidak dipilih
+            $branchId = $request->branch_id ?: null;
 
-        $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username',
-            'password' => 'required|string|min:6',
-            'role' => 'required|string|exists:roles,name',
-            'branch_id' => 'nullable|exists:branches,id',
-            'address' => 'nullable|string',
-            'birth_date' => 'nullable|date',
-            'is_active' => 'boolean',
-        ]);
+            // 2. Buat User (Hanya kolom yang ada di list Tinker kamu tadi)
+            $user = \App\Models\User::create([
+                'name' => $request->full_name, // name wajib ada isi
+                'full_name' => $request->full_name,
+                'username' => $request->username,
+                'password' => $request->password, // casting 'hashed' di model akan handle ini
+                'branch_id' => $branchId,          // Harus int8 atau null
+                'is_active' => $request->is_active ?? true,
+                'theme_color' => 'default',
+            ]);
 
-        $branchId = $validated['branch_id'] ?? null;
-        if (!$currentUser->hasRole('super_admin')) {
-            $branchId = $currentUser->branch_id;
+            // 3. Simpan Role (Spatie Logic)
+            // Ini tidak masuk ke tabel users, tapi ke tabel model_has_roles
+            if ($request->role) {
+                $user->assignRole($request->role);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $user->load('roles', 'branch')
+            ], 201);
+
+        } catch (\Exception $e) {
+            // Balikin pesan error asli biar kita gak nebak-nebak lagi
+            return response()->json([
+                'error_message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        // Perhatikan: 'role' saya buang dari array create di bawah ini
-        $user = User::create([
-            'name' => $validated['full_name'],
-            'full_name' => $validated['full_name'],
-            'username' => $validated['username'],
-            'password' => $validated['password'],
-            'branch_id' => $branchId,
-            'theme_color' => 'dark-blue',
-            'address' => $validated['address'] ?? null,
-            'birth_date' => $validated['birth_date'] ?? null,
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
-
-        // Role disimpan ke tabel pivot lewat method ini, bukan lewat kolom 'role'
-        $user->assignRole($validated['role']);
-
-        return response()->json(['success' => true, 'data' => $user->load('roles', 'branch')], 201);
     }
     public function show(User $user)
     {
