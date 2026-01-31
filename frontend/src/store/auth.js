@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api, { auth as authApi } from '../api/axios'
+import { getPermissionsForRole } from '../utils/permissions'
 
 export const useAuthStore = defineStore('auth', () => {
     // State
@@ -24,8 +25,8 @@ export const useAuthStore = defineStore('auth', () => {
     const userBranch = computed(() => user.value?.branch || null)
 
     const hasPermission = computed(() => (permission) => {
-        // Implement detailed permission logic if needed
-        return true;
+        if (!user.value?.permissions) return false
+        return user.value.permissions.includes('*') || user.value.permissions.includes(permission)
     })
 
     const hasRole = computed(() => (role) => {
@@ -37,6 +38,34 @@ export const useAuthStore = defineStore('auth', () => {
         return userRoles.includes(role);
     })
 
+    // Helper to enrich user object with permissions if missing
+    const enrichUserPermissions = (userData) => {
+        if (!userData) return null;
+
+        // Determine role name
+        let roleName = null;
+        if (userData.roles && userData.roles.length > 0) {
+            roleName = userData.roles[0].name;
+        } else {
+            roleName = userData.role;
+        }
+
+        // Check if permissions exist, if not, fill from local config
+        // Also ensure we allow Super Admin bypass by giving '*' if needed, 
+        // though typically router handles that.
+        let permissions = userData.permissions || [];
+
+        if (permissions.length === 0 && roleName) {
+            console.warn('AuthStore: Permissions missing from API, falling back to local config for role:', roleName);
+            permissions = getPermissionsForRole(roleName);
+        }
+
+        return {
+            ...userData,
+            permissions
+        };
+    }
+
     // Actions
     async function login(credentials) {
         isLoading.value = true
@@ -44,11 +73,13 @@ export const useAuthStore = defineStore('auth', () => {
 
         try {
             const response = await authApi.login(credentials)
-            const { token: authToken, user: userData } = response.data
+            const { token: authToken, user: rawUser } = response.data
 
-            if (!authToken || !userData) {
+            if (!authToken || !rawUser) {
                 throw new Error('Invalid response from server')
             }
+
+            const userData = enrichUserPermissions(rawUser)
 
             // Set auth data
             token.value = authToken
@@ -92,9 +123,15 @@ export const useAuthStore = defineStore('auth', () => {
 
         try {
             const response = await authApi.me()
-            user.value = response.data.user
-            localStorage.setItem('user', JSON.stringify(user.value))
-            return user.value
+            // Some APIs return wrapped in 'data', others flat. Adjust as needed.
+            // Based on previous code: response.data.user
+            const rawUser = response.data.user || response.data
+
+            const userData = enrichUserPermissions(rawUser)
+
+            user.value = userData
+            localStorage.setItem('user', JSON.stringify(userData))
+            return userData
         } catch (err) {
             // Token might be invalid
             token.value = null
@@ -113,9 +150,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Initialize - try to restore user from localStorage
     function initialize() {
-        const savedUser = localStorage.getItem('user')
-        if (savedUser && token.value) {
-            user.value = JSON.parse(savedUser)
+        const savedUserHash = localStorage.getItem('user')
+        if (savedUserHash && token.value) {
+            try {
+                let savedUser = JSON.parse(savedUserHash)
+                // Re-enrich just in case
+                savedUser = enrichUserPermissions(savedUser)
+                user.value = savedUser
+            } catch (e) {
+                console.error("Failed to parse saved user", e)
+            }
         }
     }
 
