@@ -103,7 +103,45 @@ const formatCurrency = (val) => {
 
 // --- SCANNER LOGIC ---
 
-const startScanner = async (mode) => {
+const videoDevices = ref([]);
+const currentDeviceIndex = ref(0);
+
+const switchCamera = async () => {
+    if (!html5QrCode) return;
+
+    try {
+        // Ambil daftar kamera jika belum ada
+        if (videoDevices.value.length === 0) {
+            const devices = await Html5Qrcode.getCameras();
+            videoDevices.value = devices;
+        }
+
+        if (videoDevices.value.length > 1) {
+            // Ganti ke kamera berikutnya
+            currentDeviceIndex.value = (currentDeviceIndex.value + 1) % videoDevices.value.length;
+            const nextCameraId = videoDevices.value[currentDeviceIndex.value].id;
+
+            // Stop dulu
+            if (html5QrCode && isScanning) {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+                isScanning = false;
+            }
+
+            // Kita panggil startScanner dengan ID spesifik
+            await startScanner(cameraMode.value, nextCameraId);
+
+            toast.success("Kamera diganti");
+        } else {
+            toast.warning("Hanya ada satu kamera yang terdeteksi");
+        }
+    } catch (err) {
+        console.error(err);
+        toast.error("Gagal switch kamera");
+    }
+};
+
+const startScanner = async (mode, specificCameraId = null) => {
     if (html5QrCode && isScanning) {
         await stopCamera();
     }
@@ -144,18 +182,21 @@ const startScanner = async (mode) => {
         qrbox: qrboxConfig,
         rememberLastUsedCamera: true,
         aspectRatio: 1.0,
-        disableFlip: true, // Fix mirroring (jangan kebalik)
+        disableFlip: true,
         videoConstraints: {
             focusMode: "continuous",
-            // Force back camera logic if needed, though facingMode handles it
-            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : []
+            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : [] // Zoom only for barcodes
         }
     }
 
     try {
         isInitializing.value = true
+
+        // Use specific ID if provided, otherwise default to environment
+        const cameraIdOrConfig = specificCameraId ? specificCameraId : { facingMode: "environment" };
+
         await html5QrCode.start(
-            { facingMode: "environment" }, // Pakai kamera belakang
+            cameraIdOrConfig,
             config,
             (decodedText) => {
                 scanCode.value = decodedText
@@ -337,11 +378,18 @@ const toggleCamera = () => {
                 </div>
             </div>
 
-            <!-- Close Button (Always visible when open) -->
-            <button v-if="isCameraOpen" @click="toggleCamera"
-                class="absolute top-4 right-4 z-20 btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-red-500 hover:text-white transition-colors">
-                <X :size="18" />
-            </button>
+            <!-- Close Button & Switcher -->
+            <div v-if="isCameraOpen" class="absolute top-4 right-4 z-20 flex gap-2">
+                <button @click="switchCamera"
+                    class="btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-primary-500 transition-colors">
+                    <RefreshCw :size="18" />
+                </button>
+
+                <button @click="toggleCamera"
+                    class="btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-red-500 transition-colors">
+                    <X :size="18" />
+                </button>
+            </div>
 
             <!-- OCR Capture Button -->
             <div v-if="cameraMode === 'ocr' && isScanning"
