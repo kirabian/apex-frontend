@@ -4,7 +4,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'
 import { useRouter } from 'vue-router'
 import { onlineShop } from '../../api/axios'
 import { useToast } from '../../composables/useToast'
-import { QrCode, ScanBarcode, X, CheckCircle, Package, Truck, Search, RefreshCw, CameraOff, ZoomIn, ZoomOut } from 'lucide-vue-next'
+import { QrCode, ScanBarcode, X, CheckCircle, Package, Truck, Search, RefreshCw, CameraOff } from 'lucide-vue-next'
 
 const router = useRouter()
 const toast = useToast()
@@ -16,17 +16,9 @@ const html5QrCode = ref(null)
 const scannerId = "reader"
 const cameraError = ref(null)
 
-// Zoom State
-const hasZoom = ref(false)
-const zoomLevel = ref(1)
-const zoomCapabilities = ref({ min: 1, max: 5, step: 0.1 })
-const videoTrack = ref(null)
-
 // Data
 const scanCode = ref('')
 const scanResult = ref(null)
-
-const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
 onMounted(() => {
     startScanner()
@@ -43,14 +35,10 @@ const startScanner = async () => {
     scanResult.value = null
     scanCode.value = ''
     cameraError.value = null
-    // Reset zoom state
-    zoomLevel.value = 1
-    hasZoom.value = false
-    videoTrack.value = null
 
     await nextTick()
 
-    // 1. Cleanup existing instance FORCEFULLY
+    // 1. Force Cleanup
     if (html5QrCode.value) {
         try {
             if (html5QrCode.value.isScanning) {
@@ -61,31 +49,34 @@ const startScanner = async () => {
         html5QrCode.value = null;
     }
 
-    // 2. Config - ALL FORMATS SUPPORT & WIDE AREA
+    // 2. Config - MAXIMUM PERFORMANCE
+    // Using a very large qrbox to utilize the full resolution of the camera frame
     const config = {
         fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Very wide box for long barcodes
-            const minEdgePercentage = 0.95;
-            const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-            // Taller height to allow some angle flexibility
-            const qrboxHeight = Math.floor(viewfinderHeight * 0.45);
-            return { width: qrboxWidth, height: qrboxHeight };
+            // Use almost full width to catch wide barcodes
+            return {
+                width: Math.floor(viewfinderWidth * 0.95),
+                height: Math.floor(viewfinderHeight * 0.80)
+            };
         },
         aspectRatio: 1.0,
         formatsToSupport: [
-            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_128, // FIRST PRIORITY (Resi)
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.CODE_93,
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.ITF,
-            Html5QrcodeSupportedFormats.RSS_14,
-            Html5QrcodeSupportedFormats.RSS_EXPANDED
-        ]
+        ],
+        videoConstraints: {
+            facingMode: { exact: "environment" },
+            // Request 4K/UHD if available, fallback to 1080p
+            width: { min: 1280, ideal: 3840 },
+            height: { min: 720, ideal: 2160 },
+            focusMode: "continuous"
+        }
     }
 
     html5QrCode.value = new Html5Qrcode(scannerId, {
@@ -93,57 +84,27 @@ const startScanner = async () => {
         verbose: false
     })
 
-    const onCameraReady = () => {
-        // Init Zoom Capabilities after camera start
-        setTimeout(() => {
-            try {
-                // HACK: Access the video element directly to get the track
-                const videoElement = document.querySelector(`#${scannerId} video`);
-                if (videoElement && videoElement.srcObject) {
-                    const track = videoElement.srcObject.getVideoTracks()[0];
-                    if (track) {
-                        videoTrack.value = track;
-                        const caps = track.getCapabilities();
-                        if (caps.zoom) {
-                            hasZoom.value = true;
-                            zoomCapabilities.value = {
-                                min: caps.zoom.min || 1,
-                                max: caps.zoom.max || 5, // Limit to 5x to prevent super grain
-                                step: caps.zoom.step || 0.1
-                            };
-                            // Set initial zoom to 1.5x for "Distance" readiness if supported
-                            try {
-                                track.applyConstraints({
-                                    advanced: [{ zoom: 1.2 }]
-                                }).then(() => { zoomLevel.value = 1.2 }).catch(e => { })
-                            } catch (e) { }
-                        }
-                    }
-                }
-            } catch (e) { console.log("Zoom init failed", e) }
-        }, 500);
-    }
-
     try {
         await html5QrCode.value.start(
-            { facingMode: "environment" },
-            {
-                ...config,
-                videoConstraints: {
-                    facingMode: "environment",
-                    width: { min: 720, ideal: 1280 }, // Balanced HD
-                    height: { min: 480, ideal: 720 },
-                    focusMode: "continuous"
-                }
-            },
+            { facingMode: { exact: "environment" } },
+            config,
             onScanSuccess,
             (err) => { }
         );
-        onCameraReady();
-
     } catch (err) {
-        console.warn("Standard start failed, retrying strict...", err);
-        cameraError.value = "Gagal. Coba refresh halaman."
+        console.warn("High-End Start Failed, retrying compatibility mode...", err);
+
+        // Fallback: relax constraints but keep 'environment'
+        try {
+            await html5QrCode.value.start(
+                { facingMode: "environment" },
+                { ...config, videoConstraints: { facingMode: "environment" } },
+                onScanSuccess,
+                (err) => { }
+            );
+        } catch (fatal) {
+            cameraError.value = "Gagal. Pastikan izin kamera aktif & refresh."
+        }
     }
 }
 
@@ -159,21 +120,10 @@ const stopScanner = async () => {
     }
 }
 
-const setZoom = async (val) => {
-    if (!videoTrack.value || !hasZoom.value) return;
-    try {
-        zoomLevel.value = Number(val);
-        await videoTrack.value.applyConstraints({
-            advanced: [{ zoom: zoomLevel.value }]
-        });
-    } catch (e) { console.log("Zoom failed", e) }
-}
-
 const onScanSuccess = async (decodedText) => {
     if (isLoading.value) return;
-    if (decodedText.length < 3) return;
+    if (decodedText.length < 5) return; // Ignore noise < 5 chars
 
-    // Stop first
     await stopScanner()
 
     scanCode.value = decodedText
@@ -189,7 +139,7 @@ const handleScan = async () => {
     try {
         const response = await onlineShop.scan(code)
         scanResult.value = response.data
-        toast.success('Ditemukan!')
+        toast.success(response.data.type === 'order' ? 'Pesanan Ditemukan!' : 'Produk Ditemukan')
         step.value = 'result'
     } catch (error) {
         console.error(error)
@@ -197,18 +147,15 @@ const handleScan = async () => {
         scanResult.value = null
 
         // Auto restart scan if failed
-        setTimeout(() => {
-            resetScan() // Use resetScan to ensure clean restart
-        }, 2000)
+        setTimeout(() => { resetScan() }, 1500)
     } finally {
         isLoading.value = false
     }
 }
 
 const resetScan = async () => {
-    // Force full cleanup and restart
     step.value = 'scan'
-    await nextTick() // Update UI first
+    await nextTick()
     startScanner()
 }
 
@@ -241,41 +188,16 @@ const formatCurrency = (val) => new Intl.NumberFormat("id-ID", { style: "currenc
                 <h1 class="text-2xl font-bold flex items-center gap-2 drop-shadow-md">
                     <ScanBarcode class="w-6 h-6 text-primary-500" /> Scan Pesanan
                 </h1>
-                <p class="text-gray-300 text-xs mt-1">Supports All Formats (QR, Barcode, etc)</p>
+                <p class="text-gray-300 text-xs mt-1">Super Wide Scanner (Code 128 & QR)</p>
+            </div>
+            <div v-if="step === 'scan'" class="animate-pulse">
+                <span class="badge badge-error badge-sm">LIVE</span>
             </div>
         </div>
 
         <!-- SCANNER VIEW -->
         <div v-show="step === 'scan'" class="w-full h-full absolute inset-0 bg-black">
             <div id="reader" class="w-full h-full bg-black relative"></div>
-
-            <!-- ZOOM CONTROLS -->
-            <div v-if="hasZoom"
-                class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-4 bg-black/40 backdrop-blur-md p-2 rounded-full border border-white/10">
-                <button @click="setZoom(Math.min(zoomLevel + 0.5, zoomCapabilities.max))"
-                    class="p-2 -rotate-0 text-white hover:text-primary-500">
-                    <ZoomIn class="w-6 h-6" />
-                </button>
-                <div class="h-32 w-2 relative">
-                    <input type="range" :min="zoomCapabilities.min" :max="zoomCapabilities.max"
-                        :step="zoomCapabilities.step" v-model="zoomLevel" @input="setZoom($event.target.value)"
-                        class="zoom-range" />
-                </div>
-                <button @click="setZoom(Math.min(zoomLevel - 0.5, zoomCapabilities.min))"
-                    class="p-2 text-white hover:text-primary-500">
-                    <ZoomOut class="w-6 h-6" />
-                </button>
-            </div>
-
-            <!-- SCAN GUIDE -->
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-10 opacity-70">
-                <div class="w-[95%] h-56 border-2 border-primary-500/50 rounded-lg relative">
-                    <div
-                        class="absolute top-0 left-1/2 -translate-x-1/2 -mt-3 bg-primary-600 text-white text-[10px] px-3 py-1 rounded-full font-bold shadow-lg">
-                        SCAN AREA</div>
-                    <div class="absolute top-1/2 w-full h-0.5 bg-red-500/80 animate-pulse"></div>
-                </div>
-            </div>
 
             <!-- MANUAL INPUT -->
             <div class="absolute bottom-6 left-0 w-full px-6 z-30">
@@ -369,17 +291,5 @@ video {
 
 :deep(#reader) {
     border: none !important;
-}
-
-/* Vertical Zoom Slider */
-.zoom-range {
-    writing-mode: bt-lr;
-    /* IE/Edge */
-    -webkit-appearance: slider-vertical;
-    /* Webkit */
-    width: 8px;
-    height: 100%;
-    /* Standard appearance for range input */
-    appearance: slider-vertical;
 }
 </style>
