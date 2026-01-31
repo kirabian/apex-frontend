@@ -90,11 +90,11 @@ const menuItems = [
 
 // Filter menu based on user role
 const visibleMenuItems = computed(() => {
+  console.log("Current User Role:", authStore.userRole);
   const userRole = authStore.userRole;
   if (!userRole) return menuItems.filter((item) => item.id === "dashboard");
 
-  // Super admin sees everything
-  if (userRole === "super_admin") return menuItems;
+  if (userRole.toLowerCase().replace(/\s+/g, '_') === "super_admin") return menuItems;
 
   // Get allowed menus for role
   const allowedMenus = getMenuForRole(userRole);
