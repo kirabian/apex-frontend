@@ -130,6 +130,8 @@ function isActiveRoute(path) {
       @click="isMobileMenuOpen = false"
     ></div>
 
+    <ToastContainer />
+
     <!-- Sidebar -->
     <aside
       class="fixed inset-y-0 left-0 z-50 w-64 bg-surface-800 border-r border-surface-700 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0"

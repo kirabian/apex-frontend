@@ -60,12 +60,13 @@ class UserController extends Controller
         $user = User::create([
             'full_name' => $validated['full_name'],
             'username' => $validated['username'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'], // Removed Hash::make() because Model casts it
             'branch_id' => $branchId,
             'theme_color' => 'dark-blue', // TAMBAHKAN DEFAULT INI
             'address' => $validated['address'] ?? null,
             'birth_date' => $validated['birth_date'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
+            'role' => $validated['role'], // Assign role for simple attribute access if needed
         ]);
 
         $user->assignRole($validated['role']);
@@ -105,7 +106,8 @@ class UserController extends Controller
         ]);
 
         if (isset($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+            // $validated['password'] = Hash::make($validated['password']); 
+            // Removed because model casts 'password' => 'hashed'
         }
 
         // Prevent changing branch if not superadmin

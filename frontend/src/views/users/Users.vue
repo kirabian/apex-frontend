@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed } from "vue";
-import { ROLE_LABELS, ROLES } from "../../utils/permissions";
+import { ref, computed, onMounted, watch } from "vue";
+import { ROLE_LABELS } from "../../utils/permissions";
 import { formatDate } from "../../utils/formatters";
+import { users as usersApi, branches as branchesApi } from "../../api/axios"; // Import API
+import { useToast } from "../../composables/useToast"; // Import Toast
 import {
   Search,
   Plus,
@@ -24,111 +26,26 @@ import {
   Clock,
   RotateCcw,
   ArchiveRestore,
+  XCircle,
+  Loader2 // Import Loader
 } from "lucide-vue-next";
 
-// Mock users data
-const users = ref([
-  {
-    id: 1,
-    name: "Fabian Syah",
-    email: "fabian@apexpos.com",
-    phone: "081234567890",
-    role: "super_admin",
-    branch: "Pusat Jakarta",
-    status: "active",
-    createdAt: "2024-01-15",
-    lastSeen: "2024-05-28T10:30:00",
-    timezone: "WIB",
-  },
-  {
-    id: 2,
-    name: "Ahmad Kasir",
-    email: "ahmad@apexpos.com",
-    phone: "081234567891",
-    role: "inventory_kasir",
-    branch: "Cabang Bandung",
-    status: "active",
-    createdAt: "2024-02-20",
-    lastSeen: "2024-05-28T09:15:00",
-    timezone: "WIB",
-  },
-  {
-    id: 3,
-    name: "Budi Gudang",
-    email: "budi@apexpos.com",
-    phone: "081234567892",
-    role: "gudang",
-    branch: "Gudang Pusat",
-    status: "active",
-    createdAt: "2024-03-10",
-    lastSeen: "2024-05-27T16:00:00",
-    timezone: "WIB",
-  },
-  {
-    id: 4,
-    name: "Citra Analis",
-    email: "citra@apexpos.com",
-    phone: "081234567893",
-    role: "analist",
-    branch: "Pusat Jakarta",
-    status: "active",
-    createdAt: "2024-03-15",
-    lastSeen: "2024-05-28T11:00:00",
-    timezone: "WIB",
-  },
-  {
-    id: 5,
-    name: "Dimas Sales",
-    email: "dimas@apexpos.com",
-    phone: "081234567894",
-    role: "sales",
-    branch: "Cabang Surabaya",
-    status: "inactive",
-    createdAt: "2024-04-01",
-    lastSeen: "2024-05-20T14:20:00",
-    timezone: "WIB",
-  },
-  {
-    id: 6,
-    name: "Eka Papua",
-    email: "eka@apexpos.com",
-    phone: "081234567895",
-    role: "inventory_kasir",
-    branch: "Cabang Papua",
-    status: "active",
-    createdAt: "2024-05-01",
-    lastSeen: "2024-05-28T13:00:00", // Will show as 15:00 WIT
-    timezone: "WIT",
-  },
-  {
-    id: 7,
-    name: "Putu Bali",
-    email: "putu@apexpos.com",
-    phone: "081234567896",
-    role: "inventory",
-    branch: "Cabang Bali",
-    status: "deleted",
-    createdAt: "2024-01-20",
-    lastSeen: "2024-04-15T10:00:00",
-    timezone: "WITA",
-  },
-]);
+// Toast
+const toast = useToast();
 
-// Branches
-const branches = [
-  { id: 1, name: "Pusat Jakarta" },
-  { id: 2, name: "Cabang Bandung" },
-  { id: 3, name: "Cabang Surabaya" },
-  { id: 4, name: "Cabang Medan" },
-  { id: 5, name: "Gudang Pusat" },
-  { id: 6, name: "Cabang Bali" },
-  { id: 7, name: "Cabang Papua" },
-];
+// State
+const users = ref([]);
+const branches = ref([]);
+const isLoading = ref(false);
+const isSaving = ref(false);
 
 const timezones = [
   { value: "WIB", label: "WIB (GMT+7)" },
   { value: "WITA", label: "WITA (GMT+8)" },
   { value: "WIT", label: "WIT (GMT+9)" },
+  { value: "Asia/Jakarta", label: "Asia/Jakarta" },
+  { value: "Asia/Makassar", label: "Asia/Makassar" },
+  { value: "Asia/Jayapura", label: "Asia/Jayapura" },
 ];
 
 // Roles list
@@ -148,14 +65,53 @@ const showPassword = ref(false);
 
 // Form
 const form = ref({
-  name: "",
-  email: "",
-  phone: "",
-  password: "",
+  full_name: "", // Match backend field
+  username: "",
+  email: "", // Although not in backend fillable shown above, keeping it if needed or should map to something
   role: "",
-  branch: "",
+  branch_id: "", // Match backend field
   timezone: "WIB",
-  status: "active",
+  address: "",
+  password: "",
+  is_active: true,
+});
+
+// Helper to reset form
+function resetForm() {
+  form.value = {
+    full_name: "",
+    username: "",
+    email: "", // Optional or remove if not used in backend logic explicitly
+    role: "",
+    branch_id: "",
+    timezone: "WIB",
+    address: "",
+    password: "",
+    is_active: true,
+  };
+  showPassword.value = false;
+}
+
+// Fetch Data
+async function fetchData() {
+  isLoading.value = true;
+  try {
+    const [usersRes, branchesRes] = await Promise.all([
+      usersApi.list(),
+      branchesApi.list()
+    ]);
+    users.value = usersRes.data.data || [];
+    branches.value = branchesRes.data.data || [];
+  } catch (error) {
+    console.error("Failed to fetch data", error);
+    toast.error("Gagal memuat data user.");
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  fetchData();
 });
 
 // Format Last Seen
@@ -171,9 +127,13 @@ function formatLastSeen(dateString, timezone) {
     hour12: false,
   };
 
-  // Convert to specific timezone logic (simplified for mockup)
-  // In a real app, we would use date-fns-tz or dayjs with timezone support
-  let tzLabel = timezone || "WIB";
+  // Simplified timezone label
+  const tzMap = {
+      'Asia/Jakarta': 'WIB',
+      'Asia/Makassar': 'WITA',
+      'Asia/Jayapura': 'WIT'
+  }
+  let tzLabel = tzMap[timezone] || timezone || "WIB";
 
   return `${date.toLocaleDateString("id-ID", options)} ${tzLabel}`;
 }
@@ -182,11 +142,27 @@ function formatLastSeen(dateString, timezone) {
 const filteredUsers = computed(() => {
   let result = users.value;
 
-  // Filter by Tab (Active/Inactive vs Deleted)
-  if (activeTab.value === "active") {
-    result = result.filter((u) => u.status !== "deleted");
-  } else {
-    result = result.filter((u) => u.status === "deleted");
+  // Filter by Tab/Status
+  // Note: Backend might return all users, or we filter locally.
+  // Assuming backend returns all unless filtered by params.
+  // We'll do local filtering for now since the list is likely small.
+  // Backend "is_active" is boolean.
+  // "Deleted" usually means SoftDeleted if supported, OR we can use is_active=false as "Inactive".
+  // The UI has "Active & Inactive" vs "Deleted".
+  // If no SoftDeletes, "Deleted" tab might be empty or specific logic.
+  // Let's assume:
+  // Tab Active: is_active = true
+  // Tab Inactive/Deleted: We'll stick to is_active logic for now.
+  // Wait, UI says "User Aktif & Inaktif" in one tab, and "Terhapus (Soft Delete)" in another.
+  // Since we don't have SoftDeletes yet, "Terhapus" will be empty or unused.
+  // Let's modify logic:
+  // Tab 1: All non-deleted users (both active and inactive status)
+  // Tab 2: Actually deleted users (if SoftDeletes implemented) or just hide it?
+  // For now let's just show all in Tab 1, and maybe ignore Tab 2 or make "Nonaktif" users appear there?
+  // Promoting "Nonaktif" to "Active Tab" as existing UI suggests.
+
+  if (activeTab.value === 'deleted') {
+      return []; // Placeholder for now untill soft delete is implemented
   }
 
   // Search
@@ -194,130 +170,173 @@ const filteredUsers = computed(() => {
     const query = searchQuery.value.toLowerCase();
     result = result.filter(
       (u) =>
-        u.name.toLowerCase().includes(query) ||
-        u.email.toLowerCase().includes(query)
+        (u.full_name?.toLowerCase() || '').includes(query) ||
+        (u.username?.toLowerCase() || '').includes(query)
     );
   }
 
   // Filter Role
   if (selectedRole.value) {
-    result = result.filter((u) => u.role === selectedRole.value);
+    result = result.filter((u) => {
+        if (u.roles && u.roles.length > 0) {
+            return u.roles.some(r => r.name === selectedRole.value);
+        }
+        return false;
+    });
   }
 
   // Filter Branch
   if (selectedBranch.value) {
-    result = result.filter((u) => u.branch === selectedBranch.value);
+    result = result.filter((u) => u.branch_id === selectedBranch.value || u.branch?.name === selectedBranch.value);
   }
 
   return result;
 });
 
-// Stats
+// Stats (Computed from fetched users)
 const stats = computed(() => [
   {
     label: "Total User",
-    value: users.value.filter((u) => u.status !== "deleted").length,
+    value: users.value.length,
     icon: Users,
     color: "blue",
   },
   {
     label: "User Aktif",
-    value: users.value.filter((u) => u.status === "active").length,
+    value: users.value.filter((u) => u.is_active).length,
     icon: Check,
     color: "emerald",
   },
   {
-    label: "Role Berbeda",
-    value: new Set(
-      users.value.filter((u) => u.status !== "deleted").map((u) => u.role)
-    ).size,
+    label: "User Nonaktif",
+    value: users.value.filter((u) => !u.is_active).length,
     icon: Shield,
-    color: "violet",
+    color: "amber", // Changed to match Inactive/Warning
   },
   {
-    label: "User Terhapus",
-    value: users.value.filter((u) => u.status === "deleted").length,
-    icon: Trash2,
-    color: "amber",
+    label: "Role Terdaftar",
+    value: new Set(users.value.flatMap(u => u.roles ? u.roles.map(r => r.name) : [])).size,
+    icon: Shield,
+    color: "violet",
   },
 ]);
 
 // Actions
 function openAddModal() {
   editingUser.value = null;
-  form.value = {
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    role: "",
-    branch: "",
-    timezone: "WIB",
-    status: "active",
-  };
+  resetForm();
   showModal.value = true;
 }
 
 function openEditModal(user) {
   editingUser.value = user;
-  form.value = { ...user, password: "" };
+  
+  // Populate form
+  form.value = {
+    full_name: user.full_name,
+    username: user.username,
+    email: user.email,
+    // Handle roles array from Spatie
+    role: user.roles && user.roles.length > 0 ? user.roles[0].name : '', 
+    branch_id: user.branch_id,
+    timezone: user.timezone || "WIB",
+    address: user.address,
+    is_active: !!user.is_active,
+    password: "", // Leave empty
+  };
+  
   showModal.value = true;
 }
 
 function closeModal() {
   showModal.value = false;
   editingUser.value = null;
+  resetForm();
 }
 
-function saveUser() {
-  if (editingUser.value) {
-    const index = users.value.findIndex((u) => u.id === editingUser.value.id);
-    if (index > -1) {
-      users.value[index] = { ...users.value[index], ...form.value };
-    }
-  } else {
-    users.value.push({
-      id: users.value.length + 1,
-      ...form.value,
-      createdAt: new Date().toISOString().split("T")[0],
-      lastSeen: null, // New user hasn't logged in yet
-    });
+async function saveUser() {
+  isSaving.value = true;
+  try {
+      if (editingUser.value) {
+          // Update
+          const payload = { ...form.value };
+          if (!payload.password) delete payload.password; // Don't send empty password
+          
+          const res = await usersApi.update(editingUser.value.id, payload);
+          
+          // Update local list
+          const index = users.value.findIndex(u => u.id === editingUser.value.id);
+          if (index !== -1) {
+              users.value[index] = res.data.data;
+          }
+          toast.success("User berhasil diperbarui!");
+      } else {
+          // Create
+          const res = await usersApi.create(form.value);
+          users.value.unshift(res.data.data);
+          toast.success("User baru berhasil ditambahkan!");
+      }
+      closeModal();
+  } catch (error) {
+      console.error("Save error", error);
+      const msg = error.response?.data?.message || "Gagal menyimpan user.";
+      toast.error(msg);
+  } finally {
+      isSaving.value = false;
   }
-  closeModal();
 }
 
-// Soft Delete
+// Toggle Status (Active/Inactive)
+async function toggleStatus(user) {
+  try {
+      const newStatus = !user.is_active;
+      // Optimistic update
+      user.is_active = newStatus;
+      
+      await usersApi.update(user.id, { is_active: newStatus });
+      
+      toast.info(newStatus ? "User diaktifkan." : "User dinonaktifkan.");
+  } catch (error) {
+      // Revert on failure
+      user.is_active = !user.is_active;
+      toast.error("Gagal mengubah status user.");
+  }
+}
+
+// Soft Delete (Simulated as Deactivate or just Delete for now if backend doesn't support SoftDeletes)
 function softDeleteUser(id) {
-  if (
-    confirm("Apakah Anda yakin ingin menonaktifkan akun ini? (Soft Delete)")
-  ) {
-    const index = users.value.findIndex((u) => u.id === id);
-    if (index !== -1) {
-      users.value[index].status = "deleted";
-    }
+  // Since backend doesn't have SoftDeletes trait yet, we treat "Soft Delete" UI as "Deactivate" logic?
+  // OR we interpret as "Delete" safely?
+  // Plan said: "Interpret 'Hapus' as hard delete and 'Nonaktifkan' as setting is_active = false"
+  // UI has two buttons: Trash (Soft Delete) and X (Permanent).
+  // I will map Trash -> Deactivate (is_active=false)
+  // X -> Persistent Delete
+  
+  const user = users.value.find(u => u.id === id);
+  if (user) {
+      toggleStatus(user);
   }
 }
 
 // Restore User
 function restoreUser(id) {
-  if (confirm("Kembalikan akun ini menjadi aktif?")) {
-    const index = users.value.findIndex((u) => u.id === id);
-    if (index !== -1) {
-      users.value[index].status = "active";
+    const user = users.value.find(u => u.id === id);
+    if (user && !user.is_active) {
+        toggleStatus(user);
     }
-  }
 }
 
 // Permanent Delete
-function permanentDeleteUser(id) {
-  if (confirm("HAPUS PERMANEN? Data tidak dapat dikembalikan!")) {
-    users.value = users.value.filter((u) => u.id !== id);
+async function permanentDeleteUser(id) {
+  if (!confirm("HAPUS PERMANEN? Data tidak dapat dikembalikan!")) return;
+  
+  try {
+      await usersApi.delete(id);
+      users.value = users.value.filter(u => u.id !== id);
+      toast.success("User berhasil dihapus permanen.");
+  } catch (error) {
+      toast.error("Gagal menghapus user.");
   }
-}
-
-function toggleStatus(user) {
-  if (user.status === "deleted") return;
-  user.status = user.status === "active" ? "inactive" : "active";
 }
 </script>
 
@@ -423,7 +442,7 @@ function toggleStatus(user) {
             <option
               v-for="branch in branches"
               :key="branch.id"
-              :value="branch.name"
+              :value="branch.id"
             >
               {{ branch.name }}
             </option>
@@ -434,7 +453,11 @@ function toggleStatus(user) {
 
     <!-- Table (Desktop) -->
     <div class="card p-0 hidden md:block">
-      <div class="table-container">
+      <div v-if="isLoading" class="p-8 flex justify-center items-center">
+        <Loader2 class="animate-spin text-blue-500" :size="32" />
+        <span class="ml-2 text-slate-400">Memuat data user...</span>
+      </div>
+      <div v-else class="table-container">
         <table class="table">
           <thead>
             <tr>
@@ -447,47 +470,53 @@ function toggleStatus(user) {
             </tr>
           </thead>
           <tbody>
+            <tr v-if="filteredUsers.length === 0">
+                <td colspan="6" class="text-center py-8 text-slate-500">
+                    Tidak ada user ditemukan
+                </td>
+            </tr>
             <tr v-for="user in filteredUsers" :key="user.id">
               <td>
                 <div class="flex items-center gap-3">
                   <img
                     :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      user.name
+                      user.full_name || user.username
                     )}&background=3b82f6&color=fff`"
                     class="w-10 h-10 rounded-xl"
-                    :alt="user.name"
+                    :alt="user.full_name"
                   />
                   <div>
-                    <p class="font-medium text-white">{{ user.name }}</p>
-                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                    <p class="font-medium text-white">{{ user.full_name }}</p>
+                    <p class="text-xs text-slate-500">{{ user.username }}</p>
                   </div>
                 </div>
               </td>
               <td>
-                <span class="badge badge-info">{{
-                  ROLE_LABELS[user.role] || user.role
+                <span v-for="role in user.roles" :key="role.id" class="badge badge-info mr-1">{{
+                  ROLE_LABELS[role.name] || role.name
                 }}</span>
+                <span v-if="!user.roles || user.roles.length === 0" class="badge bg-slate-700 text-slate-400">No Role</span>
               </td>
               <td>
-                <p class="text-slate-300">{{ user.branch }}</p>
+                <p class="text-slate-300">{{ user.branch ? user.branch.name : (user.branch_id === null ? 'Semua Cabang' : '-') }}</p>
                 <span
                   class="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded"
                   >{{ user.timezone || "WIB" }}</span
                 >
               </td>
               <td class="text-slate-400 text-sm font-mono">
-                {{ formatLastSeen(user.lastSeen, user.timezone) }}
+                {{ formatLastSeen(user.last_seen || user.lastSeen, user.timezone) }}
               </td>
               <td>
                 <div
-                  v-if="user.status !== 'deleted'"
+                  v-if="activeTab !== 'deleted'"
                   class="flex items-center gap-2"
                 >
                   <button
                     @click="toggleStatus(user)"
                     class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     :class="
-                      user.status === 'active'
+                      user.is_active
                         ? 'bg-emerald-600'
                         : 'bg-slate-700'
                     "
@@ -496,7 +525,7 @@ function toggleStatus(user) {
                     <span
                       class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform"
                       :class="
-                        user.status === 'active'
+                        user.is_active
                           ? 'translate-x-5'
                           : 'translate-x-0'
                       "
@@ -505,12 +534,12 @@ function toggleStatus(user) {
                   <span
                     class="text-xs font-medium"
                     :class="
-                      user.status === 'active'
+                      user.is_active
                         ? 'text-emerald-400'
                         : 'text-slate-400'
                     "
                   >
-                    {{ user.status === "active" ? "Aktif" : "Nonaktif" }}
+                    {{ user.is_active ? "Aktif" : "Nonaktif" }}
                   </span>
                 </div>
                 <span v-else class="badge bg-slate-700 text-slate-400"
@@ -519,7 +548,7 @@ function toggleStatus(user) {
               </td>
               <td>
                 <div class="flex items-center justify-center gap-2">
-                  <template v-if="user.status !== 'deleted'">
+                  <template v-if="activeTab !== 'deleted'">
                     <button
                       @click="openEditModal(user)"
                       class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
@@ -527,29 +556,26 @@ function toggleStatus(user) {
                     >
                       <Edit :size="16" class="text-blue-400" />
                     </button>
+                    <!-- Soft delete maps to non-active for now, or use permanent delete if you want -->
+                    <!-- Let's keep Trash2 as "Deactivate" visual helper if active, or actual delete if integrated -->
                     <button
+                      v-if="user.is_active"
                       @click="softDeleteUser(user.id)"
-                      class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                      title="Hapus (Soft Delete)"
+                      class="p-2 hover:bg-yellow-500/20 rounded-lg transition-colors"
+                      title="Nonaktifkan"
                     >
-                      <Trash2 :size="16" class="text-red-400" />
-                    </button>
-                  </template>
-                  <template v-else>
-                    <button
-                      @click="restoreUser(user.id)"
-                      class="p-2 hover:bg-emerald-500/20 rounded-lg transition-colors"
-                      title="Kembalikan User"
-                    >
-                      <RotateCcw :size="16" class="text-emerald-400" />
+                      <Shield :size="16" class="text-yellow-400" />
                     </button>
                     <button
                       @click="permanentDeleteUser(user.id)"
                       class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
                       title="Hapus Permanen"
                     >
-                      <XCircle :size="16" class="text-red-600" />
+                      <Trash2 :size="16" class="text-red-400" />
                     </button>
+                  </template>
+                  <template v-else>
+                     <!-- Restore Logic if soft deletes implemented -->
                   </template>
                 </div>
               </td>
@@ -561,24 +587,28 @@ function toggleStatus(user) {
 
     <!-- Mobile Card View -->
     <div class="md:hidden space-y-4 pb-20">
+      <div v-if="isLoading" class="p-8 flex justify-center">
+          <Loader2 class="animate-spin text-blue-500" :size="32" />
+      </div>
       <div v-for="user in filteredUsers" :key="user.id" class="card space-y-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <img
               :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                user.name
+                user.full_name
               )}&background=3b82f6&color=fff`"
               class="w-10 h-10 rounded-xl shrink-0"
-              :alt="user.name"
+              :alt="user.full_name"
             />
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-white truncate">{{ user.name }}</p>
-              <p class="text-xs text-slate-500 truncate">{{ user.email }}</p>
+              <p class="font-medium text-white truncate">{{ user.full_name }}</p>
+              <p class="text-xs text-slate-500 truncate">{{ user.username }}</p>
             </div>
           </div>
           <span
+            v-if="user.roles && user.roles.length"
             class="badge badge-info text-[10px] shrink-0 whitespace-nowrap"
-            >{{ ROLE_LABELS[user.role] || user.role }}</span
+            >{{ ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}</span
           >
         </div>
 
@@ -587,7 +617,7 @@ function toggleStatus(user) {
         >
           <div class="min-w-0">
             <p class="text-slate-500 text-xs mb-1">Cabang</p>
-            <p class="text-slate-300 truncate text-xs">{{ user.branch }}</p>
+            <p class="text-slate-300 truncate text-xs">{{ user.branch ? user.branch.name : '-' }}</p>
             <span
               class="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-1 inline-block"
               >{{ user.timezone || "WIB" }}</span
@@ -596,7 +626,7 @@ function toggleStatus(user) {
           <div class="text-right min-w-0">
             <p class="text-slate-500 text-xs mb-1">Terakhir Dilihat</p>
             <p class="text-slate-300 font-mono text-xs truncate">
-              {{ formatLastSeen(user.lastSeen, user.timezone) }}
+              {{ formatLastSeen(user.last_seen, user.timezone) }}
             </p>
           </div>
         </div>
@@ -605,35 +635,33 @@ function toggleStatus(user) {
           class="flex items-center justify-between border-t border-slate-700/50 pt-3"
         >
           <!-- Status Toggle -->
-          <div v-if="user.status !== 'deleted'" class="flex items-center gap-2">
+          <div v-if="activeTab !== 'deleted'" class="flex items-center gap-2">
             <button
               @click="toggleStatus(user)"
               class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50 shrink-0"
               :class="
-                user.status === 'active' ? 'bg-emerald-600' : 'bg-slate-700'
+                user.is_active ? 'bg-emerald-600' : 'bg-slate-700'
               "
             >
               <span
                 class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform"
                 :class="
-                  user.status === 'active' ? 'translate-x-5' : 'translate-x-0'
+                  user.is_active ? 'translate-x-5' : 'translate-x-0'
                 "
               ></span>
             </button>
             <span
               class="text-xs font-medium"
               :class="
-                user.status === 'active' ? 'text-emerald-400' : 'text-slate-400'
+                user.is_active ? 'text-emerald-400' : 'text-slate-400'
               "
             >
-              {{ user.status === "active" ? "Aktif" : "Nonaktif" }}
+              {{ user.is_active ? "Aktif" : "Nonaktif" }}
             </span>
           </div>
-          <span v-else class="badge bg-slate-700 text-slate-400">Terhapus</span>
-
+          
           <!-- Actions -->
           <div class="flex items-center gap-1">
-            <template v-if="user.status !== 'deleted'">
               <button
                 @click="openEditModal(user)"
                 class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
@@ -641,27 +669,11 @@ function toggleStatus(user) {
                 <Edit :size="16" class="text-blue-400" />
               </button>
               <button
-                @click="softDeleteUser(user.id)"
+                @click="permanentDeleteUser(user.id)"
                 class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
               >
                 <Trash2 :size="16" class="text-red-400" />
               </button>
-            </template>
-            <template v-else>
-              <button
-                @click="restoreUser(user.id)"
-                class="p-2 hover:bg-emerald-500/20 rounded-lg transition-colors"
-              >
-                <RotateCcw :size="16" class="text-emerald-400" />
-              </button>
-              <button
-                @click="permanentDeleteUser(user.id)"
-                class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                title="Hapus Permanen"
-              >
-                <XCircle :size="16" class="text-red-600" />
-              </button>
-            </template>
           </div>
         </div>
       </div>
@@ -698,7 +710,7 @@ function toggleStatus(user) {
                 >Nama Lengkap</label
               >
               <input
-                v-model="form.name"
+                v-model="form.full_name"
                 type="text"
                 class="input"
                 placeholder="John Doe"
@@ -709,25 +721,25 @@ function toggleStatus(user) {
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >Email</label
+                  >Username</label
+                >
+                <input
+                  v-model="form.username"
+                  type="text"
+                  class="input"
+                  placeholder="johndoe"
+                  required
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2"
+                  >Email (Optional)</label
                 >
                 <input
                   v-model="form.email"
                   type="email"
                   class="input"
                   placeholder="john@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >No. HP</label
-                >
-                <input
-                  v-model="form.phone"
-                  type="tel"
-                  class="input"
-                  placeholder="081234567890"
                 />
               </div>
             </div>
@@ -792,29 +804,38 @@ function toggleStatus(user) {
               <label class="block text-sm font-medium text-slate-400 mb-2"
                 >Cabang Utama</label
               >
-              <select v-model="form.branch" class="input" required>
-                <option value="">Pilih Cabang</option>
+              <select v-model="form.branch_id" class="input">
+                <option value="">Pilih Cabang (Optional)</option>
                 <option
                   v-for="branch in branches"
                   :key="branch.id"
-                  :value="branch.name"
+                  :value="branch.id"
                 >
                   {{ branch.name }}
                 </option>
               </select>
             </div>
+            
+            <!-- Address -->
+             <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2"
+                >Alamat (Optional)</label
+              >
+              <textarea v-model="form.address" class="input min-h-[80px]" placeholder="Alamat lengkap user..."></textarea>
+            </div>
 
-            <div class="flex gap-3 pt-4">
+            <div class="flex justify-end gap-3 mt-6">
               <button
                 type="button"
                 @click="closeModal"
-                class="btn btn-secondary flex-1"
+                class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                :disabled="isSaving"
               >
                 Batal
               </button>
-              <button type="submit" class="btn btn-primary flex-1">
-                <Save :size="16" />
-                Simpan
+              <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
+                <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
+                <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
               </button>
             </div>
           </form>
