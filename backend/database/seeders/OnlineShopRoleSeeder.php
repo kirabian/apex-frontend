@@ -17,7 +17,8 @@ class OnlineShopRoleSeeder extends Seeder
         $permissions = [
             'online.orders',
             'online.scan',
-            'online.analysis'
+            'online.analysis',
+            'inventory.view' // WAJIB ADA INI
         ];
 
         foreach ($permissions as $perm) {
