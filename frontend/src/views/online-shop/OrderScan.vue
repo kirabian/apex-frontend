@@ -34,76 +34,107 @@ onBeforeUnmount(() => {
 // --- SCANNER LOGIC ---
 
 const startScanner = async () => {
+    // Prevent overlapping start calls
+    if (isLoading.value) return;
+
     step.value = 'scan'
     scanResult.value = null
     scanCode.value = ''
     cameraError.value = null
     await nextTick()
 
-    // Cleanup first
+    // Ensure completely stopped before starting new instance
     if (html5QrCode.value) {
         try {
-            await html5QrCode.value.stop()
-            html5QrCode.value.clear()
-        } catch (e) { }
+            if (html5QrCode.value.isScanning) {
+                await html5QrCode.value.stop();
+            }
+            html5QrCode.value.clear();
+        } catch (e) {
+            console.warn("Cleanup warning:", e);
+        }
     }
 
     // Config for hybrid scanning (QR + Barcodes)
     const config = {
-        fps: 20, // Keep 20 for performance, but resolution matters more
+        fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // WIDE box for shipping labels
             const minEdgePercentage = 0.90;
             const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-            const qrboxHeight = Math.floor(viewfinderHeight * 0.35); // Slightly shorter to force centering
+            const qrboxHeight = Math.floor(viewfinderHeight * 0.35);
             return { width: qrboxWidth, height: qrboxHeight };
         },
         aspectRatio: 1.0,
         formatsToSupport: [
-            // PRIORITIZE common formats
-            Html5QrcodeSupportedFormats.CODE_128, // Shipping Labels (SPX/JNT)
+            Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.CODE_39,
         ]
     }
 
+    // Initialize new instance
     html5QrCode.value = new Html5Qrcode(scannerId, {
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // Uses native Android API if available (VERY FAST)
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         verbose: false
     })
 
+    const tryStart = async (constraints) => {
+        try {
+            await html5QrCode.value.start(
+                constraints,
+                config,
+                onScanSuccess,
+                (err) => { /* ignore frame errors */ }
+            );
+            return true;
+        } catch (err) {
+            console.warn("Start failed with constraints:", constraints, err);
+            return false;
+        }
+    };
+
     try {
-        // HIGH RESOLUTION CONSTRAINTS
-        const cameraConfig = {
+        // High Res Attempt
+        const highResConfig = {
             facingMode: { exact: "environment" },
-            width: { min: 1280, ideal: 1920 }, // Force HD
+            width: { min: 1280, ideal: 1920 },
             height: { min: 720, ideal: 1080 },
             focusMode: "continuous"
         };
 
-        await html5QrCode.value.start(
-            cameraConfig,
-            config,
-            onScanSuccess,
-            (err) => { /* ignore */ }
-        ).catch(() => {
-            // Fallback: standard environment without exact constraints
-            console.warn("High-res constraint failed, falling back...");
-            return html5QrCode.value.start({ facingMode: "environment" }, config, onScanSuccess);
-        });
+        // Standard Attempt (Fallback)
+        const standardConfig = { facingMode: "environment" };
+
+        let success = await tryStart(highResConfig);
+        if (!success) {
+            // Wait a small delay to ensure internal state checks clear
+            await new Promise(r => setTimeout(r, 200));
+            console.log("Falling back to standard config...");
+            success = await tryStart(standardConfig);
+        }
+
+        if (!success) {
+            throw new Error("Gagal memulai kamera dengan semua konfigurasi.");
+        }
+
     } catch (err) {
-        console.error("Scanner Error:", err)
-        cameraError.value = "Gagal mengakses kamera. Pastikan izin diberikan."
+        console.error("Scanner Fatal Error:", err)
+        cameraError.value = "Gagal mengakses kamera. " + (err.message || "")
     }
 }
 
 const stopScanner = async () => {
     if (html5QrCode.value) {
         try {
-            await html5QrCode.value.stop()
-            html5QrCode.value.clear()
-        } catch (e) { }
+            if (html5QrCode.value.isScanning) {
+                await html5QrCode.value.stop();
+            }
+            await html5QrCode.value.clear();
+        } catch (e) {
+            console.warn("Stop scanner error:", e);
+        }
+        // Do NOT nullify immediately if you plan to reuse, but here we recreate instance
         html5QrCode.value = null
     }
 }
