@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { onlineShop } from '../../api/axios'
 import { useToast } from '../../composables/useToast'
 // Icons
-import { QrCode, ScanBarcode, X, CheckCircle, Package, Truck, Search, RefreshCw, CameraOff, Box } from 'lucide-vue-next'
+import { QrCode, ScanBarcode, X, CheckCircle, Package, Truck, Search, RefreshCw, CameraOff, Box, Zap } from 'lucide-vue-next'
 
 const router = useRouter()
 const toast = useToast()
@@ -49,42 +49,47 @@ const startScanner = async () => {
     }
 
     // Config for hybrid scanning (QR + Barcodes)
-    // Di dalam startScanner
     const config = {
-        fps: 20,
+        fps: 20, // Keep 20 for performance, but resolution matters more
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdgePercentage = 0.90; // Perlebar sedikit
+            // WIDE box for shipping labels
+            const minEdgePercentage = 0.90;
             const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-            const qrboxHeight = Math.floor(viewfinderHeight * 0.4); // Buat persegi panjang (wide)
+            const qrboxHeight = Math.floor(viewfinderHeight * 0.35); // Slightly shorter to force centering
             return { width: qrboxWidth, height: qrboxHeight };
         },
         aspectRatio: 1.0,
-        // Tambahkan format CODE_128 secara spesifik karena ini standar resi Shopee/JNT
         formatsToSupport: [
+            // PRIORITIZE common formats
+            Html5QrcodeSupportedFormats.CODE_128, // Shipping Labels (SPX/JNT)
             Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.ITF
         ]
     }
 
     html5QrCode.value = new Html5Qrcode(scannerId, {
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // Uses native Android API if available (VERY FAST)
         verbose: false
     })
 
     try {
+        // HIGH RESOLUTION CONSTRAINTS
+        const cameraConfig = {
+            facingMode: { exact: "environment" },
+            width: { min: 1280, ideal: 1920 }, // Force HD
+            height: { min: 720, ideal: 1080 },
+            focusMode: "continuous"
+        };
+
         await html5QrCode.value.start(
-            // Gunakan constraint yang lebih kuat atau biarkan browser memilih yang terbaik
-            { facingMode: { exact: "environment" } },
+            cameraConfig,
             config,
             onScanSuccess,
             (err) => { /* ignore */ }
         ).catch(() => {
-            // Fallback jika 'exact' gagal (misal di laptop/tablet tertentu)
+            // Fallback: standard environment without exact constraints
+            console.warn("High-res constraint failed, falling back...");
             return html5QrCode.value.start({ facingMode: "environment" }, config, onScanSuccess);
         });
     } catch (err) {
@@ -104,10 +109,11 @@ const stopScanner = async () => {
 }
 
 const onScanSuccess = async (decodedText, decodedResult) => {
-    // Prevent multiple triggers
     if (isLoading.value) return;
 
-    // Stop scanner temporarly
+    // Validate barcode length (ignore noise)
+    if (decodedText.length < 3) return;
+
     await stopScanner()
 
     scanCode.value = decodedText
@@ -159,7 +165,6 @@ const updateStatus = async (status) => {
         })
 
         toast.success(`Status updated to ${status}`)
-        // Update local data
         scanResult.value.data.status = status
     } catch (error) {
         toast.error('Gagal update status')
@@ -190,7 +195,7 @@ const formatCurrency = (val) => {
                 <p class="text-gray-300 text-sm mt-1 drop-shadow-sm">QR Code & Barcode Resi</p>
             </div>
             <div v-if="step === 'scan'" class="animate-pulse">
-                <span class="badge badge-error badge-sm">LIVE</span>
+                <span class="badge badge-error badge-sm">LIVE - HD</span>
             </div>
         </div>
 
@@ -198,6 +203,21 @@ const formatCurrency = (val) => {
         <div v-show="step === 'scan'" class="w-full h-full absolute inset-0 flex flex-col items-center justify-center">
 
             <div id="reader" class="w-full h-full bg-black relative"></div>
+
+            <!-- SCAN GUIDE OVERLAY (Visual Only) -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                <!-- Wide Box for Barcodes -->
+                <div
+                    class="w-[90%] h-40 border-2 border-red-500/50 rounded-lg relative shadow-[0_0_100px_rgba(239,68,68,0.2)]">
+                    <div
+                        class="absolute top-0 left-1/2 -translate-x-1/2 -mt-3 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        Area Barcode
+                    </div>
+                    <!-- Scanning Line Animation -->
+                    <div class="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 animate-scan shadow-[0_0_15px_red]">
+                    </div>
+                </div>
+            </div>
 
             <!-- Permission Error -->
             <div v-if="cameraError"
@@ -330,5 +350,23 @@ video {
 
 :deep(#reader) {
     border: none !important;
+}
+
+@keyframes scan {
+
+    0%,
+    100% {
+        top: 10%;
+        opacity: 0;
+    }
+
+    50% {
+        top: 90%;
+        opacity: 1;
+    }
+}
+
+.animate-scan {
+    animation: scan 2s infinite ease-in-out;
 }
 </style>
