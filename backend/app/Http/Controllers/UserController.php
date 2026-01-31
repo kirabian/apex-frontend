@@ -55,7 +55,7 @@ class UserController extends Controller
             $branchId = $currentUser->branch_id;
         }
 
-        // 1. Buat User TANPA menyertakan field 'role' ke array create
+        // Perhatikan: 'role' saya buang dari array create di bawah ini
         $user = User::create([
             'name' => $validated['full_name'],
             'full_name' => $validated['full_name'],
@@ -68,12 +68,11 @@ class UserController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
-        // 2. Aktifkan kembali ini! Ini cara simpan role yang benar di Spatie
+        // Role disimpan ke tabel pivot lewat method ini, bukan lewat kolom 'role'
         $user->assignRole($validated['role']);
 
         return response()->json(['success' => true, 'data' => $user->load('roles', 'branch')], 201);
     }
-
     public function show(User $user)
     {
         $currentUser = request()->user();
