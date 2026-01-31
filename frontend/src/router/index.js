@@ -149,6 +149,44 @@ const routes = [
                     menu: 'categories',
                     permissions: ['master.view']
                 }
+            },
+
+            // Online Shop Routes
+            {
+                path: 'online-shop/scan',
+                name: 'OnlineScan',
+                component: () => import('../views/online-shop/OrderScan.vue'),
+                meta: {
+                    title: 'Scan Pesanan',
+                    menu: 'online_scan',
+                    permissions: ['online.scan']
+                }
+            },
+            {
+                path: 'online-shop/inventory',
+                // Reuse existing inventory path? User said "inventory gudangnya... inventory distributornya".
+                // But specifically for 'toko_online', they might use this view.
+                // Actually, the user might want the STANDARD inventory view but filtered?
+                // "inventory tuh cuman bisa lihat history bulan ini dan bulan lalu doang" -> This specific view checks that.
+                // Let's protect this route or map '/inventory' to this component IF role is 'toko_online'?
+                // For simplicity, let's use a explicit route.
+                name: 'OnlineInventory',
+                component: () => import('../views/online-shop/InventoryHistory.vue'),
+                meta: {
+                    title: 'History Inventory',
+                    menu: 'inventory',
+                    permissions: ['inventory.view']
+                }
+            },
+            {
+                path: 'online-shop/analysis',
+                name: 'OnlineAnalysis',
+                component: () => import('../views/online-shop/Analytics.vue'),
+                meta: {
+                    title: 'Analisa Shopee',
+                    menu: 'online_analysis',
+                    permissions: ['online.analysis']
+                }
             }
         ]
     },

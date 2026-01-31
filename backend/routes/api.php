@@ -19,6 +19,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/branches', function () {
         return \App\Models\Branch::all();
     });
+
+    // Online Shop
+    Route::prefix('online-shop')->group(function () {
+        Route::post('/scan', [\App\Http\Controllers\OnlineShopController::class, 'scan']);
+        Route::post('/order', [\App\Http\Controllers\OnlineShopController::class, 'updateOrder']);
+        Route::get('/inventory', [\App\Http\Controllers\OnlineShopController::class, 'inventory']);
+        Route::get('/analysis', [\App\Http\Controllers\OnlineShopController::class, 'analysis']);
+    });
 });
 
 Route::get('/health-check', function () {

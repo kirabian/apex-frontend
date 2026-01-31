@@ -32,6 +32,8 @@ import {
   Cloud,
   Sparkles,
   PawPrint,
+  ScanBarcode,
+  LineChart,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -58,6 +60,11 @@ function toggleMobileMenu() {
 // Menu configuration
 const menuItems = [
   { id: "dashboard", path: "/", label: "Dashboard", icon: LayoutDashboard },
+  
+  // Online Shop Modules
+  { id: "online_scan", path: "/online-shop/scan", label: "Scan Pesanan", icon: ScanBarcode },
+  { id: "online_analysis", path: "/online-shop/analysis", label: "Analisa Shopee", icon: LineChart },
+
   //   { id: "pos", path: "/pos", label: "Kasir (POS)", icon: ShoppingCart },
   { id: "inventory", path: "/inventory", label: "Inventory", icon: Box },
   { id: "products", path: "/products", label: "Produk", icon: Package },

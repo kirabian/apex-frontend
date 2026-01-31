@@ -13,7 +13,8 @@ export const ROLES = {
     INVENTORY: 'inventory',
     GUDANG: 'gudang',
     INVENTORY_KASIR: 'inventory_kasir',
-    TOKO_ONLINE: 'toko_online'
+    TOKO_ONLINE: 'toko_online',
+    LEADER_SHOPEE: 'leader_shopee'
 }
 
 export const ROLE_LABELS = {
@@ -28,7 +29,8 @@ export const ROLE_LABELS = {
     [ROLES.INVENTORY]: 'Inventory',
     [ROLES.GUDANG]: 'Gudang',
     [ROLES.INVENTORY_KASIR]: 'Inventory & Kasir',
-    [ROLES.TOKO_ONLINE]: 'Toko Online'
+    [ROLES.TOKO_ONLINE]: 'Toko Online',
+    [ROLES.LEADER_SHOPEE]: 'Leader Shopee'
 }
 
 // Permission constants
@@ -81,7 +83,9 @@ export const PERMISSIONS = {
     DISTRIBUTION_SIMULATE: 'distribution.simulate',
 
     // Online store
-    ONLINE_ORDERS: 'online.orders'
+    ONLINE_ORDERS: 'online.orders',
+    ONLINE_SCAN: 'online.scan',
+    ONLINE_ANALYSIS: 'online.analysis'
 }
 
 // Role-based permissions mapping
@@ -162,13 +166,19 @@ export const ROLE_PERMISSIONS = {
 
     [ROLES.TOKO_ONLINE]: [
         PERMISSIONS.ONLINE_ORDERS,
+        PERMISSIONS.ONLINE_SCAN,
         PERMISSIONS.INVENTORY_VIEW
+    ],
+
+    [ROLES.LEADER_SHOPEE]: [
+        PERMISSIONS.ONLINE_ANALYSIS,
+        PERMISSIONS.INVENTORY_VIEW // Read only access to inventory
     ]
 }
 
 // Sidebar menu configuration per role
 export const ROLE_MENUS = {
-    [ROLES.SUPER_ADMIN]: ['dashboard', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'locations', 'distributors', 'channels', 'categories'],
+    [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'locations', 'distributors', 'channels', 'categories'],
     [ROLES.ANALIST]: ['dashboard', 'reports'],
     [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory'],
     [ROLES.AUDIT]: ['dashboard', 'audit', 'transactions'],
@@ -179,7 +189,8 @@ export const ROLE_MENUS = {
     [ROLES.INVENTORY]: ['dashboard', 'inventory'],
     [ROLES.GUDANG]: ['dashboard', 'inventory'],
     [ROLES.INVENTORY_KASIR]: ['dashboard', 'pos', 'inventory', 'transactions'],
-    [ROLES.TOKO_ONLINE]: ['dashboard', 'inventory']
+    [ROLES.TOKO_ONLINE]: ['dashboard', 'online_scan', 'inventory'],
+    [ROLES.LEADER_SHOPEE]: ['dashboard', 'online_analysis', 'inventory']
 }
 
 // Helper functions

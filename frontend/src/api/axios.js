@@ -117,3 +117,10 @@ export const reports = {
     inventory: (params) => api.get('/reports/inventory', { params }),
     profit: (params) => api.get('/reports/profit', { params })
 }
+
+export const onlineShop = {
+    scan: (code, type) => api.post('/online-shop/scan', { code, type }),
+    updateOrder: (data) => api.post('/online-shop/order', data),
+    inventory: (params) => api.get('/online-shop/inventory', { params }),
+    analysis: () => api.get('/online-shop/analysis')
+}
