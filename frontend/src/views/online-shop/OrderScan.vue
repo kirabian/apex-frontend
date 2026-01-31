@@ -51,12 +51,12 @@ const startScanner = async () => {
 
     // 2. Config - FOCUSED RECTANGLE
     const config = {
-        fps: 20,
+        fps: 30,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
             // Rectangular Box (Long for Barcodes)
             // 85% Width, fixed Height (~250px hard limit or 30% of height)
             const width = Math.floor(viewfinderWidth * 0.85);
-            const height = Math.min(Math.floor(viewfinderHeight * 0.35), 250);
+            const height = Math.min(Math.floor(viewfinderHeight * 0.4), 250);
             return { width, height };
         },
         aspectRatio: 1.0,
@@ -69,6 +69,7 @@ const startScanner = async () => {
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
         ],
+        disableFlip: true,
         videoConstraints: {
             facingMode: { exact: "environment" },
             width: { min: 1280, ideal: 1920 },
@@ -107,24 +108,34 @@ const startScanner = async () => {
 const stopScanner = async () => {
     if (html5QrCode.value) {
         try {
+            // Cek properti internal library untuk melihat status scanning
             if (html5QrCode.value.isScanning) {
                 await html5QrCode.value.stop();
             }
             html5QrCode.value.clear();
-        } catch (e) { }
-        html5QrCode.value = null
+        } catch (e) {
+            console.error("Gagal stop scanner:", e);
+        }
     }
 }
 
 const onScanSuccess = async (decodedText) => {
     if (isLoading.value) return;
+
+    // Validasi panjang kode (Resi biasanya > 10 karakter)
     if (decodedText.length < 5) return;
 
-    await stopScanner()
+    // 1. Langsung matikan scanner agar tidak double scan
+    await stopScanner();
 
-    scanCode.value = decodedText
-    if (navigator.vibrate) navigator.vibrate(200);
-    handleScan()
+    // 2. Isi variable code
+    scanCode.value = decodedText;
+
+    // 3. Haptic feedback (Getar)
+    if (navigator.vibrate) navigator.vibrate(150);
+
+    // 4. Tembak API
+    await handleScan();
 }
 
 const handleScan = async () => {
@@ -271,7 +282,7 @@ const formatCurrency = (val) => new Intl.NumberFormat("id-ID", { style: "currenc
                     <div v-if="scanResult.type === 'order'" class="text-center">
                         <div class="badge badge-primary mb-2">ORDER</div>
                         <h3 class="text-2xl font-bold font-mono text-primary-400 mb-1">{{ scanResult.data.order_number
-                            }}</h3>
+                        }}</h3>
                         <p class="text-gray-400 mb-4">{{ scanResult.data.customer_name }}</p>
 
                         <div class="grid grid-cols-2 gap-3">
