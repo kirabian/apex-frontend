@@ -144,8 +144,10 @@ const startScanner = async (mode) => {
         qrbox: qrboxConfig,
         rememberLastUsedCamera: true,
         aspectRatio: 1.0,
+        disableFlip: true, // Fix mirroring (jangan kebalik)
         videoConstraints: {
             focusMode: "continuous",
+            // Force back camera logic if needed, though facingMode handles it
             advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : []
         }
     }
@@ -153,7 +155,7 @@ const startScanner = async (mode) => {
     try {
         isInitializing.value = true
         await html5QrCode.start(
-            { facingMode: "environment" },
+            { facingMode: "environment" }, // Pakai kamera belakang
             config,
             (decodedText) => {
                 scanCode.value = decodedText
@@ -352,6 +354,21 @@ const toggleCamera = () => {
             </div>
         </div>
 
+        <!-- Manual Input (Always Visible) -->
+        <div class="p-2 mb-4">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search class="h-5 w-5 text-gray-400" />
+                </div>
+                <input ref="scanInput" v-model="scanCode" @keyup.enter="handleScan" type="text"
+                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-surface-700 rounded-xl leading-5 bg-white dark:bg-surface-800 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm text-gray-900 dark:text-white"
+                    placeholder="Scan atau ketik kode resi/produk..." />
+                <div v-if="isLoading" class="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span class="loading loading-spinner loading-xs text-primary-500"></span>
+                </div>
+            </div>
+        </div>
+
         <!-- Mode Selectors (Bottom Bar) -->
         <div class="grid grid-cols-4 gap-2">
             <button @click="startScanner('qr')"
@@ -404,12 +421,6 @@ const toggleCamera = () => {
                 <button @click="updateStatus('shipped')" class="btn btn-primary flex-1">Kirim</button>
             </div>
             <button @click="resetScan" class="btn btn-outline btn-block mt-4">Scan Lagi</button>
-        </div>
-
-        <!-- Manual Input (Hidden unless focused) -->
-        <div class="p-4" v-show="!isCameraOpen && !scanResult">
-            <input ref="scanInput" v-model="scanCode" @keyup.enter="handleScan" type="text"
-                class="input input-bordered w-full" placeholder="Ketik manual code..." />
         </div>
     </div>
 </template>
