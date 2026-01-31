@@ -13,13 +13,18 @@ class UpdateLastSeen
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle($request, Closure $next)
+    public function handle(Request $request, Closure $next)
     {
+        // Hanya update jika user sedang login
         if (auth()->check()) {
             $user = auth()->user();
-            // Update waktu sekarang (UTC di DB, tapi nanti di-convert saat dipanggil)
-            $user->update(['last_seen' => now()]);
+
+            // Gunakan update senyap agar tidak memicu event observer yang mungkin crash
+            $user->timestamps = false;
+            $user->last_seen = now();
+            $user->save();
         }
+
         return $next($request);
     }
 }
