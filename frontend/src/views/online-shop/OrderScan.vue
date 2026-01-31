@@ -90,34 +90,57 @@ const formatCurrency = (val) => {
 const startBarcodeScanner = async () => {
     isCameraOpen.value = true
     cameraMode.value = 'barcode'
-    scanResult.value = null // Clear previous result
+    scanResult.value = null 
     
     await nextTick()
     
     html5QrCode = new Html5Qrcode(scannerId)
     
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } }
+    // PERBAIKAN DI SINI: Daftarkan format barcode panjang (EAN, CODE_128, dll)
+    const config = { 
+        fps: 15, // Naikin dikit biar lebih responsif
+        qrbox: { width: 300, height: 150 }, // Box dibuat lebih lebar (persegi panjang) biar pas buat barcode resi
+        aspectRatio: 1.0
+    }
     
     try {
         await html5QrCode.start(
             { facingMode: "environment" },
-            config,
-            (decodedText, decodedResult) => {
-                // Success callback
+            {
+                ...config,
+                // Tambahkan formats agar dia nyari Barcode panjang juga, bukan cuma QR
+                formatsToSupport: [ 
+                    0, // QR_CODE
+                    1, // AZTEC
+                    2, // CODABAR
+                    3, // CODE_39
+                    4, // CODE_93
+                    5, // CODE_128 (Ini yang paling sering dipakai di Resi Shopee/JNT)
+                    6, // DATA_MATRIX
+                    7, // EAN_8
+                    8, // EAN_13 (Ini barcode produk minimarket)
+                    9, // ITF
+                    10, // MAXICODE
+                    11, // PDF_417
+                    12, // RSS_14
+                    13, // RSS_EXPANDED
+                    14, // UPC_A
+                    15, // UPC_E
+                    16  // UPC_EAN_EXTENSION
+                ]
+            },
+            (decodedText) => {
+                // Success! Kasih efek getar dikit kalau di HP biar staff tau udah kena
+                if (navigator.vibrate) navigator.vibrate(100);
+                
                 scanCode.value = decodedText
                 handleScan()
-                // Stop scanning after success? User usually wants to scan continuously or stop.
-                // Let's pause or just show feedback.
-                // For now, we keep it open for continuous scanning, 
-                // but handleScan handles the API call.
             },
-            (errorMessage) => {
-                // Parse error, ignore
-            }
+            (errorMessage) => { /* ignore parse error */ }
         )
     } catch (err) {
         console.error("Error starting scanner", err)
-        toast.error("Gagal membuka kamera. Pastikan izin diberikan.")
+        toast.error("Gagal membuka kamera.")
         isCameraOpen.value = false
     }
 }
