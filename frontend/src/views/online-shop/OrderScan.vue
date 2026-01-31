@@ -49,16 +49,15 @@ const startScanner = async () => {
         html5QrCode.value = null;
     }
 
-    // 2. Config - MAXIMUM PERFORMANCE
-    // Using a very large qrbox to utilize the full resolution of the camera frame
+    // 2. Config - FOCUSED RECTANGLE
     const config = {
         fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Use almost full width to catch wide barcodes
-            return {
-                width: Math.floor(viewfinderWidth * 0.95),
-                height: Math.floor(viewfinderHeight * 0.80)
-            };
+            // Rectangular Box (Long for Barcodes)
+            // 85% Width, fixed Height (~250px hard limit or 30% of height)
+            const width = Math.floor(viewfinderWidth * 0.85);
+            const height = Math.min(Math.floor(viewfinderHeight * 0.35), 250);
+            return { width, height };
         },
         aspectRatio: 1.0,
         formatsToSupport: [
@@ -72,9 +71,8 @@ const startScanner = async () => {
         ],
         videoConstraints: {
             facingMode: { exact: "environment" },
-            // Request 4K/UHD if available, fallback to 1080p
-            width: { min: 1280, ideal: 3840 },
-            height: { min: 720, ideal: 2160 },
+            width: { min: 1280, ideal: 1920 },
+            height: { min: 720, ideal: 1080 },
             focusMode: "continuous"
         }
     }
@@ -92,9 +90,7 @@ const startScanner = async () => {
             (err) => { }
         );
     } catch (err) {
-        console.warn("High-End Start Failed, retrying compatibility mode...", err);
-
-        // Fallback: relax constraints but keep 'environment'
+        console.warn("Strict Start Failed, retrying...", err);
         try {
             await html5QrCode.value.start(
                 { facingMode: "environment" },
@@ -103,7 +99,7 @@ const startScanner = async () => {
                 (err) => { }
             );
         } catch (fatal) {
-            cameraError.value = "Gagal. Pastikan izin kamera aktif & refresh."
+            cameraError.value = "Gagal. Refresh browser."
         }
     }
 }
@@ -122,7 +118,7 @@ const stopScanner = async () => {
 
 const onScanSuccess = async (decodedText) => {
     if (isLoading.value) return;
-    if (decodedText.length < 5) return; // Ignore noise < 5 chars
+    if (decodedText.length < 5) return;
 
     await stopScanner()
 
@@ -188,7 +184,7 @@ const formatCurrency = (val) => new Intl.NumberFormat("id-ID", { style: "currenc
                 <h1 class="text-2xl font-bold flex items-center gap-2 drop-shadow-md">
                     <ScanBarcode class="w-6 h-6 text-primary-500" /> Scan Pesanan
                 </h1>
-                <p class="text-gray-300 text-xs mt-1">Super Wide Scanner (Code 128 & QR)</p>
+                <p class="text-gray-300 text-xs mt-1">Arahkan kamera ke Barcode Resi</p>
             </div>
             <div v-if="step === 'scan'" class="animate-pulse">
                 <span class="badge badge-error badge-sm">LIVE</span>
@@ -198,6 +194,43 @@ const formatCurrency = (val) => new Intl.NumberFormat("id-ID", { style: "currenc
         <!-- SCANNER VIEW -->
         <div v-show="step === 'scan'" class="w-full h-full absolute inset-0 bg-black">
             <div id="reader" class="w-full h-full bg-black relative"></div>
+
+            <!-- SCANNER OVERLAY -->
+            <div class="absolute inset-0 pointer-events-none z-10 flex flex-col items-center justify-center">
+                <!-- Dimmed Background Top -->
+                <div class="flex-1 w-full bg-black/60"></div>
+
+                <!-- Active Scan Area -->
+                <div class="flex w-full h-[250px]">
+                    <div class="bg-black/60 flex-1"></div>
+                    <!-- The Box -->
+                    <div
+                        class="relative w-[85%] h-full border-2 border-white/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
+                        <!-- Corners -->
+                        <div
+                            class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary-500 rounded-tl-xl -mt-1 -ml-1">
+                        </div>
+                        <div
+                            class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary-500 rounded-tr-xl -mt-1 -mr-1">
+                        </div>
+                        <div
+                            class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary-500 rounded-bl-xl -mb-1 -ml-1">
+                        </div>
+                        <div
+                            class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary-500 rounded-br-xl -mb-1 -mr-1">
+                        </div>
+
+                        <!-- Scan Line -->
+                        <div
+                            class="absolute top-0 left-0 w-full h-1 bg-green-500 shadow-[0_0_10px_#22c55e] animate-scan-y">
+                        </div>
+                    </div>
+                    <div class="bg-black/60 flex-1"></div>
+                </div>
+
+                <!-- Dimmed Background Bottom -->
+                <div class="flex-1 w-full bg-black/60"></div>
+            </div>
 
             <!-- MANUAL INPUT -->
             <div class="absolute bottom-6 left-0 w-full px-6 z-30">
@@ -291,5 +324,29 @@ video {
 
 :deep(#reader) {
     border: none !important;
+}
+
+@keyframes scan-y {
+    0% {
+        top: 0;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+.animate-scan-y {
+    animation: scan-y 2.5s infinite linear;
 }
 </style>
