@@ -131,19 +131,15 @@ function isActiveRoute(path) {
     class="flex h-screen bg-surface-900 text-slate-300 font-sans antialiased overflow-hidden"
   >
     <!-- Mobile Backdrop -->
-    <div
-      v-if="isMobileMenuOpen"
-      class="fixed inset-0 bg-black/60 z-40 lg:hidden"
-      @click="isMobileMenuOpen = false"
-    ></div>
+    <div v-if="isMobileMenuOpen" class="fixed inset-0 bg-black/60 z-40 lg:hidden" @click="isMobileMenuOpen = false"></div>
 
     <ToastContainer />
 
     <!-- Sidebar -->
     <aside
-      class="fixed inset-y-0 left-0 z-50 w-64 bg-surface-800 border-r border-surface-700 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0"
-      :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
-    >
+  class="fixed inset-y-0 left-0 z-[100] w-64 bg-surface-800 border-r border-surface-700 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0"
+  :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
+>
       <!-- Logo -->
       <div class="p-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -382,11 +378,10 @@ function isActiveRoute(path) {
 
       <!-- Aesthetic Theme Decorations (Mascot/Watermark) -->
       <div
-        v-if="
-          ['coquette', 'bear', 'milk', 'white'].includes(themeStore.themeName)
-        "
-        class="fixed -bottom-12 -right-12 z-0 pointer-events-none opacity-[0.07] select-none transform -rotate-12 text-primary-500"
-      >
+  v-if="['coquette', 'bear', 'milk', 'white'].includes(themeStore.themeName)"
+  class="fixed -bottom-12 -right-12 z-0 pointer-events-none opacity-[0.07] select-none transform -rotate-12 text-primary-500"
+  style="pointer-events: none !important;" 
+>
         <Heart
           v-if="themeStore.themeName === 'coquette'"
           :size="500"
