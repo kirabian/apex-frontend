@@ -125,21 +125,54 @@ const startBarcodeScanner = async () => {
     
     html5QrCode = new Html5Qrcode(scannerId)
     
-    // Config for wide barcodes (Resi/1D) and QR
+    // Config specifically tuned for Shipping Labels (Wide Barcodes)
+    // We use a function for qrbox to make it responsive and wide
+    const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
+        const minEdgePercentage = 0.85; // 85% width
+        const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+        const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
+        const qrboxHeight = Math.floor(viewfinderHeight * 0.4); // 40% height (wide rectangle)
+        return {
+            width: qrboxWidth,
+            height: qrboxHeight
+        };
+    }
+
     const config = { 
-        fps: 15, 
-        qrbox: { width: 300, height: 150 },
-        aspectRatio: 1.0,
-        disableFlip: false
+        fps: 20, // Higher FPS for faster scanning
+        qrbox: qrboxFunction,
+        // experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // Try browser native if available
+        rememberLastUsedCamera: true,
+        aspectRatio: 1.0
     }
     
     try {
         await html5QrCode.start(
-            { facingMode: "environment" },
+            { 
+                facingMode: "environment",
+                focusMode: "continuous", // Critical for text/barcodes
+                advanced: [ { zoom: 2.0 } ] // Optional: start with slight zoom for text if supported? maybe risky.
+            },
             {
                 ...config,
                 formatsToSupport: [ 
-                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+                    0, // QR_CODE
+                    1, // AZTEC
+                    2, // CODABAR
+                    3, // CODE_39
+                    4, // CODE_93
+                    5, // CODE_128 (Most common for Resi)
+                    6, // DATA_MATRIX
+                    7, // EAN_8
+                    8, // EAN_13
+                    9, // ITF
+                    10, // MAXICODE
+                    11, // PDF_417
+                    12, // RSS_14
+                    13, // RSS_EXPANDED
+                    14, // UPC_A
+                    15, // UPC_E
+                    16  // UPC_EAN_EXTENSION
                 ]
             },
             (decodedText) => {
