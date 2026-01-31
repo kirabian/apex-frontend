@@ -152,11 +152,9 @@ const startScanner = async (mode, specificCameraId = null) => {
     let formats;
 
     if (mode === 'qr') {
-        // Square box for QR
         qrboxConfig = { width: 250, height: 250 };
-        formats = [0]; // QR_CODE only
+        formats = [0];
     } else {
-        // Wide box for Barcode/Resi
         qrboxConfig = (viewfinderWidth, viewfinderHeight) => {
             const minEdgePercentage = 0.85;
             const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
@@ -166,7 +164,6 @@ const startScanner = async (mode, specificCameraId = null) => {
                 height: qrboxHeight
             };
         };
-        // All linear barcodes
         formats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     }
 
@@ -178,16 +175,48 @@ const startScanner = async (mode, specificCameraId = null) => {
         disableFlip: true,
         videoConstraints: {
             focusMode: "continuous",
-            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : [] // Zoom only for barcodes
+            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : []
         }
     }
 
     try {
         isInitializing.value = true
 
-        // Jika ada specificCameraId (hasil switch), pakai ID-nya langsung
-        // Jika tidak ada, pakai facingMode environment biasa (jangan pake exact dulu)
-        const cameraIdOrConfig = specificCameraId ? specificCameraId : { facingMode: "environment" };
+        let cameraIdOrConfig = specificCameraId;
+
+        // Jika tidak ada ID spesifik, kita coba DETEKSI kamera belakang secara manual
+        if (!cameraIdOrConfig) {
+            try {
+                const devices = await Html5Qrcode.getCameras();
+                if (devices && devices.length > 0) {
+                    // 1. Cari yang labelnya "back" / "rear" / "environment"
+                    const backCamera = devices.find(d =>
+                        d.label.toLowerCase().includes('back') ||
+                        d.label.toLowerCase().includes('rear') ||
+                        d.label.toLowerCase().includes('environment')
+                    );
+
+                    if (backCamera) {
+                        cameraIdOrConfig = backCamera.id;
+                        console.log("Auto-detected back camera:", backCamera.label);
+                    } else if (devices.length > 1) {
+                        // 2. Jika tidak ada label jelas, biasanya kamera terakhir adalah belakang
+                        cameraIdOrConfig = devices[devices.length - 1].id;
+                        console.log("Assuming last camera is back:", devices[devices.length - 1].label);
+                    } else {
+                        // 3. Hanya 1 kamera, ya pake itu aja
+                        cameraIdOrConfig = devices[0].id;
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to enumerate cameras, falling back to constraint");
+            }
+        }
+
+        // Fallback terakhir jika deteksi gagal: gunakan constraint strict
+        if (!cameraIdOrConfig) {
+            cameraIdOrConfig = { facingMode: { exact: "environment" } };
+        }
 
         await html5QrCode.start(
             cameraIdOrConfig,
@@ -198,7 +227,14 @@ const startScanner = async (mode, specificCameraId = null) => {
                 handleScan()
             },
             (errorMessage) => { /* ignore */ }
-        );
+        ).catch(err => {
+            // Retry dengan loose constraint jika exact gagal
+            console.warn("Start failed, retrying with loose environment...");
+            return html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+                scanCode.value = decodedText
+                handleScan()
+            }, () => { });
+        });
 
         isScanning = true
     } catch (err) {
