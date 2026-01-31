@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append(\App\Http\Middleware\UpdateLastSeen::class);
+        // $middleware->append(\App\Http\Middleware\UpdateLastSeen::class);
         // Solusi untuk error "Route [login] not defined"
         // Jika user belum login dan akses API, jangan di-redirect, tapi kasih error 401
         $middleware->redirectGuestsTo(function (Request $request) {
