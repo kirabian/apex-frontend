@@ -14,6 +14,7 @@ const scanResult = ref(null)
 
 // Camera State
 const isCameraOpen = ref(false) // Default false (manual start)
+const isInitializing = ref(false) // Loading state
 const cameraMode = ref(null) // 'qr', 'barcode', 'ocr'
 const scannerId = 'html5qr-code-full-region'
 let html5QrCode = null
@@ -142,20 +143,18 @@ const startScanner = async (mode) => {
         fps: 20,
         qrbox: qrboxConfig,
         rememberLastUsedCamera: true,
-        aspectRatio: 1.0
+        aspectRatio: 1.0,
+        videoConstraints: {
+            focusMode: "continuous",
+            advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : []
+        }
     }
 
     try {
+        isInitializing.value = true
         await html5QrCode.start(
-            {
-                facingMode: "environment",
-                focusMode: "continuous",
-                advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : [] // Zoom only for barcodes
-            },
-            {
-                ...config,
-                formatsToSupport: formats
-            },
+            { facingMode: "environment" },
+            config,
             (decodedText) => {
                 scanCode.value = decodedText
                 if (navigator.vibrate) navigator.vibrate(200);
@@ -166,8 +165,10 @@ const startScanner = async (mode) => {
         isScanning = true
     } catch (err) {
         console.error("Error starting scanner", err)
-        toast.error("Gagal membuka kamera.")
+        toast.error("Gagal membuka kamera: " + (err.message || err))
         isCameraOpen.value = false
+    } finally {
+        isInitializing.value = false
     }
 }
 
