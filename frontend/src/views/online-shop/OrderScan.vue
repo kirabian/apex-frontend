@@ -269,17 +269,28 @@ const toggleCamera = () => {
             <div id="html5qr-code-full-region" class="w-full h-full"></div>
 
             <!-- Idle State (Camera Off) -->
-            <div v-if="!isCameraOpen"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-surface-900/90 text-center p-8 space-y-6">
+            <div v-if="!isCameraOpen && !isInitializing"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-surface-900/90 text-center p-8 space-y-6 z-10">
                 <div
-                    class="w-20 h-20 rounded-full bg-surface-800 flex items-center justify-center mb-4 ring-4 ring-surface-700">
+                    class="w-20 h-20 rounded-full bg-surface-800 flex items-center justify-center mb-4 ring-4 ring-surface-700 animate-pulse">
                     <Camera :size="40" class="text-slate-500" />
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-white mb-2">Kamera Nonaktif</h3>
-                    <p class="text-slate-400 text-sm max-w-xs mx-auto">Silakan pilih mode scan di bawah untuk memulai:
-                        QR Code, Barcode Resi, atau OCR.</p>
+                    <p class="text-slate-400 text-sm max-w-xs mx-auto mb-6">Pilih mode scan di bawah atau tekan tombol
+                        untuk mulai.</p>
+
+                    <button @click="startScanner('barcode')"
+                        class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary-500/30">
+                        <ScanBarcode class="mr-2" /> Mulai Scan
+                    </button>
                 </div>
+            </div>
+
+            <!-- Initializing State -->
+            <div v-if="isInitializing" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-20">
+                <span class="loading loading-spinner loading-lg text-primary-500 mb-4"></span>
+                <p class="text-white font-medium animate-pulse">Membuka Kamera...</p>
             </div>
 
             <!-- Scanning Overlay -->
