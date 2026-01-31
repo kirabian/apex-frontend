@@ -166,12 +166,28 @@ const router = createRouter({
 })
 
 // Navigation Guards
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
 
     // Check if route requires authentication
-    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-        return next({ name: 'Login', query: { redirect: to.fullPath } })
+    if (to.meta.requiresAuth) {
+        if (!authStore.isAuthenticated) {
+            return next({ name: 'Login', query: { redirect: to.fullPath } })
+        }
+
+        // If authenticated but user profile is missing (e.g., page refresh)
+        // Try to fetch user data
+        if (!authStore.user) {
+            try {
+                await authStore.fetchUser()
+                if (!authStore.user) {
+                    // If still no user after fetch attempt, force logout/login
+                    return next({ name: 'Login' })
+                }
+            } catch (error) {
+                return next({ name: 'Login' })
+            }
+        }
     }
 
     // Check if route is for guests only (like login)
@@ -181,9 +197,14 @@ router.beforeEach((to, from, next) => {
 
     // Check permissions if defined
     if (to.meta.permissions && to.meta.permissions.length > 0) {
+        // Super admin bypass
+        if (authStore.userRole === 'super_admin') {
+            return next()
+        }
+
         const userPermissions = authStore.user?.permissions || []
 
-        // Super admin has all permissions
+        // Super admin has all permissions (legacy check)
         if (!userPermissions.includes('*')) {
             const hasPermission = to.meta.permissions.some(perm =>
                 userPermissions.includes(perm)
