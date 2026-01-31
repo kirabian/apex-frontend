@@ -39,68 +39,19 @@ const getCameraDevices = async () => {
         availableCameras.value = devices
         console.log('Available cameras:', devices)
 
-        if (devices.length > 0) {
-            // Coba deteksi kamera menggunakan heuristic yang lebih baik
-            let selectedCamera = null
+        // Simpan devices untuk debug
+        localStorage.setItem('debug_cameras', JSON.stringify(devices.map(d => ({
+            label: d.label,
+            id: d.id.substring(0, 30) + '...'
+        }))))
 
-            // 1. Coba cari kamera dengan facingMode environment (biasanya belakang)
-            try {
-                // Coba start dengan environment untuk mendapatkan deviceId yang sebenarnya
-                const tempScanner = new Html5Qrcode('temp-scanner')
-                // Hanya untuk mendapatkan info, tidak benar-benar start
-                console.log('Trying to get environment camera info...')
-            } catch (e) {
-                console.log('Temp scanner init:', e)
-            }
+        // Langsung gunakan environment mode, tidak perlu heuristic yang rumit
+        // Biarkan browser yang menentukan kamera mana yang environment
+        currentCameraId.value = null; // Gunakan null untuk menggunakan facingMode
+        currentCameraLabel.value = 'Kamera Belakang (Environment)'
+        isFrontCamera.value = false
 
-            // 2. Analisis label kamera untuk menentukan jenisnya
-            devices.forEach((device, index) => {
-                const label = device.label.toLowerCase()
-                console.log(`Camera ${index}: ${label}`)
-
-                // Heuristic untuk kamera belakang
-                const isBackCamera =
-                    label.includes('back') ||
-                    label.includes('rear') ||
-                    label.includes('environment') ||
-                    label.includes('1') || // Beberapa device: 1 = belakang
-                    label.includes('2') || // Beberapa device: 2 = belakang
-                    (label.includes('0') && devices.length === 1) || // Jika hanya 1 kamera, asumsikan belakang
-                    (!label.includes('front') && !label.includes('user'))
-
-                // Heuristic untuk kamera depan
-                const isFrontCamera =
-                    label.includes('front') ||
-                    label.includes('user') ||
-                    label.includes('selfie') ||
-                    label.includes('0') && devices.length > 1 // Jika >1 kamera, 0 sering depan
-
-                console.log(`Camera ${index}: back=${isBackCamera}, front=${isFrontCamera}`)
-
-                // Prioritaskan kamera belakang
-                if (isBackCamera && !selectedCamera) {
-                    selectedCamera = device
-                    currentCameraLabel.value = device.label
-                    isFrontCamera.value = false
-                }
-            })
-
-            // 3. Jika tidak ditemukan kamera belakang, gunakan kamera pertama
-            if (!selectedCamera && devices[0]) {
-                selectedCamera = devices[0]
-                currentCameraLabel.value = devices[0].label
-                // Coba tebak apakah ini kamera depan
-                isFrontCamera.value =
-                    devices[0].label.toLowerCase().includes('front') ||
-                    devices[0].label.toLowerCase().includes('user') ||
-                    devices[0].label.toLowerCase().includes('selfie')
-            }
-
-            if (selectedCamera) {
-                currentCameraId.value = selectedCamera.id
-                console.log('Selected camera:', selectedCamera.label, 'ID:', selectedCamera.id)
-            }
-        }
+        console.log('Using environment facingMode as default')
     } catch (error) {
         console.error('Error getting cameras:', error)
     }
@@ -182,25 +133,43 @@ const switchCamera = async () => {
         }
 
         // Cari index kamera saat ini
-        const currentIndex = availableCameras.value.findIndex(cam => cam.id === currentCameraId.value)
+        let currentIndex = -1
+        if (currentCameraId.value) {
+            currentIndex = availableCameras.value.findIndex(cam => cam.id === currentCameraId.value)
+        }
 
-        if (currentIndex === -1) return
+        // Jika menggunakan facingMode environment, cari kamera belakang
+        if (currentIndex === -1) {
+            const backCamera = availableCameras.value.find(device => {
+                const label = device.label.toLowerCase()
+                return (
+                    label.includes('back') ||
+                    label.includes('rear') ||
+                    label.includes('environment')
+                )
+            })
+            if (backCamera) {
+                currentIndex = availableCameras.value.findIndex(cam => cam.id === backCamera.id)
+            }
+        }
 
         // Cari kamera berikutnya
-        const nextIndex = (currentIndex + 1) % availableCameras.value.length
+        let nextIndex = 0
+        if (currentIndex !== -1) {
+            nextIndex = (currentIndex + 1) % availableCameras.value.length
+        }
         const nextCamera = availableCameras.value[nextIndex]
 
-        // Update state
+        // Update state - gunakan cameraId langsung
         currentCameraId.value = nextCamera.id
         currentCameraLabel.value = nextCamera.label
 
-        // Update isFrontCamera berdasarkan label
+        // Tentukan apakah ini kamera depan
         const label = nextCamera.label.toLowerCase()
         isFrontCamera.value =
             label.includes('front') ||
             label.includes('user') ||
-            label.includes('selfie') ||
-            (label.includes('0') && availableCameras.value.length > 1)
+            label.includes('selfie')
 
         console.log("Switching to camera:", nextCamera.label, "front:", isFrontCamera.value)
 
@@ -236,7 +205,7 @@ const startScanner = async (mode, forceCameraId = null) => {
 
     if (mode === 'qr') {
         qrboxConfig = { width: 250, height: 250 };
-        formats = [0];
+        formats = [0]; // QR_CODE
     } else {
         qrboxConfig = (viewfinderWidth, viewfinderHeight) => {
             const minEdgePercentage = 0.85;
@@ -247,7 +216,7 @@ const startScanner = async (mode, forceCameraId = null) => {
                 height: qrboxHeight
             };
         };
-        formats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        formats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; // Semua barcode format
     }
 
     const config = {
@@ -272,13 +241,14 @@ const startScanner = async (mode, forceCameraId = null) => {
 
         if (forceCameraId) {
             cameraToUse = forceCameraId
+            console.log('Using forced camera:', forceCameraId)
         } else if (currentCameraId.value) {
             cameraToUse = currentCameraId.value
-            console.log('Using specific camera ID:', cameraToUse)
+            console.log('Using saved camera ID:', currentCameraId.value)
         } else {
-            // Coba gunakan environment (biasanya belakang)
+            // DEFAULT: Gunakan environment (kamera belakang) seperti security scanner
             cameraToUse = { facingMode: "environment" }
-            console.log('Using environment facingMode')
+            console.log('Using DEFAULT environment facingMode for back camera')
         }
 
         await html5QrCode.start(
@@ -296,8 +266,8 @@ const startScanner = async (mode, forceCameraId = null) => {
         ).catch(async (err) => {
             console.error("Scanner start failed:", err)
 
-            // Fallback 1: Coba dengan facingMode environment jika belum
-            if (typeof cameraToUse === 'string' && !cameraToUse.includes('environment')) {
+            // Fallback 1: Jika pakai cameraId gagal, coba environment
+            if (typeof cameraToUse === 'string') {
                 console.log("Retrying with facingMode environment...")
                 try {
                     return await html5QrCode.start(
@@ -311,7 +281,24 @@ const startScanner = async (mode, forceCameraId = null) => {
                     )
                 } catch (envErr) {
                     console.error("Environment camera failed:", envErr)
-                    throw envErr
+                }
+            }
+
+            // Fallback 2: Coba kamera pertama
+            if (availableCameras.value.length > 0) {
+                console.log("Trying first available camera...")
+                try {
+                    return await html5QrCode.start(
+                        availableCameras.value[0].id,
+                        config,
+                        (decodedText) => {
+                            scanCode.value = decodedText
+                            handleScan()
+                        },
+                        () => { }
+                    )
+                } catch (firstErr) {
+                    console.error("First camera failed:", firstErr)
                 }
             }
 
@@ -320,7 +307,7 @@ const startScanner = async (mode, forceCameraId = null) => {
 
         isScanning = true
 
-        // Setelah berhasil start, coba update camera info
+        // Setelah berhasil start, update info kamera
         if (typeof cameraToUse === 'string') {
             // Cari kamera di availableCameras
             const camera = availableCameras.value.find(cam => cam.id === cameraToUse)
@@ -330,23 +317,28 @@ const startScanner = async (mode, forceCameraId = null) => {
                 isFrontCamera.value =
                     label.includes('front') ||
                     label.includes('user') ||
-                    label.includes('selfie') ||
-                    (label.includes('0') && availableCameras.value.length > 1)
+                    label.includes('selfie')
             }
         } else if (cameraToUse?.facingMode === 'environment') {
             isFrontCamera.value = false
             currentCameraLabel.value = 'Kamera Belakang (Environment)'
         }
 
+        console.log('Scanner started successfully with:', {
+            camera: cameraToUse,
+            isFrontCamera: isFrontCamera.value,
+            label: currentCameraLabel.value
+        })
+
     } catch (err) {
         console.error("Error starting scanner", err)
 
-        // Fallback 2: Coba kamera pertama yang tersedia
+        // Fallback terakhir: coba user (depan) jika environment gagal
         if (availableCameras.value.length > 0) {
             try {
-                toast.warning("Mencoba kamera alternatif...")
+                toast.warning("Coba kamera depan...")
                 await html5QrCode.start(
-                    availableCameras.value[0].id,
+                    { facingMode: "user" }, // Kamera depan
                     config,
                     (decodedText) => {
                         scanCode.value = decodedText
@@ -355,19 +347,13 @@ const startScanner = async (mode, forceCameraId = null) => {
                     () => { }
                 )
                 isScanning = true
-                currentCameraId.value = availableCameras.value[0].id
-                currentCameraLabel.value = availableCameras.value[0].label
+                isFrontCamera.value = true
+                currentCameraLabel.value = 'Kamera Depan (User)'
 
-                const label = availableCameras.value[0].label.toLowerCase()
-                isFrontCamera.value =
-                    label.includes('front') ||
-                    label.includes('user') ||
-                    label.includes('selfie') ||
-                    (label.includes('0') && availableCameras.value.length > 1)
-
+                toast.success("Menggunakan kamera depan")
             } catch (fallbackErr) {
-                console.error("Fallback also failed:", fallbackErr)
-                toast.error("Gagal membuka kamera")
+                console.error("All fallbacks failed:", fallbackErr)
+                toast.error("Gagal membuka kamera: " + (err.message || err))
                 isCameraOpen.value = false
             }
         } else {
@@ -396,47 +382,31 @@ const stopCamera = async () => {
     cameraMode.value = null
 }
 
-// Fungsi untuk force menggunakan kamera belakang
+// Fungsi untuk force menggunakan kamera belakang (environment)
 const useBackCamera = async () => {
     try {
-        // Cari kamera belakang berdasarkan heuristic
-        const backCamera = availableCameras.value.find(device => {
-            const label = device.label.toLowerCase()
-            return (
-                label.includes('back') ||
-                label.includes('rear') ||
-                label.includes('environment') ||
-                (!label.includes('front') &&
-                    !label.includes('user') &&
-                    !label.includes('selfie'))
-            )
-        })
+        // Reset ke environment mode
+        currentCameraId.value = null
+        currentCameraLabel.value = 'Kamera Belakang (Environment)'
+        isFrontCamera.value = false
 
-        if (backCamera) {
-            currentCameraId.value = backCamera.id
-            currentCameraLabel.value = backCamera.label
-            isFrontCamera.value = false
-
-            if (isScanning) {
-                await stopCamera()
-                if (cameraMode.value) {
-                    await startScanner(cameraMode.value)
-                }
-            }
-            toast.success("Menggunakan kamera belakang")
-        } else {
-            toast.warning("Kamera belakang tidak ditemukan")
+        if (isScanning && cameraMode.value) {
+            await stopCamera()
+            await startScanner(cameraMode.value)
         }
+
+        toast.success("Menggunakan kamera belakang")
+        console.log('Forced back camera (environment mode)')
     } catch (err) {
         console.error("Force back camera error:", err)
         toast.error("Gagal mengatur kamera belakang")
     }
 }
 
-// Fungsi untuk force menggunakan kamera depan
+// Fungsi untuk force menggunakan kamera depan (user)
 const useFrontCamera = async () => {
     try {
-        // Cari kamera depan berdasarkan heuristic
+        // Cari kamera depan di devices
         const frontCamera = availableCameras.value.find(device => {
             const label = device.label.toLowerCase()
             return (
@@ -451,20 +421,38 @@ const useFrontCamera = async () => {
             currentCameraLabel.value = frontCamera.label
             isFrontCamera.value = true
 
-            if (isScanning) {
+            if (isScanning && cameraMode.value) {
                 await stopCamera()
-                if (cameraMode.value) {
-                    await startScanner(cameraMode.value)
-                }
+                await startScanner(cameraMode.value)
             }
             toast.success("Menggunakan kamera depan")
         } else {
-            toast.warning("Kamera depan tidak ditemukan")
+            // Gunakan user facingMode
+            currentCameraId.value = null
+            currentCameraLabel.value = 'Kamera Depan (User)'
+            isFrontCamera.value = true
+
+            if (isScanning && cameraMode.value) {
+                await stopCamera()
+                await startScanner(cameraMode.value, { facingMode: "user" })
+            }
+            toast.success("Menggunakan kamera depan (user mode)")
         }
     } catch (err) {
         console.error("Force front camera error:", err)
         toast.error("Gagal mengatur kamera depan")
     }
+}
+
+// Gunakan langsung kamera belakang saat start
+const startWithBackCamera = async (mode) => {
+    // Reset ke environment mode
+    currentCameraId.value = null
+    currentCameraLabel.value = 'Kamera Belakang (Environment)'
+    isFrontCamera.value = false
+
+    // Start scanner
+    await startScanner(mode)
 }
 </script>
 
@@ -506,11 +494,12 @@ const useFrontCamera = async () => {
                         untuk mulai.</p>
 
                     <div class="flex flex-col gap-2">
-                        <button @click="startScanner('barcode')"
+                        <!-- Gunakan startWithBackCamera untuk memastikan kamera belakang -->
+                        <button @click="startWithBackCamera('barcode')"
                             class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary-500/30">
                             <ScanBarcode class="mr-2" /> Mulai Scan Barcode
                         </button>
-                        <button @click="startScanner('qr')"
+                        <button @click="startWithBackCamera('qr')"
                             class="btn btn-secondary btn-lg rounded-full px-8 shadow-lg shadow-secondary-500/30">
                             <QrCode class="mr-2" /> Mulai Scan QR
                         </button>
@@ -593,9 +582,13 @@ const useFrontCamera = async () => {
         </div>
 
         <!-- Force Camera Buttons (Debug) -->
-        <div v-if="false && availableCameras.length > 1" class="flex gap-2">
-            <button @click="useBackCamera" class="btn btn-xs btn-outline">Force Belakang</button>
-            <button @click="useFrontCamera" class="btn btn-xs btn-outline">Force Depan</button>
+        <div v-if="true && availableCameras.length > 1" class="flex gap-2 p-2">
+            <button @click="useBackCamera" class="btn btn-xs btn-success flex-1">
+                <Camera class="mr-1" size="12" /> Belakang
+            </button>
+            <button @click="useFrontCamera" class="btn btn-xs btn-outline flex-1">
+                <Camera class="mr-1" size="12" /> Depan
+            </button>
         </div>
 
         <!-- Manual Input -->
@@ -615,14 +608,14 @@ const useFrontCamera = async () => {
 
         <!-- Mode Selectors -->
         <div class="grid grid-cols-3 gap-2">
-            <button @click="startScanner('qr')"
+            <button @click="startWithBackCamera('qr')"
                 class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
                 :class="cameraMode === 'qr' ? 'bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
                 <QrCode :size="24" class="mb-1" />
                 <span class="text-[10px] font-bold">QR Code</span>
             </button>
 
-            <button @click="startScanner('barcode')"
+            <button @click="startWithBackCamera('barcode')"
                 class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
                 :class="cameraMode === 'barcode' ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
                 <ScanBarcode :size="24" class="mb-1" />
@@ -656,7 +649,7 @@ const useFrontCamera = async () => {
                     id: cam.id.substring(0, 20) + '...',
                     label: cam.label
                 })),
-                currentCameraId: currentCameraId ? currentCameraId.substring(0, 30) + '...' : null,
+                currentCameraId: currentCameraId ? currentCameraId.substring(0, 30) + '...' : 'environment',
                 currentCameraLabel: currentCameraLabel,
                 isFrontCamera: isFrontCamera,
                 isScanning: isScanning,
@@ -704,11 +697,6 @@ const useFrontCamera = async () => {
     height: 100% !important;
     transform: scaleX(1) !important;
     /* Pastikan tidak mirror */
-}
-
-/* Untuk kamera depan, perlu mirror */
-#html5qr-code-full-region video.camera-front {
-    transform: scaleX(-1) !important;
 }
 
 /* Scanner overlay styling */
