@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount, computed } from 'vue'
 import { onlineShop } from '../../api/axios'
 import { useToast } from '../../composables/useToast'
-import { ScanBarcode, Package, Search, Camera, X, RefreshCw, Type, ArrowRight, StopCircle, Zap } from 'lucide-vue-next'
+import { ScanBarcode, QrCode, Package, Search, Camera, X, RefreshCw, Type, ArrowRight, StopCircle, Zap, Image as ImageIcon } from 'lucide-vue-next'
 import { Html5Qrcode } from 'html5-qrcode'
 import Tesseract from 'tesseract.js'
 
@@ -13,19 +13,11 @@ const isLoading = ref(false)
 const scanResult = ref(null)
 
 // Camera State
-const isCameraOpen = ref(true) // Default true for auto-start
-const cameraMode = ref('barcode') // 'barcode' or 'ocr'
+const isCameraOpen = ref(false) // Default false (manual start)
+const cameraMode = ref(null) // 'qr', 'barcode', 'ocr'
 const scannerId = 'html5qr-code-full-region'
 let html5QrCode = null
 let isScanning = false
-
-// Focus input on mount & start scanner
-onMounted(() => {
-    // delay slightly to ensure DOM is ready
-    setTimeout(() => {
-        startBarcodeScanner()
-    }, 500)
-})
 
 onBeforeUnmount(() => {
     stopCamera()
@@ -38,31 +30,27 @@ const focusInput = () => {
 }
 
 const handleScan = async () => {
-    const code = scanCode.value.trim(); // Bersihkan spasi liar
+    const code = scanCode.value.trim();
     if (!code) return;
 
-    // Debounce: if already loading, skip
     if (isLoading.value) return
 
     isLoading.value = true
     try {
-        // Haptic feedback
         if (navigator.vibrate) navigator.vibrate(200);
 
         const response = await onlineShop.scan(scanCode.value)
         scanResult.value = response.data
         toast.success(`Ditemukan: ${response.data.type === 'order' ? 'Pesanan' : 'Produk'}`)
 
-        // Pause scanning momentarily so user can see result
         if (html5QrCode && isScanning) {
             await html5QrCode.pause()
         }
     } catch (error) {
         console.error(error)
-        toast.error('Data tidak ditemukan atau error server')
+        toast.error('Data tidak ditemukan / Error')
         scanResult.value = null
 
-        // If error, resume scanning after 2 seconds
         if (html5QrCode && isScanning) {
             setTimeout(() => {
                 html5QrCode.resume()
@@ -79,9 +67,10 @@ const resetScan = async () => {
     if (html5QrCode && isScanning) {
         try {
             await html5QrCode.resume()
-        } catch (e) { console.log("resume failed/already running") }
+        } catch (e) { console.log("resume failed") }
     } else {
-        startBarcodeScanner()
+        // If we were scanning, restart the last mode
+        if (cameraMode.value) startScanner(cameraMode.value)
     }
 }
 
@@ -111,38 +100,47 @@ const formatCurrency = (val) => {
     }).format(val || 0)
 }
 
-// --- CAMERA LOGIC ---
+// --- SCANNER LOGIC ---
 
-const startBarcodeScanner = async () => {
-    // If already running, don't restart
-    if (html5QrCode && isScanning) return
+const startScanner = async (mode) => {
+    if (html5QrCode && isScanning) {
+        await stopCamera();
+    }
 
-    stopCamera() // Ensure clean state
     isCameraOpen.value = true
-    cameraMode.value = 'barcode'
+    cameraMode.value = mode
     scanResult.value = null
 
     await nextTick()
 
     html5QrCode = new Html5Qrcode(scannerId)
 
-    // Config specifically tuned for Shipping Labels (Wide Barcodes)
-    // We use a function for qrbox to make it responsive and wide
-    const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
-        const minEdgePercentage = 0.85; // 85% width
-        const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-        const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-        const qrboxHeight = Math.floor(viewfinderHeight * 0.4); // 40% height (wide rectangle)
-        return {
-            width: qrboxWidth,
-            height: qrboxHeight
+    // Config based on mode
+    let qrboxConfig;
+    let formats;
+
+    if (mode === 'qr') {
+        // Square box for QR
+        qrboxConfig = { width: 250, height: 250 };
+        formats = [0]; // QR_CODE only
+    } else {
+        // Wide box for Barcode/Resi
+        qrboxConfig = (viewfinderWidth, viewfinderHeight) => {
+            const minEdgePercentage = 0.85;
+            const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
+            const qrboxHeight = Math.floor(viewfinderHeight * 0.4);
+            return {
+                width: qrboxWidth,
+                height: qrboxHeight
+            };
         };
+        // All linear barcodes
+        formats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     }
 
     const config = {
-        fps: 20, // Higher FPS for faster scanning
-        qrbox: qrboxFunction,
-        // experimentalFeatures: { useBarCodeDetectorIfSupported: true }, // Try browser native if available
+        fps: 20,
+        qrbox: qrboxConfig,
         rememberLastUsedCamera: true,
         aspectRatio: 1.0
     }
@@ -151,45 +149,17 @@ const startBarcodeScanner = async () => {
         await html5QrCode.start(
             {
                 facingMode: "environment",
-                focusMode: "continuous", // Critical for text/barcodes
-                advanced: [{ zoom: 2.0 }] // Optional: start with slight zoom for text if supported? maybe risky.
+                focusMode: "continuous",
+                advanced: mode === 'barcode' ? [{ zoom: 2.0 }] : [] // Zoom only for barcodes
             },
             {
                 ...config,
-                formatsToSupport: [
-                    0, // QR_CODE
-                    1, // AZTEC
-                    2, // CODABAR
-                    3, // CODE_39
-                    4, // CODE_93
-                    5, // CODE_128 (Most common for Resi)
-                    6, // DATA_MATRIX
-                    7, // EAN_8
-                    8, // EAN_13
-                    9, // ITF
-                    10, // MAXICODE
-                    11, // PDF_417
-                    12, // RSS_14
-                    13, // RSS_EXPANDED
-                    14, // UPC_A
-                    15, // UPC_E
-                    16  // UPC_EAN_EXTENSION
-                ]
+                formatsToSupport: formats
             },
-            // Di dalam fungsi startBarcodeScanner pada bagian callback sukses
             (decodedText) => {
-                // 1. Langsung masukkan teks ke variable
-                scanCode.value = decodedText;
-
-                // 2. Efek haptic (Getar) agar staff tahu scan berhasil
+                scanCode.value = decodedText
                 if (navigator.vibrate) navigator.vibrate(200);
-
-                // 3. Mainkan suara Beep (Opsional)
-                // playBeep(); 
-
-                // 4. JANGAN TUNGGU, langsung panggil handleScan()
-                console.log("Barcode terdeteksi: ", decodedText);
-                handleScan();
+                handleScan()
             },
             (errorMessage) => { /* ignore */ }
         )
@@ -204,7 +174,7 @@ const startBarcodeScanner = async () => {
 const startOCR = async () => {
     if (cameraMode.value === 'ocr') return;
 
-    stopCamera()
+    await stopCamera()
     isCameraOpen.value = true
     cameraMode.value = 'ocr'
     scanResult.value = null
@@ -216,8 +186,7 @@ const startOCR = async () => {
         await html5QrCode.start(
             { facingMode: "environment" },
             { fps: 20, qrbox: { width: 300, height: 100 } },
-            (text) => { },
-            (err) => { }
+            () => { }, () => { }
         )
         isScanning = true
     } catch (err) {
@@ -231,7 +200,6 @@ const captureAndOCR = async () => {
     if (!video) return
 
     isLoading.value = true
-
     const canvas = document.createElement("canvas")
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
@@ -246,13 +214,13 @@ const captureAndOCR = async () => {
 
         if (candidate) {
             scanCode.value = candidate
-            toast.success(`Text terdeteksi: ${candidate}`)
+            toast.success(`Text: ${candidate}`)
             handleScan()
         } else {
-            toast.error("Tidak dapat membaca Text/Resi dari gambar.")
+            toast.error("Tidak terbaca.")
         }
     } catch (err) {
-        toast.error("Gagal memproses OCR.")
+        toast.error("Gagal OCR.")
     } finally {
         isLoading.value = false
     }
@@ -263,194 +231,173 @@ const stopCamera = async () => {
         try {
             if (isScanning) await html5QrCode.stop()
             html5QrCode.clear()
-        } catch (e) {
-            // ignore cleanup errors
-        }
+        } catch (e) { }
         html5QrCode = null
         isScanning = false
     }
-    // isCameraOpen.value = false // Don't hide the container, just stop feed if needed
 }
 
 const toggleCamera = () => {
     if (isScanning) {
         stopCamera()
         isCameraOpen.value = false
-    } else {
-        startBarcodeScanner()
+        cameraMode.value = null
     }
 }
 </script>
 
 <template>
-    <div class="space-y-4 max-w-xl mx-auto pb-20">
+    <div class="space-y-4 max-w-xl mx-auto pb-24">
         <!-- Header -->
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between px-2">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <ScanBarcode class="text-primary-500" />
                     Scan Pesanan
                 </h1>
-                <p class="text-gray-500 dark:text-slate-400 text-sm">Input data via Barcode, OCR, atau Manual.</p>
+                <p class="text-gray-500 dark:text-slate-400 text-sm">Pilih mode scan di bawah.</p>
+            </div>
+            <div v-if="isCameraOpen" class="animate-pulse">
+                <span class="badge badge-error badge-sm">LIVE</span>
             </div>
         </div>
 
         <!-- Camera Section -->
-        <div class="relative overflow-hidden bg-black rounded-2xl shadow-2xl aspect-3/4 md:aspect-video mb-4">
-            <!-- Camera Feed Container -->
+        <div
+            class="relative overflow-hidden bg-black rounded-3xl shadow-2xl aspect-[3/4] md:aspect-video mb-4 ring-1 ring-white/10">
+            <!-- Camera Feed -->
             <div id="html5qr-code-full-region" class="w-full h-full"></div>
 
-            <!-- Overlays -->
+            <!-- Idle State (Camera Off) -->
             <div v-if="!isCameraOpen"
-                class="absolute inset-0 flex items-center justify-center bg-surface-900 border-2 border-surface-700 rounded-2xl">
-                <div class="text-center p-6">
-                    <StopCircle :size="48" class="mx-auto text-slate-500 mb-2" />
-                    <p class="text-slate-400">Kamera Nonaktif</p>
-                    <button @click="startBarcodeScanner" class="btn btn-primary mt-4">
-                        <Camera :size="20" class="mr-2" /> Aktifkan Kamera
-                    </button>
+                class="absolute inset-0 flex flex-col items-center justify-center bg-surface-900/90 text-center p-8 space-y-6">
+                <div
+                    class="w-20 h-20 rounded-full bg-surface-800 flex items-center justify-center mb-4 ring-4 ring-surface-700">
+                    <Camera :size="40" class="text-slate-500" />
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white mb-2">Kamera Nonaktif</h3>
+                    <p class="text-slate-400 text-sm max-w-xs mx-auto">Silakan pilih mode scan di bawah untuk memulai:
+                        QR Code, Barcode Resi, atau OCR.</p>
                 </div>
             </div>
 
-            <!-- Scanning Overlay UI -->
+            <!-- Scanning Overlay -->
             <div v-if="isScanning" class="absolute inset-0 pointer-events-none">
-                <!-- Scan Guide Line -->
-                <div
-                    class="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.8)] px-10">
-                    <div class="w-full h-full bg-red-500 animate-pulse"></div>
-                </div>
-
-                <!-- Corner Markers -->
-                <div class="absolute top-1/4 left-1/4 w-8 h-8 border-t-2 border-l-2 border-primary-500 rounded-tl-lg">
-                </div>
-                <div class="absolute top-1/4 right-1/4 w-8 h-8 border-t-2 border-r-2 border-primary-500 rounded-tr-lg">
-                </div>
-                <div
-                    class="absolute bottom-1/4 left-1/4 w-8 h-8 border-b-2 border-l-2 border-primary-500 rounded-bl-lg">
-                </div>
-                <div
-                    class="absolute bottom-1/4 right-1/4 w-8 h-8 border-b-2 border-r-2 border-primary-500 rounded-br-lg">
-                </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-4 px-4 pointer-events-auto z-20">
-                <button @click="cameraMode === 'barcode' ? startOCR() : startBarcodeScanner()"
-                    class="btn btn-sm btn-circle bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-md w-12 h-12">
-                    <div class="flex flex-col items-center text-[10px]">
-                        <component :is="cameraMode === 'barcode' ? Type : ScanBarcode" :size="20" />
+                <!-- QR Guide (Square) -->
+                <div v-if="cameraMode === 'qr'" class="absolute inset-0 flex items-center justify-center">
+                    <div
+                        class="w-64 h-64 border-2 border-primary-500 rounded-2xl relative shadow-[0_0_100px_rgba(var(--primary-500),0.3)]">
+                        <div
+                            class="absolute inset-0 border-2 border-primary-500/50 scale-110 rounded-3xl opacity-50 animate-pulse">
+                        </div>
+                        <!-- Corner Decorations -->
+                        <div
+                            class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary-500 rounded-tl-lg">
+                        </div>
+                        <div
+                            class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary-500 rounded-tr-lg">
+                        </div>
+                        <div
+                            class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary-500 rounded-bl-lg">
+                        </div>
+                        <div
+                            class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary-500 rounded-br-lg">
+                        </div>
                     </div>
-                </button>
+                </div>
 
-                <button v-if="cameraMode === 'ocr'" @click="captureAndOCR"
-                    class="btn btn-lg btn-circle bg-white text-black border-4 border-slate-300 w-16 h-16 shadow-lg"
-                    :disabled="isLoading">
-                    <div v-if="isLoading" class="loading loading-spinner"></div>
-                    <div v-else class="w-12 h-12 rounded-full bg-transparent border-2 border-black" />
-                </button>
-
-                <button @click="toggleCamera"
-                    class="btn btn-sm btn-circle bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-md w-12 h-12">
-                    <StopCircle v-if="isScanning" :size="20" />
-                    <Zap v-else :size="20" />
-                </button>
+                <!-- Barcode Guide (Wide) -->
+                <div v-else-if="cameraMode === 'barcode'" class="absolute inset-0 flex items-center justify-center">
+                    <div
+                        class="w-[85%] h-32 border-2 border-red-500 rounded-lg relative shadow-[0_0_50px_rgba(239,68,68,0.3)]">
+                        <div
+                            class="absolute top-1/2 left-0 right-0 h-0.5 bg-red-500 animate-pulse shadow-[0_0_10px_red]">
+                        </div>
+                    </div>
+                    <div class="absolute bottom-8 left-0 right-0 text-center">
+                        <span class="bg-black/50 text-white px-3 py-1 rounded-full text-xs backdrop-blur-md">
+                            Arahkan garis merah ke Barcode
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Mode Indicator -->
-            <div class="absolute top-4 left-0 right-0 flex justify-center pointer-events-none">
-                <span
-                    class="px-3 py-1 bg-black/50 backdrop-blur-md text-white/90 rounded-full text-xs font-medium uppercase tracking-wider border border-white/10">
-                    {{ cameraMode === 'barcode' ? 'Auto Scan Mode' : 'OCR / Text Mode' }}
-                </span>
+            <!-- Close Button (Always visible when open) -->
+            <button v-if="isCameraOpen" @click="toggleCamera"
+                class="absolute top-4 right-4 z-20 btn btn-circle btn-sm bg-black/40 text-white border-0 hover:bg-red-500 hover:text-white transition-colors">
+                <X :size="18" />
+            </button>
+
+            <!-- OCR Capture Button -->
+            <div v-if="cameraMode === 'ocr' && isScanning"
+                class="absolute bottom-6 left-0 right-0 flex justify-center z-20">
+                <button @click="captureAndOCR" class="btn btn-lg btn-circle bg-white text-black ring-4 ring-black/20"
+                    :disabled="isLoading">
+                    <span v-if="isLoading" class="loading loading-spinner"></span>
+                    <Camera v-else :size="28" />
+                </button>
             </div>
         </div>
 
-        <!-- Manual Input & Result -->
-        <div
-            class="card p-0 overflow-hidden bg-white dark:bg-surface-900 border border-gray-200 dark:border-surface-700 shadow-sm">
+        <!-- Mode Selectors (Bottom Bar) -->
+        <div class="grid grid-cols-4 gap-2">
+            <button @click="startScanner('qr')"
+                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
+                :class="cameraMode === 'qr' ? 'bg-primary-500 text-white border-primary-600 shadow-lg shadow-primary-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
+                <QrCode :size="24" class="mb-1" />
+                <span class="text-[10px] font-bold">QR Code</span>
+            </button>
 
-            <!-- Result View -->
-            <div v-if="scanResult"
-                class="p-6 bg-gray-50 dark:bg-surface-800 animate-in slide-in-from-top-4 duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <span class="badge mb-2" :class="scanResult.type === 'order' ? 'badge-info' : 'badge-success'">
-                            {{ scanResult.type === 'order' ? 'PESANAN' : 'PRODUK' }}
-                        </span>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">
-                            {{ scanResult.type === 'order' ? scanResult.data.order_number : scanResult.data.name }}
-                        </h2>
-                        <p class="text-gray-500 dark:text-slate-400 text-sm mt-1">
-                            {{ scanResult.type === 'order' ? scanResult.data.platform : `SKU: ${scanResult.data.sku}` }}
-                        </p>
-                    </div>
-                    <button @click="resetScan"
-                        class="btn btn-sm btn-ghost btn-circle text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white">
-                        <X :size="20" />
-                    </button>
+            <button @click="startScanner('barcode')"
+                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
+                :class="cameraMode === 'barcode' ? 'bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
+                <ScanBarcode :size="24" class="mb-1" />
+                <span class="text-[10px] font-bold">Barcode Resi</span>
+            </button>
+
+            <button @click="startOCR()"
+                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border"
+                :class="cameraMode === 'ocr' ? 'bg-blue-500 text-white border-blue-600 shadow-lg shadow-blue-500/30' : 'bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700'">
+                <ImageIcon :size="24" class="mb-1" />
+                <span class="text-[10px] font-bold">Foto/OCR</span>
+            </button>
+
+            <button @click="focusInput"
+                class="flex flex-col items-center justify-center p-3 rounded-xl transition-all border bg-white dark:bg-surface-800 text-slate-500 border-gray-200 dark:border-surface-700 hover:bg-gray-50 dark:hover:bg-surface-700">
+                <Type :size="24" class="mb-1" />
+                <span class="text-[10px] font-bold">Manual</span>
+            </button>
+        </div>
+
+
+        <!-- Result Card -->
+        <div v-if="scanResult"
+            class="card p-6 bg-white dark:bg-surface-900 border border-gray-200 dark:border-surface-700 shadow-lg animate-in slide-in-from-bottom-4">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <span class="badge mb-2" :class="scanResult.type === 'order' ? 'badge-info' : 'badge-success'">
+                        {{ scanResult.type === 'order' ? 'PESANAN' : 'PRODUK' }}
+                    </span>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ scanResult.type === 'order' ?
+                        scanResult.data.order_number : scanResult.data.name }}</h2>
                 </div>
-
-                <!-- Order Actions -->
-                <div v-if="scanResult.type === 'order'" class="space-y-4">
-                    <div
-                        class="grid grid-cols-2 gap-3 text-sm bg-white dark:bg-surface-900/50 p-3 rounded-xl border border-gray-200 dark:border-surface-700/50">
-                        <div>
-                            <p class="text-gray-500 dark:text-slate-500 text-xs">Customer</p>
-                            <p class="text-gray-900 dark:text-white font-medium truncate">{{
-                                scanResult.data.customer_name || '-' }}</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500 dark:text-slate-500 text-xs">Status</p>
-                            <span class="badge badge-sm font-bold uppercase mt-1" :class="{
-                                'badge-warning': scanResult.data.status === 'pending',
-                                'badge-info': scanResult.data.status === 'packed',
-                                'badge-success': scanResult.data.status === 'shipped'
-                            }">{{ scanResult.data.status }}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <button @click="updateStatus('packed')" class="btn btn-secondary flex-1 h-12">
-                            <Package :size="18" class="mr-1" /> Packed
-                        </button>
-                        <button @click="updateStatus('shipped')" class="btn btn-primary flex-1 h-12">
-                            <ArrowRight :size="18" class="mr-1" /> Kirim
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Product Info -->
-                <div v-if="scanResult.type === 'product'" class="space-y-4">
-                    <div
-                        class="grid grid-cols-2 gap-4 text-sm bg-white dark:bg-surface-900/50 p-4 rounded-xl border border-gray-200 dark:border-surface-700/50">
-                        <div>
-                            <p class="text-gray-500 dark:text-slate-500">Harga</p>
-                            <p class="text-gray-900 dark:text-white font-mono">{{ formatCurrency(scanResult.data.price)
-                                }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-surface-700 text-center">
-                    <button @click="resetScan" class="btn btn-outline btn-sm w-full">
-                        Scan Berikutnya
-                    </button>
-                </div>
+                <button @click="resetScan" class="btn btn-ghost btn-sm btn-circle">
+                    <X :size="20" />
+                </button>
             </div>
 
-            <!-- Manual Input (Fallback) -->
-            <div v-else class="p-4">
-                <div class="relative">
-                    <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
-                        :size="18" />
-                    <input ref="scanInput" v-model="scanCode" @keyup.enter="handleScan" type="text"
-                        class="w-full bg-gray-50 dark:bg-surface-800 border border-gray-200 dark:border-surface-700 rounded-xl py-3 pl-10 pr-4 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all font-mono placeholder:text-gray-400 dark:placeholder:text-slate-600"
-                        placeholder="Ketuk untuk input manual..." :disabled="isLoading" />
-                    <div v-if="isLoading" class="absolute right-4 top-1/2 -translate-y-1/2">
-                        <span class="loading loading-spinner loading-sm text-primary-500"></span>
-                    </div>
-                </div>
+            <div v-if="scanResult.type === 'order'" class="flex gap-2 mt-4">
+                <button @click="updateStatus('packed')" class="btn btn-secondary flex-1">Packed</button>
+                <button @click="updateStatus('shipped')" class="btn btn-primary flex-1">Kirim</button>
             </div>
+            <button @click="resetScan" class="btn btn-outline btn-block mt-4">Scan Lagi</button>
+        </div>
+
+        <!-- Manual Input (Hidden unless focused) -->
+        <div class="p-4" v-show="!isCameraOpen && !scanResult">
+            <input ref="scanInput" v-model="scanCode" @keyup.enter="handleScan" type="text"
+                class="input input-bordered w-full" placeholder="Ketik manual code..." />
         </div>
     </div>
 </template>
