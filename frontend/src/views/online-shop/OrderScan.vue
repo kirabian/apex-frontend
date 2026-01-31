@@ -170,7 +170,7 @@ const startScanner = async (mode, specificCameraId = null) => {
     const config = {
         fps: 20,
         qrbox: qrboxConfig,
-        rememberLastUsedCamera: true,
+        rememberLastUsedCamera: false, // DISABLED to prevent sticking to front camera
         aspectRatio: 1.0,
         disableFlip: true,
         videoConstraints: {
@@ -182,41 +182,11 @@ const startScanner = async (mode, specificCameraId = null) => {
     try {
         isInitializing.value = true
 
-        let cameraIdOrConfig = specificCameraId;
-
-        // Jika tidak ada ID spesifik, kita coba DETEKSI kamera belakang secara manual
-        if (!cameraIdOrConfig) {
-            try {
-                const devices = await Html5Qrcode.getCameras();
-                if (devices && devices.length > 0) {
-                    // 1. Cari yang labelnya "back" / "rear" / "environment"
-                    const backCamera = devices.find(d =>
-                        d.label.toLowerCase().includes('back') ||
-                        d.label.toLowerCase().includes('rear') ||
-                        d.label.toLowerCase().includes('environment')
-                    );
-
-                    if (backCamera) {
-                        cameraIdOrConfig = backCamera.id;
-                        console.log("Auto-detected back camera:", backCamera.label);
-                    } else if (devices.length > 1) {
-                        // 2. Jika tidak ada label jelas, biasanya kamera terakhir adalah belakang
-                        cameraIdOrConfig = devices[devices.length - 1].id;
-                        console.log("Assuming last camera is back:", devices[devices.length - 1].label);
-                    } else {
-                        // 3. Hanya 1 kamera, ya pake itu aja
-                        cameraIdOrConfig = devices[0].id;
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to enumerate cameras, falling back to constraint");
-            }
-        }
-
-        // Fallback terakhir jika deteksi gagal: gunakan constraint strict
-        if (!cameraIdOrConfig) {
-            cameraIdOrConfig = { facingMode: { exact: "environment" } };
-        }
+        // MATCH OCR LOGIC:
+        // Use specific ID if provided.
+        // If not, use { facingMode: "environment" } exactly like startOCR.
+        // We removed the manual enumeration logic as it was picking the wrong camera.
+        const cameraIdOrConfig = specificCameraId ? specificCameraId : { facingMode: "environment" };
 
         await html5QrCode.start(
             cameraIdOrConfig,
@@ -228,8 +198,8 @@ const startScanner = async (mode, specificCameraId = null) => {
             },
             (errorMessage) => { /* ignore */ }
         ).catch(err => {
-            // Retry dengan loose constraint jika exact gagal
-            console.warn("Start failed, retrying with loose environment...");
+            // Retry
+            console.warn("Start failed, retrying...");
             return html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
                 scanCode.value = decodedText
                 handleScan()
