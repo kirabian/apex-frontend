@@ -49,21 +49,25 @@ const startScanner = async () => {
     }
 
     // Config for hybrid scanning (QR + Barcodes)
+    // Di dalam startScanner
     const config = {
         fps: 20,
         qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Rectangular box suitable for both
-            const minEdgePercentage = 0.85;
+            const minEdgePercentage = 0.90; // Perlebar sedikit
             const qrboxWidth = Math.floor(viewfinderWidth * minEdgePercentage);
-            const qrboxHeight = Math.floor(viewfinderHeight * 0.5);
+            const qrboxHeight = Math.floor(viewfinderHeight * 0.4); // Buat persegi panjang (wide)
             return { width: qrboxWidth, height: qrboxHeight };
         },
         aspectRatio: 1.0,
+        // Tambahkan format CODE_128 secara spesifik karena ini standar resi Shopee/JNT
         formatsToSupport: [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.CODE_39
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF
         ]
     }
 
