@@ -70,6 +70,16 @@ const selectedTypeName = ref("");
 const selectedRam = ref("");
 const selectedStorage = ref("");
 
+// Format Rupiah Helper
+function formatRupiah(value) {
+    if (!value) return "Rp 0";
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0
+    }).format(value);
+}
+
 // Computed for Selection Logic
 const filteredTypes = computed(() => {
     if (!selectedBrand.value) return [];
@@ -92,16 +102,22 @@ const availableSpecs = computed(() => {
     };
 });
 
-// Logic to find product_id from choices
+// FIX LOGIKA: Find product_id dari kombinasi dropdown
 const autoSelectedProduct = computed(() => {
     if (!selectedBrand.value || !selectedTypeName.value) return null;
+
     const found = products.value.find(p => {
+        // Cek Merk
         const matchBrand = p.brand_id === selectedBrand.value;
-        const matchName = p.name.includes(selectedTypeName.value);
+        // Cek Nama Tipe (Case Insensitive)
+        const matchName = p.name.toLowerCase().includes(selectedTypeName.value.toLowerCase());
+        // Cek RAM/ROM jika dipilih
         const matchRam = !selectedRam.value || p.ram == selectedRam.value;
         const matchStorage = !selectedStorage.value || p.storage == selectedStorage.value;
+
         return matchBrand && matchName && matchRam && matchStorage;
     });
+
     return found ? found.id : null;
 });
 
@@ -126,10 +142,13 @@ const canNext = computed(() => {
     return false;
 });
 
+// FIX TOMBOL SUBMIT: Memastikan produk terdeteksi dari dropdown bertingkat
 const canSubmit = computed(() => {
+    // Tombol aktif jika Produk ketemu DAN data IMEI/Harga sudah diisi
     if (!selectedProduct.value) return false;
+
     if (itemType.value === 'hp') {
-        return imeiRows.value.length > 0 && imeiRows.value.every(r => r.imei && r.condition && r.cost_price > 0);
+        return imeiRows.value.length > 0 && imeiRows.value.every(r => r.imei && r.cost_price > 0);
     } else {
         return nonHpForm.value.quantity > 0;
     }
@@ -153,7 +172,9 @@ function addImeiRow() {
 }
 
 function removeImeiRow(index) {
-    if (imeiRows.value.length > 1) imeiRows.value.splice(index, 1);
+    if (imeiRows.value.length > 1) {
+        imeiRows.value.splice(index, 1);
+    }
 }
 
 async function fetchInitialData() {
@@ -268,7 +289,8 @@ onMounted(() => { fetchInitialData(); });
             </div>
         </div>
 
-        <div class="card p-8 border-t-4 border-t-primary-500 min-h-[400px] flex flex-col">
+        <div
+            class="card p-8 border-t-4 border-t-primary-500 min-h-[400px] flex flex-col shadow-2xl bg-surface-800 rounded-2xl">
             <div v-if="currentStep === 1" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Akun / User Target</h2>
                 <div v-if="isLoading" class="flex justify-center py-8">
@@ -276,7 +298,7 @@ onMounted(() => { fetchInitialData(); });
                 </div>
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
-                        class="p-4 rounded-xl border border-surface-700 bg-surface-800 cursor-pointer hover:border-primary-500 hover:bg-surface-800/80 transition-all group relative overflow-hidden">
+                        class="p-4 rounded-xl border border-surface-700 bg-surface-900 cursor-pointer hover:border-primary-500 hover:bg-surface-800 transition-all group relative overflow-hidden">
                         <div v-if="placementLabel === (user.full_name || user.name)"
                             class="absolute top-2 right-2 text-primary-500">
                             <CheckCircle2 :size="20" />
@@ -304,14 +326,14 @@ onMounted(() => { fetchInitialData(); });
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button @click="itemType = 'hp'"
                         class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4"
-                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800'">
+                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Smartphone :size="48"
                             :class="itemType === 'hp' ? 'text-primary-500' : 'text-text-secondary'" />
                         <span class="text-lg font-bold">Handphone / IMEI</span>
                     </button>
                     <button @click="itemType = 'non-hp'"
                         class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4"
-                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800'">
+                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Box :size="48" :class="itemType === 'non-hp' ? 'text-primary-500' : 'text-text-secondary'" />
                         <span class="text-lg font-bold">Produk Biasa / Non-HP</span>
                     </button>
@@ -321,18 +343,18 @@ onMounted(() => { fetchInitialData(); });
             <div v-if="currentStep === 3" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Distributor</h2>
                 <div class="bg-surface-900/50 p-6 rounded-xl border border-surface-700">
-                    <label class="label">Distributor Supply</label>
+                    <label class="label text-text-secondary">Distributor Supply</label>
                     <div class="flex gap-2">
                         <select v-if="!isManualDistributor" v-model="selectedDistributor"
-                            class="input flex-1 h-12 text-lg">
+                            class="input flex-1 h-12 text-lg bg-surface-900">
                             <option value="" disabled>-- Pilih Distributor --</option>
                             <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
                         </select>
                         <input v-else v-model="newDistributorName" placeholder="Ketikan nama distributor baru..."
-                            class="input flex-1 h-12 text-lg" />
+                            class="input flex-1 h-12 text-lg bg-surface-900" />
                         <button type="button" @click="isManualDistributor = !isManualDistributor"
-                            class="btn btn-outline h-12 px-4 flex items-center gap-2"
-                            :class="isManualDistributor ? 'border-primary-500 text-primary-500' : ''">
+                            class="btn btn-outline h-12 px-4 flex items-center gap-2 border-surface-700"
+                            :class="isManualDistributor ? 'border-primary-500 text-primary-500 bg-primary-500/10' : ''">
                             <component :is="isManualDistributor ? List : Plus" :size="20" />
                         </button>
                     </div>
@@ -343,12 +365,12 @@ onMounted(() => { fetchInitialData(); });
                 <div
                     class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-surface-900 rounded-xl p-3 border border-surface-700/50 text-sm">
                     <div class="flex items-center gap-2 px-3">
-                        <Building :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
-                            placementName }}</span>
+                        <Building :size="14" class="text-text-secondary" /><span
+                            class="font-bold text-text-primary uppercase">{{ placementName }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Box :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
-                            itemType === 'hp' ? 'HP' : 'Non-HP' }}</span>
+                            itemType === 'hp' ? 'HP (IMEI)' : 'Non-HP' }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
@@ -359,30 +381,32 @@ onMounted(() => { fetchInitialData(); });
                 <div
                     class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-surface-900/30 p-6 rounded-2xl border border-surface-700">
                     <div>
-                        <label class="label">Pilih Merk</label>
-                        <select v-model="selectedBrand" class="input">
+                        <label class="label">Pilih Merk <span class="text-red-500">*</span></label>
+                        <select v-model="selectedBrand" class="input bg-surface-900">
                             <option :value="null">-- Pilih Merk --</option>
                             <option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option>
                         </select>
                     </div>
                     <div>
-                        <label class="label">Pilih Tipe</label>
-                        <select v-model="selectedTypeName" :disabled="!selectedBrand" class="input disabled:opacity-50">
+                        <label class="label">Pilih Tipe <span class="text-red-500">*</span></label>
+                        <select v-model="selectedTypeName" :disabled="!selectedBrand"
+                            class="input bg-surface-900 disabled:opacity-50">
                             <option value="">-- Pilih Tipe --</option>
                             <option v-for="name in uniqueTypeNames" :key="name" :value="name">{{ name }}</option>
                         </select>
                     </div>
                     <div>
-                        <label class="label">RAM</label>
-                        <select v-model="selectedRam" :disabled="!selectedTypeName" class="input disabled:opacity-50">
+                        <label class="label text-text-secondary">RAM</label>
+                        <select v-model="selectedRam" :disabled="!selectedTypeName"
+                            class="input bg-surface-900 disabled:opacity-50">
                             <option value="">-- Semua RAM --</option>
-                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }}</option>
+                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }} GB</option>
                         </select>
                     </div>
                     <div>
-                        <label class="label">ROM</label>
+                        <label class="label text-text-secondary">ROM</label>
                         <select v-model="selectedStorage" :disabled="!selectedTypeName"
-                            class="input disabled:opacity-50">
+                            class="input bg-surface-900 disabled:opacity-50">
                             <option value="">-- Semua ROM --</option>
                             <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }}</option>
                         </select>
@@ -391,57 +415,73 @@ onMounted(() => { fetchInitialData(); });
 
                 <div v-if="itemType === 'hp'" class="space-y-4">
                     <div v-for="(row, index) in imeiRows" :key="index"
-                        class="p-4 bg-surface-900/50 rounded-xl border border-surface-700 relative group">
+                        class="p-4 bg-surface-900/50 rounded-xl border border-surface-700 relative group animate-in zoom-in-95">
                         <button @click="removeImeiRow(index)" v-if="imeiRows.length > 1"
                             class="absolute top-2 right-2 text-text-secondary hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 :size="18" />
                         </button>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div><label class="text-xs text-text-secondary mb-1 block">IMEI</label><input
-                                    v-model="row.imei" class="input font-mono" /></div>
-                            <div><label class="text-xs text-text-secondary mb-1 block">Kondisi</label><select
-                                    v-model="row.condition" class="input">
+                        <h4 class="text-xs font-bold text-surface-500 mb-2 uppercase">Unit ke-{{ index + 1 }}</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="text-xs text-text-secondary mb-1 block">IMEI</label>
+                                <input v-model="row.imei" class="input bg-surface-900 font-mono text-sm"
+                                    placeholder="Scan IMEI..." />
+                            </div>
+                            <div>
+                                <label class="text-xs text-text-secondary mb-1 block">Kondisi</label>
+                                <select v-model="row.condition" class="input bg-surface-900">
                                     <option value="new">Baru</option>
                                     <option value="second">Bekas</option>
-                                </select></div>
-                            <div><label class="text-xs text-text-secondary mb-1 block">Harga Modal</label><input
-                                    v-model="row.cost_price" type="number" class="input" /></div>
-                            <div><label class="text-xs text-text-secondary mb-1 block">Harga Jual</label><input
-                                    v-model="row.selling_price" type="number" class="input" /></div>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-text-secondary mb-1 block text-emerald-500">Harga Modal ({{
+                                    formatRupiah(row.cost_price) }})</label>
+                                <input v-model="row.cost_price" type="number" class="input bg-surface-900"
+                                    placeholder="0" />
+                            </div>
+                            <div>
+                                <label class="text-xs text-text-secondary mb-1 block text-blue-500">Harga Jual ({{
+                                    formatRupiah(row.selling_price) }})</label>
+                                <input v-model="row.selling_price" type="number" class="input bg-surface-900"
+                                    placeholder="0" />
+                            </div>
                         </div>
                     </div>
                     <button @click="addImeiRow"
-                        class="btn btn-outline w-full border-dashed border-2 py-3 text-text-secondary hover:text-primary-500">
-                        <Plus :size="20" class="mr-2" /> Tambah Unit
+                        class="btn btn-outline w-full border-dashed border-2 py-3 text-text-secondary hover:text-primary-500 hover:bg-primary-500/5 border-surface-700">
+                        <Plus :size="20" class="mr-2" /> Tambah Unit (Batch)
                     </button>
                 </div>
 
                 <div v-else class="p-6 bg-surface-900/50 rounded-xl border border-surface-700 text-center">
-                    <label class="label">Jumlah Stok</label>
+                    <label class="label">Jumlah Stok Masuk</label>
                     <div class="flex justify-center items-center gap-4">
                         <button @click="nonHpForm.quantity > 1 ? nonHpForm.quantity-- : null"
-                            class="w-12 h-12 rounded-xl bg-surface-800">-</button>
+                            class="w-12 h-12 rounded-xl bg-surface-900 hover:bg-surface-700 text-xl font-bold border border-surface-700">-</button>
                         <input v-model="nonHpForm.quantity" type="number"
-                            class="w-32 text-center text-2xl font-bold bg-transparent border-none text-text-primary"
+                            class="w-32 text-center text-3xl font-bold bg-transparent border-none text-text-primary focus:ring-0"
                             min="1" />
-                        <button @click="nonHpForm.quantity++" class="w-12 h-12 rounded-xl bg-surface-800">+</button>
+                        <button @click="nonHpForm.quantity++"
+                            class="w-12 h-12 rounded-xl bg-surface-900 hover:bg-surface-700 text-xl font-bold border border-surface-700">+</button>
                     </div>
                 </div>
             </div>
 
             <div class="mt-auto pt-8 border-t border-surface-700 flex justify-between">
-                <button v-if="currentStep > 1" @click="prevStep" class="btn btn-secondary px-6">
+                <button v-if="currentStep > 1" @click="prevStep"
+                    class="btn btn-secondary px-6 bg-surface-900 hover:bg-surface-700 border-surface-700 flex items-center gap-2">
                     <ChevronLeft :size="20" /> Kembali
                 </button>
                 <div v-else></div>
                 <button v-if="currentStep < 4" @click="nextStep" :disabled="!canNext"
-                    class="btn btn-primary px-8">Lanjut
+                    class="btn btn-primary px-8 flex items-center gap-2">Lanjut
                     <ChevronRight :size="20" />
                 </button>
                 <button v-if="currentStep === 4" @click="submitStockIn" :disabled="!canSubmit || isSubmitting"
-                    class="btn btn-primary px-8 shadow-lg shadow-primary-500/20">
-                    <Loader2 v-if="isSubmitting" class="animate-spin mr-2" /> {{ isSubmitting ? 'Menyimpan...' :
-                        'Selesai & Simpan' }}
+                    class="btn btn-primary px-8 shadow-xl shadow-primary-500/20 flex items-center gap-2">
+                    <Loader2 v-if="isSubmitting" class="animate-spin" :size="20" />
+                    {{ isSubmitting ? 'Menyimpan...' : 'Selesai & Simpan' }}
                 </button>
             </div>
         </div>
@@ -456,6 +496,22 @@ onMounted(() => { fetchInitialData(); });
 }
 
 .input {
-    @apply w-full bg-surface-800 border border-surface-600 rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors placeholder:text-text-secondary/50;
+    @apply w-full border border-surface-700 rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-surface-600 shadow-inner;
+}
+
+.btn {
+    @apply rounded-xl font-bold transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center;
+}
+
+.btn-primary {
+    @apply bg-primary-600 hover:bg-primary-500 text-white;
+}
+
+.btn-secondary {
+    @apply bg-surface-700 hover:bg-surface-600 text-text-secondary hover:text-white;
+}
+
+.btn-outline {
+    @apply border border-surface-700 hover:border-primary-500/50 text-text-secondary hover:text-primary-500;
 }
 </style>
