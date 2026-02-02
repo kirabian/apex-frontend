@@ -272,12 +272,15 @@ async function submitStockIn() {
         await inventoryApi.stockIn(payload);
         toast.success("Stok berhasil ditambahkan!");
 
-        // Reset form ke awal
-        currentStep.value = 1;
-        selectedBrand.value = null;
-        selectedTypeName.value = "";
-        isManualDistributor.value = false;
-        newDistributorName.value = "";
+        // Redirect ke Inventory
+        router.push('/inventory');
+
+        // Reset Logic is no longer needed if we redirect
+        // currentStep.value = 1;
+        // selectedBrand.value = null;
+        // selectedTypeName.value = "";
+        // isManualDistributor.value = false;
+        // newDistributorName.value = "";
     } catch (error) {
         console.error(error);
         toast.error(error.response?.data?.message || "Gagal input stok");
@@ -361,7 +364,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
