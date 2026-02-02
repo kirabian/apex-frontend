@@ -22,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('online-shops', \App\Http\Controllers\OnlineShopController::class);
     Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
     Route::apiResource('distributors', \App\Http\Controllers\DistributorController::class);
+    Route::apiResource('brands', \App\Http\Controllers\BrandController::class);
+    Route::apiResource('product-types', \App\Http\Controllers\ProductTypeController::class);
 });
 
 Route::get('/health-check', function () {

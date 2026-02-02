@@ -62,19 +62,18 @@ const menuItems = [
     { id: "audit", path: "/audit", label: "Audit", icon: ClipboardCheck },
     { id: "reports", path: "/reports", label: "Laporan", icon: BarChart3 },
     // Master Data
-    { id: "warehouses", path: "/warehouses", label: "Data Gudang", icon: Warehouse },
     {
-        id: "distributors",
-        path: "/distributors",
-        label: "Distributor",
-        icon: Truck,
-    },
-    { id: "online_shops", path: "/online-shops", label: "Toko Online", icon: Globe },
-    {
-        id: "categories",
-        path: "/categories",
-        label: "Kategori & Jenis",
-        icon: Tags,
+        id: "master_data",
+        label: "Data Master",
+        icon: Database,
+        items: [
+            { id: "warehouses", label: "Cabang & Gudang", path: "/warehouses" },
+            { id: "online_shops", label: "Toko Online", path: "/online-shops" },
+            { id: "brands", label: "Data Merek", path: "/brands" },
+            { id: "types", label: "Tipe Produk", path: "/types" },
+            { id: "categories", label: "Kategori", path: "/categories" },
+            { id: "distributors", label: "Distributor", path: "/distributors" },
+        ],
     },
     { id: "settings", path: "/settings", label: "Pengaturan", icon: Settings },
 ];
