@@ -158,7 +158,7 @@ const handleSaved = () => {
 
 <style scoped>
 /* Tambahkan satu ../ lagi agar jalurnya pas ke folder assets */
-@reference "../../../assets/index.css";
+@reference "../../style.css";
 
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
