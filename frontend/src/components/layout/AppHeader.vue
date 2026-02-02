@@ -1,0 +1,121 @@
+<script setup>
+import { computed, ref } from "vue";
+import { useAuthStore } from "../../store/auth";
+import { useThemeStore } from "../../store/theme";
+import { getRoleLabel } from "../../utils/permissions";
+import {
+    Menu,
+    Search,
+    Palette,
+    Sun,
+    Moon,
+    Bell
+} from "lucide-vue-next";
+
+const emit = defineEmits(['toggle-mobile-menu']);
+
+const authStore = useAuthStore();
+const themeStore = useThemeStore();
+
+const isThemeMenuOpen = ref(false);
+
+// User info
+const userName = computed(() => authStore.user?.name || "Guest");
+const userRole = computed(() => getRoleLabel(authStore.userRole));
+</script>
+
+<template>
+    <header
+        class="h-16 border-b border-surface-700 flex items-center justify-between px-4 lg:px-8 bg-surface-800/50 backdrop-blur-sm z-20 transition-colors duration-300">
+        <!-- Left Side: Hamburger & Search -->
+        <div class="flex items-center gap-4 flex-1">
+            <button @click="emit('toggle-mobile-menu')"
+                class="lg:hidden p-2 text-text-secondary hover:text-text-primary">
+                <Menu :size="24" />
+            </button>
+
+            <!-- Search -->
+            <div class="relative w-full max-w-xs md:max-w-md group">
+                <Search
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-primary-500 transition-colors"
+                    :size="18" />
+                <input type="text" placeholder="Cari transaksi, produk..."
+                    class="w-full bg-surface-900 border border-surface-700 rounded-full py-2 pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all font-sans" />
+            </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="flex items-center gap-4">
+            <!-- Theme Toggle -->
+            <div class="relative">
+                <button @click="isThemeMenuOpen = !isThemeMenuOpen"
+                    class="p-2 text-text-secondary hover:text-text-primary transition-colors rounded-lg hover:bg-surface-700">
+                    <Palette :size="20" />
+                </button>
+
+                <!-- Theme Dropdown -->
+                <transition enter-active-class="transition duration-100 ease-out"
+                    enter-from-class="transform scale-95 opacity-0" enter-to-class="transform scale-100 opacity-100"
+                    leave-active-class="transition duration-75 ease-in"
+                    leave-from-class="transform scale-100 opacity-100" leave-to-class="transform scale-95 opacity-0">
+                    <div v-if="isThemeMenuOpen"
+                        class="absolute right-0 mt-2 w-72 bg-surface-800 border border-surface-700 rounded-xl shadow-xl z-50 p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-text-primary text-sm">
+                                Tampilan
+                            </h3>
+                            <button @click="themeStore.toggleDarkMode"
+                                class="p-2 rounded-lg bg-surface-900 border border-surface-700 hover:bg-surface-700 transition-colors text-text-primary"
+                                :title="themeStore.isDark
+                                    ? 'Switch to Light Mode'
+                                    : 'Switch to Dark Mode'
+                                    ">
+                                <Sun v-if="themeStore.isDark" :size="16" />
+                                <Moon v-else :size="16" />
+                            </button>
+                        </div>
+
+                        <p class="text-xs text-text-secondary mb-2 font-medium uppercase tracking-wider">
+                            Pilih Warna Tema
+                        </p>
+                        <div class="grid grid-cols-5 gap-2">
+                            <button v-for="theme in themeStore.availableThemes" :key="theme.id"
+                                @click="themeStore.setTheme(theme.id)"
+                                class="w-9 h-9 rounded-full flex items-center justify-center border-2 transition-transform hover:scale-110 shadow-sm"
+                                :class="themeStore.themeName === theme.id
+                                    ? 'border-text-primary ring-2 ring-offset-2 ring-offset-surface-800 ring-primary-500'
+                                    : 'border-transparent'
+                                    " :style="{ backgroundColor: theme.color }" :title="theme.name"></button>
+                        </div>
+                    </div>
+                </transition>
+            </div>
+
+            <!-- Notifications -->
+            <button
+                class="relative p-2 text-text-secondary hover:text-text-primary transition-colors rounded-lg hover:bg-surface-700">
+                <Bell :size="20" />
+                <span
+                    class="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full border-2 border-surface-800"></span>
+            </button>
+
+            <div class="h-8 w-px bg-surface-700"></div>
+
+            <!-- User Avatar -->
+            <div class="flex items-center gap-3">
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-semibold text-text-primary leading-none">
+                        {{ userName }}
+                    </p>
+                    <p class="text-[10px] text-primary-500 font-medium uppercase mt-1">
+                        {{ userRole }}
+                    </p>
+                </div>
+                <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    userName
+                )}&background=${themeStore.isDark ? '3b82f6' : '0f172a'
+                    }&color=fff`" class="w-9 h-9 rounded-xl border-2 border-surface-700 shadow-lg" :alt="userName" />
+            </div>
+        </div>
+    </header>
+</template>
