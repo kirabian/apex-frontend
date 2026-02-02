@@ -14,22 +14,25 @@ class RoleAndUserSeeder extends Seeder
         // 1. Reset cache permission (penting agar role baru terbaca)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // 2. Daftar 10 Role PStore
+        // 2. Daftar Role sesuai permissions.js (snake_case)
         $roles = [
-            'Super Admin',
-            'Owner',
-            'Manager Pusat',
-            'Manager Cabang',
-            'Supervisor',
-            'Admin Gudang',
-            'Admin Finance',
-            'Kasir',
-            'Sales/Promotor',
-            'Teknisi'
+            'super_admin',
+            'analist',
+            'admin_produk',
+            'audit',
+            'security',
+            'leader',
+            'distribution',
+            'sales',
+            'inventory',
+            'gudang',
+            'inventory_kasir',
+            'toko_online',
+            'leader_shopee'
         ];
 
         foreach ($roles as $roleName) {
-            Role::firstOrCreate(['name' => $roleName]);
+            Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
         // 3. Buat Akun Super Admin (Fabian)
@@ -45,7 +48,7 @@ class RoleAndUserSeeder extends Seeder
         );
 
         // 4. Tempelkan Role Super Admin ke Fabian
-        $admin->assignRole('Super Admin');
+        $admin->assignRole('super_admin');
 
         $this->command->info('Role & User Fabian berhasil dibuat!');
     }

@@ -147,6 +147,9 @@ const placementType = computed(() => {
   if (!form.value.role) return 'branch'; // Default
   const role = form.value.role;
 
+  // Universal roles - no specific placement needed
+  if (['super_admin', 'admin_produk'].includes(role)) return 'none';
+
   if (role === 'gudang') return 'warehouse';
   if (role === 'distribution') return 'distributor';
   if (['toko_online', 'leader_shopee'].includes(role)) return 'online_shop';
@@ -268,7 +271,17 @@ async function saveUser() {
     closeModal();
   } catch (error) {
     console.error("Save error", error);
-    toast.error(error.response?.data?.error_message || "Gagal menyimpan user.");
+    // Improve error message handling
+    let msg = "Gagal menyimpan user.";
+    if (error.response?.data?.errors) {
+      // Combine all error messages
+      msg = Object.values(error.response.data.errors).flat().join('\n');
+    } else if (error.response?.data?.message) {
+      msg = error.response.data.message;
+    } else if (error.response?.data?.error_message) {
+      msg = error.response.data.error_message;
+    }
+    toast.error(msg);
   } finally {
     isSaving.value = false;
   }
