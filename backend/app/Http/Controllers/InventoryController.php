@@ -17,7 +17,7 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $query = Product::with([
-            'productDetails' => function ($q) {
+            'details' => function ($q) {
                 $q->where('status', 'available');
             },
             'inventories'
@@ -33,7 +33,7 @@ class InventoryController extends Controller
         // Append calculated stock
         $products->getCollection()->transform(function ($product) {
             if ($product->type === 'hp') {
-                $product->stock = $product->productDetails->count();
+                $product->stock = $product->details->count();
             } else {
                 $product->stock = $product->inventories->sum('quantity');
             }
