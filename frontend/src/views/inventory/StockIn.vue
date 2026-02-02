@@ -52,6 +52,10 @@ const itemType = ref("hp"); // 'hp' or 'non-hp'
 // Step 3: Distributor
 const selectedDistributor = ref("");
 const selectedDistributorName = computed(() => {
+    // Jika manual, tampilkan apa yang diketik
+    if (isManualDistributor.value) return newDistributorName.value || 'Distributor Baru';
+
+    // Jika pilih dari list, cari namanya berdasarkan ID
     const d = distributors.value.find(x => x.id === selectedDistributor.value);
     return d ? d.name : '-';
 });
@@ -65,10 +69,20 @@ const imeiRows = ref([
 const nonHpForm = ref({ quantity: 1 });
 
 // Computed
+
+// UPDATE LOGIKA INI:
 const canNext = computed(() => {
     if (currentStep.value === 1) return !!placementId.value;
     if (currentStep.value === 2) return !!itemType.value;
-    if (currentStep.value === 3) return !!selectedDistributor.value;
+    if (currentStep.value === 3) {
+        // Tombol lanjut nyala jika: 
+        // Pilih dari list (selectedDistributor ada isinya) 
+        // ATAU Input manual (newDistributorName ada isinya)
+        if (isManualDistributor.value) {
+            return newDistributorName.value.length > 2; // Minimal 3 karakter
+        }
+        return !!selectedDistributor.value;
+    }
     return false;
 });
 
@@ -337,7 +351,7 @@ onMounted(() => {
                                 :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
                                 <component :is="isManualDistributor ? List : Plus" :size="20" />
                                 <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                    }}</span>
+                                }}</span>
                             </button>
                         </div>
 
@@ -363,7 +377,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
