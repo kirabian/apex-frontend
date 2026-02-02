@@ -39,6 +39,13 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'username' => 'required|string|unique:users,username',
+            'code_id' => 'nullable|string|unique:users,code_id',
+            'full_name' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
         try {
             // Determine placement based on input. Only one should be set ideally, or handled by frontend.
             $branchId = $request->branch_id ?: null;
