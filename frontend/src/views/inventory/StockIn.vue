@@ -16,7 +16,8 @@ import {
     ScanBarcode,
     ChevronRight,
     ChevronLeft,
-    CheckCircle2
+    CheckCircle2,
+    List
 } from "lucide-vue-next";
 
 const toast = useToast();
@@ -307,16 +308,36 @@ onMounted(() => {
             <!-- Step 3: Distributor -->
             <div v-if="currentStep === 3" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Distributor</h2>
-                <div>
+
+                <div class="bg-surface-900/50 p-6 rounded-xl border border-surface-700">
                     <label class="label">Distributor Supply</label>
-                    <div class="flex gap-2">
-                        <select v-model="selectedDistributor" class="input flex-1 h-12 text-lg">
-                            <option value="" disabled>-- Pilih Distributor --</option>
-                            <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
-                        </select>
-                        <button class="btn btn-outline h-12 w-12 flex items-center justify-center">
-                            <Plus :size="20" />
-                        </button>
+
+                    <div class="flex flex-col gap-4">
+                        <div class="flex gap-2">
+                            <!-- Select Mode -->
+                            <select v-if="!isManualDistributor" v-model="selectedDistributor"
+                                class="input flex-1 h-12 text-lg">
+                                <option value="" disabled>-- Pilih Distributor --</option>
+                                <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
+                            </select>
+
+                            <!-- Manual Input Mode -->
+                            <input v-else v-model="newDistributorName" placeholder="Ketikan nama distributor baru..."
+                                class="input flex-1 h-12 text-lg" />
+
+                            <button @click="isManualDistributor = !isManualDistributor"
+                                class="btn btn-outline h-12 px-4 flex items-center gap-2 transition-all"
+                                :class="isManualDistributor ? 'border-primary-500 text-primary-500 bg-primary-500/10' : ''"
+                                :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
+                                <component :is="isManualDistributor ? 'List' : 'Plus'" :size="20" />
+                                <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
+                                }}</span>
+                            </button>
+                        </div>
+
+                        <p class="text-xs text-text-secondary" v-if="isManualDistributor">
+                            * Distributor baru akan otomatis disimpan ke database saat anda menyelesikan input stok.
+                        </p>
                     </div>
                 </div>
             </div>
