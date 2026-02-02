@@ -661,59 +661,57 @@ async function permanentDeleteUser(id) {
               </div>
             </div>
 
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
+                <select v-model="form.role" class="input" required>
+                  <option value="">Pilih Role</option>
+                  <option v-for="role in rolesList" :key="role.value" :value="role.value">
+                    {{ role.label }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
+                <select v-model="form.timezone" class="input" required>
+                  <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
+                    {{ tz.label }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Cabang / Toko</label>
+              <select v-model="form.branch_id" class="input">
+                <option value="">Pilih Cabang (Optional)</option>
+                <option v-for="branch in availableBranches" :key="branch.id" :value="branch.id">
+                  {{ branch.name }} {{ branch.type === 'online' ? '(Online)' : '' }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Address -->
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
+              <textarea v-model="form.address" class="input min-h-[80px]"
+                placeholder="Alamat lengkap user..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+              <button type="button" @click="closeModal"
+                class="px-4 py-2 text-slate-400 hover:text-white transition-colors" :disabled="isSaving">
+                Batal
+              </button>
+              <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
+                <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
+                <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
-          <select v-model="form.role" class="input" required>
-            <option value="">Pilih Role</option>
-            <option v-for="role in rolesList" :key="role.value" :value="role.value">
-              {{ role.label }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
-          <select v-model="form.timezone" class="input" required>
-            <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
-              {{ tz.label }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-slate-400 mb-2">Cabang / Toko</label>
-        <select v-model="form.branch_id" class="input">
-          <option value="">Pilih Cabang (Optional)</option>
-          <option v-for="branch in availableBranches" :key="branch.id" :value="branch.id">
-            {{ branch.name }} {{ branch.type === 'online' ? '(Online)' : '' }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Address -->
-      <div>
-        <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
-        <textarea v-model="form.address" class="input min-h-[80px]" placeholder="Alamat lengkap user..."></textarea>
-      </div>
-
-      <div class="flex justify-end gap-3 mt-6">
-        <button type="button" @click="closeModal" class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-          :disabled="isSaving">
-          Batal
-        </button>
-        <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
-          <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
-          <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
-        </button>
-      </div>
-      </form>
-  </div>
-  </div>
-  </Teleport>
+    </Teleport>
   </div>
 </template>
 
