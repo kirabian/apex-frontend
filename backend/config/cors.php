@@ -19,7 +19,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173'], // Frontend URL
+    'allowed_origins' => [
+        'http://localhost:5173',
+        'https://stokps.com',
+        'https://www.stokps.com',
+        'https://api.stokps.com'
+    ],
 
     'allowed_origins_patterns' => [],
 
