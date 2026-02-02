@@ -325,13 +325,13 @@ onMounted(() => {
                             <input v-else v-model="newDistributorName" placeholder="Ketikan nama distributor baru..."
                                 class="input flex-1 h-12 text-lg" />
 
-                            <button @click="isManualDistributor = !isManualDistributor"
+                            <button type="button" @click="isManualDistributor = !isManualDistributor"
                                 class="btn btn-outline h-12 px-4 flex items-center gap-2 transition-all"
                                 :class="isManualDistributor ? 'border-primary-500 text-primary-500 bg-primary-500/10' : ''"
                                 :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
-                                <component :is="isManualDistributor ? 'List' : 'Plus'" :size="20" />
+                                <component :is="isManualDistributor ? List : Plus" :size="20" />
                                 <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                }}</span>
+                                    }}</span>
                             </button>
                         </div>
 
@@ -357,7 +357,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
