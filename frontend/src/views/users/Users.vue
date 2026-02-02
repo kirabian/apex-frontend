@@ -1,33 +1,24 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import { ROLE_LABELS } from "../../utils/permissions";
+import { ROLE_LABELS, ROLES } from "../../utils/permissions";
 import { formatDate } from "../../utils/formatters";
-import { users as usersApi, branches as branchesApi } from "../../api/axios"; // Import API
-import { useToast } from "../../composables/useToast"; // Import Toast
+import { users as usersApi, branches as branchesApi, warehouses as warehousesApi, onlineShops as onlineShopsApi, distributors as distributorsApi } from "../../api/axios";
+import { useToast } from "../../composables/useToast";
 import {
   Search,
   Plus,
   Filter,
-  Download,
-  Edit,
-  Trash2,
   Users,
   Shield,
-  Building2,
-  Mail,
-  Phone,
-  Calendar,
-  X,
-  Save,
-  Eye,
-  EyeOff,
+  Trash2,
+  Edit,
   UserPlus,
   Check,
-  Clock,
-  RotateCcw,
-  ArchiveRestore,
-  XCircle,
-  Loader2 // Import Loader
+  Eye,
+  EyeOff,
+  Loader2,
+  MapPin, // Icon for placement
+  Building // Icon for warehouse
 } from "lucide-vue-next";
 
 // Toast
@@ -36,6 +27,9 @@ const toast = useToast();
 // State
 const users = ref([]);
 const branches = ref([]);
+const warehouses = ref([]); // New
+const onlineShops = ref([]); // New
+const distributors = ref([]); // New
 const isLoading = ref(false);
 const isSaving = ref(false);
 
@@ -55,7 +49,7 @@ const rolesList = Object.entries(ROLE_LABELS).map(([value, label]) => ({
 }));
 
 // Local state
-const activeTab = ref("active"); // active, deleted
+const activeTab = ref("active");
 const searchQuery = ref("");
 const selectedRole = ref("");
 const selectedBranch = ref("");
@@ -65,11 +59,15 @@ const showPassword = ref(false);
 
 // Form
 const form = ref({
-  full_name: "", // Match backend field
+  full_name: "",
   username: "",
-  email: "", // Although not in backend fillable shown above, keeping it if needed or should map to something
+  code_id: "",
+  email: "",
   role: "",
-  branch_id: "", // Match backend field
+  branch_id: "", // For Physical Branches
+  warehouse_id: "", // For Warehouse
+  online_shop_id: "", // For Online Shop
+  distributor_id: "", // For Distributor
   timezone: "WIB",
   address: "",
   password: "",
@@ -81,15 +79,17 @@ function resetForm() {
   form.value = {
     full_name: "",
     username: "",
-    code_id: "", // Add code_id
-    email: "", // Optional or remove if not used in backend logic explicitly
+    code_id: "",
+    email: "",
     role: "",
     branch_id: "",
+    warehouse_id: "",
+    online_shop_id: "",
+    distributor_id: "",
     timezone: "WIB",
     address: "",
     password: "",
     is_active: true,
-    created_at: null, // Add to prevent reactive issues if needed
   };
   showPassword.value = false;
 }
@@ -98,12 +98,20 @@ function resetForm() {
 async function fetchData() {
   isLoading.value = true;
   try {
-    const [usersRes, branchesRes] = await Promise.all([
+    const [usersRes, branchesRes, warehousesRes, onlineShopsRes, distributorsRes] = await Promise.all([
       usersApi.list(),
-      branchesApi.list()
+      branchesApi.list(),
+      warehousesApi.list(),
+      onlineShopsApi.list(),
+      distributorsApi.list()
     ]);
+
     users.value = usersRes.data.data || [];
     branches.value = branchesRes.data.data || [];
+    warehouses.value = warehousesRes.data.data || [];
+    onlineShops.value = onlineShopsRes.data.data || [];
+    distributors.value = distributorsRes.data.data || [];
+
   } catch (error) {
     console.error("Failed to fetch data", error);
     toast.error("Gagal memuat data user.");
@@ -119,129 +127,73 @@ onMounted(() => {
 // Format Last Seen
 function formatLastSeen(dateString, timezone) {
   if (!dateString) return "-";
-
   const date = new Date(dateString);
   const options = {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false,
   };
-
-  // Simplified timezone label
-  const tzMap = {
-    'Asia/Jakarta': 'WIB',
-    'Asia/Makassar': 'WITA',
-    'Asia/Jayapura': 'WIT'
-  }
+  const tzMap = { 'Asia/Jakarta': 'WIB', 'Asia/Makassar': 'WITA', 'Asia/Jayapura': 'WIT' }
   let tzLabel = tzMap[timezone] || timezone || "WIB";
-
   return `${date.toLocaleDateString("id-ID", options)} ${tzLabel}`;
 }
 
-// Compute available branches based on selected role
-const availableBranches = computed(() => {
-  // Jika role belum dipilih, tampilkan semua (fallback)
-  if (!form.value.role) return branches.value;
-
-  const onlineRoles = ['toko_online', 'leader_shopee'];
-  const isOnlineRole = onlineRoles.includes(form.value.role);
-
-  if (isOnlineRole) {
-    // Filter hanya cabang yang bertipe 'online'
-    return branches.value.filter(b => b.type === 'online');
-  } else {
-    // Filter hanya cabang fisik (bukan online)
-    return branches.value.filter(b => b.type !== 'online');
-  }
+// Determine Placement Type
+const placementType = computed(() => {
+  if (!form.value.role) return 'branch'; // Default
+  if (form.value.role === ROLES.GUDANG) return 'warehouse';
+  if (form.value.role === ROLES.DISTRIBUTION) return 'distributor';
+  if ([ROLES.TOKO_ONLINE, ROLES.LEADER_SHOPEE].includes(form.value.role)) return 'online_shop';
+  return 'branch'; // Default for Sales, Cashier, Leader, etc.
 });
+
+// Label for Placement
+const placementLabel = computed(() => {
+  const map = {
+    'warehouse': 'Pilih Gudang',
+    'distributor': 'Pilih Distributor',
+    'online_shop': 'Pilih Toko Online',
+    'branch': 'Pilih Cabang Fisik'
+  };
+  return map[placementType.value];
+});
+
 watch(() => form.value.role, (newRole) => {
-  // Kosongkan pilihan cabang setiap kali role berubah
+  // Clear all placements when role changes
   form.value.branch_id = "";
+  form.value.warehouse_id = "";
+  form.value.online_shop_id = "";
+  form.value.distributor_id = "";
 });
 
 // Filtered users
 const filteredUsers = computed(() => {
   let result = users.value;
 
-  // Filter by Tab/Status
-  // Note: Backend might return all users, or we filter locally.
-  // Assuming backend returns all unless filtered by params.
-  // We'll do local filtering for now since the list is likely small.
-  // Backend "is_active" is boolean.
-  // "Deleted" usually means SoftDeleted if supported, OR we can use is_active=false as "Inactive".
-  // The UI has "Active & Inactive" vs "Deleted".
-  // If no SoftDeletes, "Deleted" tab might be empty or specific logic.
-  // Let's assume:
-  // Tab Active: is_active = true
-  // Tab Inactive/Deleted: We'll stick to is_active logic for now.
-  // Wait, UI says "User Aktif & Inaktif" in one tab, and "Terhapus (Soft Delete)" in another.
-  // Since we don't have SoftDeletes yet, "Terhapus" will be empty or unused.
-  // Let's modify logic:
-  // Tab 1: All non-deleted users (both active and inactive status)
-  // Tab 2: Actually deleted users (if SoftDeletes implemented) or just hide it?
-  // For now let's just show all in Tab 1, and maybe ignore Tab 2 or make "Nonaktif" users appear there?
-  // Promoting "Nonaktif" to "Active Tab" as existing UI suggests.
+  if (activeTab.value === 'deleted') return [];
 
-  if (activeTab.value === 'deleted') {
-    return []; // Placeholder for now untill soft delete is implemented
-  }
-
-  // Search
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (u) =>
-        (u.full_name?.toLowerCase() || '').includes(query) ||
-        (u.username?.toLowerCase() || '').includes(query)
+    result = result.filter(u =>
+      (u.full_name?.toLowerCase() || '').includes(query) ||
+      (u.username?.toLowerCase() || '').includes(query)
     );
   }
 
-  // Filter Role
   if (selectedRole.value) {
-    result = result.filter((u) => {
-      if (u.roles && u.roles.length > 0) {
-        return u.roles.some(r => r.name === selectedRole.value);
-      }
-      return false;
-    });
+    result = result.filter(u => u.roles?.some(r => r.name === selectedRole.value));
   }
 
-  // Filter Branch
   if (selectedBranch.value) {
-    result = result.filter((u) => u.branch_id === selectedBranch.value || u.branch?.name === selectedBranch.value);
+    result = result.filter(u => u.branch_id === selectedBranch.value || u.branch?.name === selectedBranch.value);
   }
 
   return result;
 });
 
-// Stats (Computed from fetched users)
+// Stats
 const stats = computed(() => [
-  {
-    label: "Total User",
-    value: users.value.length,
-    icon: Users,
-    color: "blue",
-  },
-  {
-    label: "User Aktif",
-    value: users.value.filter((u) => u.is_active).length,
-    icon: Check,
-    color: "emerald",
-  },
-  {
-    label: "User Nonaktif",
-    value: users.value.filter((u) => !u.is_active).length,
-    icon: Shield,
-    color: "amber", // Changed to match Inactive/Warning
-  },
-  {
-    label: "Role Terdaftar",
-    value: new Set(users.value.flatMap(u => u.roles ? u.roles.map(r => r.name) : [])).size,
-    icon: Shield,
-    color: "violet",
-  },
+  { label: "Total User", value: users.value.length, icon: Users, color: "blue" },
+  { label: "User Aktif", value: users.value.filter(u => u.is_active).length, icon: Check, color: "emerald" },
+  { label: "User Nonaktif", value: users.value.filter(u => !u.is_active).length, icon: Shield, color: "amber" },
 ]);
 
 // Actions
@@ -253,22 +205,21 @@ function openAddModal() {
 
 function openEditModal(user) {
   editingUser.value = user;
-
-  // Populate form
   form.value = {
     full_name: user.full_name,
     username: user.username,
-    code_id: user.code_id || "", // Populate code_id
+    code_id: user.code_id || "",
     email: user.email,
-    // Handle roles array from Spatie
     role: user.roles && user.roles.length > 0 ? user.roles[0].name : '',
     branch_id: user.branch_id,
+    warehouse_id: user.warehouse_id,
+    online_shop_id: user.online_shop_id,
+    distributor_id: user.distributor_id,
     timezone: user.timezone || "WIB",
     address: user.address,
     is_active: !!user.is_active,
-    password: "", // Leave empty
+    password: "",
   };
-
   showModal.value = true;
 }
 
@@ -281,79 +232,53 @@ function closeModal() {
 async function saveUser() {
   isSaving.value = true;
   try {
+    // Ensure only relevant placement ID is sent (though backend handles overrides, cleaner here)
+    const payload = { ...form.value };
+    if (placementType.value !== 'branch') payload.branch_id = null;
+    if (placementType.value !== 'warehouse') payload.warehouse_id = null;
+    if (placementType.value !== 'online_shop') payload.online_shop_id = null;
+    if (placementType.value !== 'distributor') payload.distributor_id = null;
+
+    // Explicitly set null if empty string to avoid DB errors constraint
+    if (!payload.branch_id) payload.branch_id = null;
+    if (!payload.warehouse_id) payload.warehouse_id = null;
+    if (!payload.online_shop_id) payload.online_shop_id = null;
+    if (!payload.distributor_id) payload.distributor_id = null;
+
     if (editingUser.value) {
-      // Update
-      const payload = { ...form.value };
-      if (!payload.password) delete payload.password; // Don't send empty password
-
+      if (!payload.password) delete payload.password;
       const res = await usersApi.update(editingUser.value.id, payload);
-
-      // Update local list
       const index = users.value.findIndex(u => u.id === editingUser.value.id);
-      if (index !== -1) {
-        users.value[index] = res.data.data;
-      }
+      if (index !== -1) users.value[index] = res.data.data;
       toast.success("User berhasil diperbarui!");
     } else {
-      // Create
-      const res = await usersApi.create(form.value);
+      const res = await usersApi.create(payload);
       users.value.unshift(res.data.data);
       toast.success("User baru berhasil ditambahkan!");
     }
     closeModal();
   } catch (error) {
     console.error("Save error", error);
-    const msg = error.response?.data?.message || "Gagal menyimpan user.";
-    toast.error(msg);
+    toast.error(error.response?.data?.error_message || "Gagal menyimpan user.");
   } finally {
     isSaving.value = false;
   }
 }
 
-// Toggle Status (Active/Inactive)
 async function toggleStatus(user) {
   try {
     const newStatus = !user.is_active;
-    // Optimistic update
     user.is_active = newStatus;
-
     await usersApi.update(user.id, { is_active: newStatus });
-
     toast.info(newStatus ? "User diaktifkan." : "User dinonaktifkan.");
   } catch (error) {
-    // Revert on failure
     user.is_active = !user.is_active;
     toast.error("Gagal mengubah status user.");
   }
 }
 
-// Soft Delete (Simulated as Deactivate or just Delete for now if backend doesn't support SoftDeletes)
-function softDeleteUser(id) {
-  // Since backend doesn't have SoftDeletes trait yet, we treat "Soft Delete" UI as "Deactivate" logic?
-  // OR we interpret as "Delete" safely?
-  // Plan said: "Interpret 'Hapus' as hard delete and 'Nonaktifkan' as setting is_active = false"
-  // UI has two buttons: Trash (Soft Delete) and X (Permanent).
-  // I will map Trash -> Deactivate (is_active=false)
-  // X -> Persistent Delete
-
-  const user = users.value.find(u => u.id === id);
-  if (user) {
-    toggleStatus(user);
-  }
-}
-
-// Restore User
-function restoreUser(id) {
-  const user = users.value.find(u => u.id === id);
-  if (user && !user.is_active) {
-    toggleStatus(user);
-  }
-}
-
-// Permanent Delete
 async function permanentDeleteUser(id) {
   if (!confirm("HAPUS PERMANEN? Data tidak dapat dikembalikan!")) return;
-
   try {
     await usersApi.delete(id);
     users.value = users.value.filter(u => u.id !== id);
@@ -362,34 +287,39 @@ async function permanentDeleteUser(id) {
     toast.error("Gagal menghapus user.");
   }
 }
+
+// Helper to get placement name for table
+function getPlacementName(user) {
+  if (user.branch) return user.branch.name;
+  if (user.warehouse) return `Gudang: ${user.warehouse.name}`; // Prefix for clarity
+  if (user.online_shop) return `Online: ${user.online_shop.name}`;
+  if (user.distributor) return `Dist: ${user.distributor.name}`;
+  return '-';
+}
 </script>
 
 <template>
   <div class="space-y-6 animate-in">
     <!-- Header -->
-    <div class="flex justify-between items-end">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-white tracking-tight">
-          Staff & Role
+        <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+          <Users :size="28" class="text-blue-500" /> Staff & Role
         </h1>
         <p class="text-slate-500 mt-1">Kelola pengguna dan hak akses</p>
       </div>
-      <button @click="openAddModal" class="btn btn-primary">
-        <UserPlus :size="16" />
-        Tambah User
+      <button @click="openAddModal" class="btn btn-primary w-full md:w-auto flex justify-center">
+        <UserPlus :size="18" />
+        <span>Tambah User</span>
       </button>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="(stat, index) in stats" :key="index" class="card flex items-center gap-4">
-        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
-          'bg-blue-600': stat.color === 'blue',
-          'bg-emerald-600': stat.color === 'emerald',
-          'bg-violet-600': stat.color === 'violet',
-          'bg-amber-600': stat.color === 'amber',
-        }">
-          <component :is="stat.icon" :size="20" class="text-white" />
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+          :class="{ 'bg-blue-600/20 text-blue-500': stat.color === 'blue', 'bg-emerald-600/20 text-emerald-500': stat.color === 'emerald', 'bg-amber-600/20 text-amber-500': stat.color === 'amber' }">
+          <component :is="stat.icon" :size="24" />
         </div>
         <div>
           <p class="text-slate-500 text-sm">{{ stat.label }}</p>
@@ -398,147 +328,98 @@ async function permanentDeleteUser(id) {
       </div>
     </div>
 
-    <!-- Filters & Tabs -->
+    <!-- Filters -->
     <div class="card space-y-4">
-      <!-- Tabs -->
-      <div class="flex border-b border-slate-700/50 overflow-x-auto hide-scrollbar">
-        <button @click="activeTab = 'active'"
-          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap"
-          :class="activeTab === 'active'
-            ? 'border-blue-500 text-blue-400'
-            : 'border-transparent text-slate-400 hover:text-white'
-            ">
-          <Users :size="16" />
-          User Aktif & Inaktif
-        </button>
-        <button @click="activeTab = 'deleted'"
-          class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap"
-          :class="activeTab === 'deleted'
-            ? 'border-red-500 text-red-400'
-            : 'border-transparent text-slate-400 hover:text-white'
-            ">
-          <Trash2 :size="16" />
-          Terhapus (Soft Delete)
-        </button>
-      </div>
-
-      <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+      <div class="flex flex-col md:flex-row gap-4">
         <div class="relative w-full md:flex-1">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" :size="18" />
           <input v-model="searchQuery" type="text" placeholder="Cari nama atau email..." class="input pl-10 w-full" />
         </div>
-        <div class="flex gap-4 w-full md:w-auto">
-          <select v-model="selectedRole" class="input w-full md:w-48">
+        <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <select v-model="selectedRole" class="input w-full sm:w-48">
             <option value="">Semua Role</option>
-            <option v-for="role in rolesList" :key="role.value" :value="role.value">
-              {{ role.label }}
-            </option>
+            <option v-for="role in rolesList" :key="role.value" :value="role.value">{{ role.label }}</option>
           </select>
-          <select v-model="selectedBranch" class="input w-full md:w-48">
+          <select v-model="selectedBranch" class="input w-full sm:w-48">
             <option value="">Semua Cabang</option>
-            <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-              {{ branch.name }}
-            </option>
+            <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
           </select>
         </div>
       </div>
     </div>
 
     <!-- Table (Desktop) -->
-    <div class="card p-0 hidden md:block">
-      <div v-if="isLoading" class="p-8 flex justify-center items-center">
+    <div class="card p-0 hidden md:block overflow-hidden">
+      <div v-if="isLoading" class="p-12 flex justify-center items-center">
         <Loader2 class="animate-spin text-blue-500" :size="32" />
-        <span class="ml-2 text-slate-400">Memuat data user...</span>
+        <span class="ml-3 text-slate-400">Memuat data user...</span>
       </div>
-      <div v-else class="table-container">
-        <table class="table">
+      <div v-else class="overflow-x-auto">
+        <table class="table w-full">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Cabang & Zona</th>
-              <th>Terakhir Dilihat</th>
-              <th>Status</th>
-              <th class="text-center">Aksi</th>
+              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">User</th>
+              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Role</th>
+              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Penempatan
+              </th>
+              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Aktifitas</th>
+              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Status</th>
+              <th class="text-right py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-slate-700/50">
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="6" class="text-center py-8 text-slate-500">
+              <td colspan="6" class="text-center py-12 text-slate-500">
                 Tidak ada user ditemukan
               </td>
             </tr>
-            <tr v-for="user in filteredUsers" :key="user.id">
-              <td>
+            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-800/50 transition-colors">
+              <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    user.full_name || user.username
-                  )}&background=3b82f6&color=fff`" class="w-10 h-10 rounded-xl" :alt="user.full_name" />
+                  <img
+                    :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=3b82f6&color=fff`"
+                    class="w-10 h-10 rounded-xl object-cover" :alt="user.full_name" />
                   <div>
                     <p class="font-medium text-white">{{ user.full_name }}</p>
-                    <p class="text-xs text-slate-500">{{ user.username }}</p>
+                    <p class="text-xs text-slate-500 font-mono">{{ user.username }}</p>
                   </div>
                 </div>
               </td>
-              <td>
-                <span v-for="role in user.roles" :key="role.id" class="badge badge-info mr-1">{{
-                  ROLE_LABELS[role.name] || role.name
-                }}</span>
-                <span v-if="!user.roles || user.roles.length === 0" class="badge bg-slate-700 text-slate-400">No
-                  Role</span>
+              <td class="px-6 py-4">
+                <span v-if="user.roles && user.roles.length"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  {{ ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}
+                </span>
+                <span v-else class="text-xs text-slate-500 italic">No Role</span>
               </td>
-              <td>
-                <p class="text-slate-300">{{ user.branch ? user.branch.name : (user.branch_id === null ? 'Semua Cabang'
-                  : '-') }}</p>
-                <span class="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded">{{ user.timezone || "WIB"
-                }}</span>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <MapPin :size="14" class="text-slate-500" />
+                  <span class="text-sm text-slate-300">{{ getPlacementName(user) }}</span>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-1 pl-5 font-mono">{{ user.timezone || 'WIB' }}</div>
               </td>
-              <td class="text-slate-400 text-sm font-mono">
-                {{ formatLastSeen(user.last_seen || user.lastSeen, user.timezone) }}
+              <td class="px-6 py-4 text-sm text-slate-400">
+                {{ formatLastSeen(user.last_seen, user.timezone) }}
               </td>
-              <td>
-                <div v-if="activeTab !== 'deleted'" class="flex items-center gap-2">
-                  <button @click="toggleStatus(user)"
-                    class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    :class="user.is_active
-                      ? 'bg-emerald-600'
-                      : 'bg-slate-700'
-                      " title="Klik untuk mengubah status">
-                    <span class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform" :class="user.is_active
-                      ? 'translate-x-5'
-                      : 'translate-x-0'
-                      "></span>
-                  </button>
-                  <span class="text-xs font-medium" :class="user.is_active
-                    ? 'text-emerald-400'
-                    : 'text-slate-400'
-                    ">
-                    {{ user.is_active ? "Aktif" : "Nonaktif" }}
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <div :class="`w-2 h-2 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-500'}`"></div>
+                  <span class="text-sm" :class="user.is_active ? 'text-emerald-400' : 'text-red-400'">
+                    {{ user.is_active ? 'Aktif' : 'Nonaktif' }}
                   </span>
                 </div>
-                <span v-else class="badge bg-slate-700 text-slate-400">Terhapus</span>
               </td>
-              <td>
-                <div class="flex items-center justify-center gap-2">
-                  <template v-if="activeTab !== 'deleted'">
-                    <button @click="openEditModal(user)" class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                      title="Edit User">
-                      <Edit :size="16" class="text-blue-400" />
-                    </button>
-                    <!-- Soft delete maps to non-active for now, or use permanent delete if you want -->
-                    <!-- Let's keep Trash2 as "Deactivate" visual helper if active, or actual delete if integrated -->
-                    <button v-if="user.is_active" @click="softDeleteUser(user.id)"
-                      class="p-2 hover:bg-yellow-500/20 rounded-lg transition-colors" title="Nonaktifkan">
-                      <Shield :size="16" class="text-yellow-400" />
-                    </button>
-                    <button @click="permanentDeleteUser(user.id)"
-                      class="p-2 hover:bg-red-500/20 rounded-lg transition-colors" title="Hapus Permanen">
-                      <Trash2 :size="16" class="text-red-400" />
-                    </button>
-                  </template>
-                  <template v-else>
-                    <!-- Restore Logic if soft deletes implemented -->
-                  </template>
+              <td class="px-6 py-4">
+                <div class="flex justify-end gap-2">
+                  <button @click="openEditModal(user)"
+                    class="p-2 hover:bg-slate-700 rounded-lg text-blue-400 transition-colors" title="Edit">
+                    <Edit :size="16" />
+                  </button>
+                  <button @click="permanentDeleteUser(user.id)"
+                    class="p-2 hover:bg-slate-700 rounded-lg text-red-400 transition-colors" title="Hapus">
+                    <Trash2 :size="16" />
+                  </button>
                 </div>
               </td>
             </tr>
@@ -553,61 +434,46 @@ async function permanentDeleteUser(id) {
         <Loader2 class="animate-spin text-blue-500" :size="32" />
       </div>
       <div v-for="user in filteredUsers" :key="user.id" class="card space-y-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0 flex-1">
-            <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-              user.full_name
-            )}&background=3b82f6&color=fff`" class="w-10 h-10 rounded-xl shrink-0" :alt="user.full_name" />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-white truncate">{{ user.full_name }}</p>
-              <p class="text-xs text-slate-500 truncate">{{ user.username }}</p>
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex items-center gap-3">
+            <img
+              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=3b82f6&color=fff`"
+              class="w-10 h-10 rounded-xl" />
+            <div>
+              <p class="font-medium text-white">{{ user.full_name }}</p>
+              <p class="text-xs text-slate-500">{{ user.username }}</p>
             </div>
           </div>
           <span v-if="user.roles && user.roles.length"
-            class="badge badge-info text-[10px] shrink-0 whitespace-nowrap">{{
-              ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}</span>
+            class="text-xs px-2 py-1 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20">
+            {{ ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}
+          </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-700/30 pt-3">
-          <div class="min-w-0">
-            <p class="text-slate-500 text-xs mb-1">Cabang</p>
-            <p class="text-slate-300 truncate text-xs">{{ user.branch ? user.branch.name : '-' }}</p>
-            <span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-1 inline-block">{{
-              user.timezone || "WIB" }}</span>
+        <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-700/50 pt-3">
+          <div>
+            <p class="text-slate-500 text-xs mb-1">Penempatan</p>
+            <p class="text-slate-300">{{ getPlacementName(user) }}</p>
           </div>
-          <div class="text-right min-w-0">
-            <p class="text-slate-500 text-xs mb-1">Terakhir Dilihat</p>
-            <p class="text-slate-300 font-mono text-xs truncate">
-              {{ formatLastSeen(user.last_seen, user.timezone) }}
-            </p>
+          <div class="text-right">
+            <p class="text-slate-500 text-xs mb-1">Status</p>
+            <div class="inline-flex items-center gap-1.5">
+              <div :class="`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-500'}`"></div>
+              <span :class="user.is_active ? 'text-emerald-400' : 'text-red-400'">{{ user.is_active ? 'Aktif' :
+                'Nonaktif' }}</span>
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-between border-t border-slate-700/50 pt-3">
-          <!-- Status Toggle -->
-          <div v-if="activeTab !== 'deleted'" class="flex items-center gap-2">
-            <button @click="toggleStatus(user)"
-              class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50 shrink-0"
-              :class="user.is_active ? 'bg-emerald-600' : 'bg-slate-700'
-                ">
-              <span class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform" :class="user.is_active ? 'translate-x-5' : 'translate-x-0'
-                "></span>
-            </button>
-            <span class="text-xs font-medium" :class="user.is_active ? 'text-emerald-400' : 'text-slate-400'
-              ">
-              {{ user.is_active ? "Aktif" : "Nonaktif" }}
-            </span>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex items-center gap-1">
-            <button @click="openEditModal(user)" class="p-2 hover:bg-slate-700 rounded-lg transition-colors">
-              <Edit :size="16" class="text-blue-400" />
-            </button>
-            <button @click="permanentDeleteUser(user.id)" class="p-2 hover:bg-red-500/20 rounded-lg transition-colors">
-              <Trash2 :size="16" class="text-red-400" />
-            </button>
-          </div>
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/50">
+          <button @click="openEditModal(user)"
+            class="btn-sm btn-outline text-blue-400 border-slate-700 hover:bg-slate-800">
+            <Edit :size="14" class="mr-1" /> Edit
+          </button>
+          <button @click="permanentDeleteUser(user.id)"
+            class="btn-sm btn-outline text-red-400 border-slate-700 hover:bg-slate-800">
+            <Trash2 :size="14" class="mr-1" /> Hapus
+          </button>
         </div>
       </div>
     </div>
@@ -617,98 +483,100 @@ async function permanentDeleteUser(id) {
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeModal"></div>
 
-        <div class="relative bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl">
+        <div
+          class="relative bg-surface-800 rounded-2xl border border-surface-700 w-full max-w-lg p-6 shadow-2xl animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
           <button @click="closeModal"
             class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors">
             <X :size="20" />
           </button>
 
-          <h3 class="text-xl font-bold text-white mb-6">
+          <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <UserPlus v-if="!editingUser" class="text-primary-500" :size="24" />
+            <Edit v-else class="text-blue-500" :size="24" />
             {{ editingUser ? "Edit User" : "Tambah User Baru" }}
           </h3>
 
           <form @submit.prevent="saveUser" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Nama Lengkap</label>
-              <input v-model="form.full_name" type="text" class="input" placeholder="John Doe" required />
+              <label class="label">Nama Lengkap</label>
+              <input v-model="form.full_name" type="text" class="input" placeholder="Nama Lengkap..." required />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Kode ID (Optional)</label>
-                <input v-model="form.code_id" type="text" class="input" placeholder="EMP-001" />
+                <label class="label">Kode ID (Opsional)</label>
+                <input v-model="form.code_id" class="input font-mono" placeholder="EMP-001" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Username</label>
-                <input v-model="form.username" type="text" class="input" placeholder="johndoe" required />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Email (Optional)</label>
-                <input v-model="form.email" type="email" class="input" placeholder="john@example.com" />
+                <label class="label">Username</label>
+                <input v-model="form.username" class="input" placeholder="username" required />
               </div>
             </div>
 
+            <!-- Password -->
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Password
-                {{ editingUser ? "(Kosongkan jika tidak diubah)" : "" }}</label>
+              <label class="label">Password {{ editingUser ? '(Optional)' : '' }}</label>
               <div class="relative">
-                <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="input pr-12"
+                <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="input pr-10"
                   placeholder="••••••••" :required="!editingUser" />
                 <button type="button" @click="showPassword = !showPassword"
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
+                  class="absolute right-3 top-2.5 text-slate-500 hover:text-white">
                   <Eye v-if="!showPassword" :size="18" />
                   <EyeOff v-else :size="18" />
                 </button>
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
+                <label class="label">Role</label>
                 <select v-model="form.role" class="input" required>
                   <option value="">Pilih Role</option>
-                  <option v-for="role in rolesList" :key="role.value" :value="role.value">
-                    {{ role.label }}
-                  </option>
+                  <option v-for="role in rolesList" :key="role.value" :value="role.value">{{ role.label }}</option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
-                <select v-model="form.timezone" class="input" required>
-                  <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
-                    {{ tz.label }}
-                  </option>
+                <label class="label">Zona Waktu</label>
+                <select v-model="form.timezone" class="input">
+                  <option v-for="tz in timezones" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
                 </select>
               </div>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">
-                {{ ['toko_online', 'leader_shopee'].includes(form.role) ? 'Pilih Toko Online' : 'Pilih Cabang Fisik' }}
-              </label>
-              <select v-model="form.branch_id" class="input">
-                <option value="">Pilih...</option>
-                <option v-for="branch in availableBranches" :key="branch.id" :value="branch.id">
-                  {{ branch.name }}
-                </option>
+            <!-- Dynamic Placement Selection -->
+            <div v-if="form.role" class="animate-in fade-in slide-in-from-top-2">
+              <label class="label">{{ placementLabel }}</label>
+
+              <!-- Warehouse Select -->
+              <select v-if="placementType === 'warehouse'" v-model="form.warehouse_id" class="input">
+                <option value="">Pilih Gudang...</option>
+                <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }} ({{ w.code }})</option>
+              </select>
+
+              <!-- Distributor Select -->
+              <select v-else-if="placementType === 'distributor'" v-model="form.distributor_id" class="input">
+                <option value="">Pilih Distributor...</option>
+                <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
+              </select>
+
+              <!-- Online Shop Select -->
+              <select v-else-if="placementType === 'online_shop'" v-model="form.online_shop_id" class="input">
+                <option value="">Pilih Toko Online...</option>
+                <option v-for="s in onlineShops" :key="s.id" :value="s.id">{{ s.name }} ({{ s.platform }})</option>
+              </select>
+
+              <!-- Branch Select (Default) -->
+              <select v-else v-model="form.branch_id" class="input">
+                <option value="">Pilih Cabang Fisik...</option>
+                <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
               </select>
             </div>
 
-            <!-- Address -->
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
-              <textarea v-model="form.address" class="input min-h-[80px]"
-                placeholder="Alamat lengkap user..."></textarea>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-6">
-              <button type="button" @click="closeModal"
-                class="px-4 py-2 text-slate-400 hover:text-white transition-colors" :disabled="isSaving">
-                Batal
-              </button>
-              <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
-                <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
-                <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-700/50">
+              <button type="button" @click="closeModal" class="btn text-slate-400 hover:text-white">Batal</button>
+              <button type="submit" class="btn btn-primary" :disabled="isSaving">
+                <Loader2 v-if="isSaving" class="animate-spin mr-2" :size="18" />
+                {{ isSaving ? 'Menyimpan...' : 'Simpan User' }}
               </button>
             </div>
           </form>
@@ -719,6 +587,16 @@ async function permanentDeleteUser(id) {
 </template>
 
 <style scoped>
+@reference "../../style.css";
+
+.label {
+  @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide;
+}
+
+.input {
+  @apply w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600;
+}
+
 .animate-in {
   animation: fadeIn 0.3s ease-out;
 }
@@ -726,7 +604,7 @@ async function permanentDeleteUser(id) {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(5px);
   }
 
   to {

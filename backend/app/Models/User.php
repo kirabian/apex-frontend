@@ -30,6 +30,9 @@ class User extends Authenticatable
         'birth_date',
         'photo',
         'branch_id',
+        'warehouse_id',
+        'online_shop_id',
+        'distributor_id',
         'is_active',
         'theme_color',
         'last_seen',
@@ -39,6 +42,21 @@ class User extends Authenticatable
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function onlineShop()
+    {
+        return $this->belongsTo(OnlineShop::class);
+    }
+
+    public function distributor()
+    {
+        return $this->belongsTo(Distributor::class);
     }
 
     /**
