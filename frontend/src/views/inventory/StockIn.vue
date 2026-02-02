@@ -143,6 +143,14 @@ const canSubmit = computed(() => {
     return nonHpForm.value.quantity > 0;
 });
 
+function nextStep() {
+    if (canNext.value) currentStep.value++;
+}
+
+function prevStep() {
+    if (currentStep.value > 1) currentStep.value--;
+}
+
 async function fetchInitialData() {
     isLoading.value = true;
     try {
@@ -260,7 +268,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
