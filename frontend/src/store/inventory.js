@@ -88,10 +88,13 @@ export const useInventoryStore = defineStore('inventory', () => {
     async function fetchProducts() {
         isLoading.value = true
         try {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 500))
-            products.value = mockProducts
-            categories.value = mockCategories
+            const response = await import('../api/axios').then(m => m.inventory.list())
+            // Backend returns pagination object { current_page, data: [...], ... }
+            // We need the data array.
+            products.value = response.data.data ? response.data.data : response.data
+
+            // Categories logic (optional or separate API)
+            // categories.value = ...
         } catch (error) {
             console.error('Failed to fetch products:', error)
         } finally {

@@ -13,6 +13,36 @@ use Illuminate\Support\Facades\Auth;
 
 class InventoryController extends Controller
 {
+    // List Inventory
+    public function index(Request $request)
+    {
+        $query = Product::with([
+            'productDetails' => function ($q) {
+                $q->where('status', 'available');
+            },
+            'inventories'
+        ]);
+
+        if ($request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%')
+                ->orWhere('sku', 'like', '%' . $request->search . '%');
+        }
+
+        $products = $query->latest()->paginate(20);
+
+        // Append calculated stock
+        $products->getCollection()->transform(function ($product) {
+            if ($product->type === 'hp') {
+                $product->stock = $product->productDetails->count();
+            } else {
+                $product->stock = $product->inventories->sum('quantity');
+            }
+            return $product;
+        });
+
+        return response()->json($products);
+    }
+
     // Stock In (Input Barang)
     public function stockIn(Request $request)
     {

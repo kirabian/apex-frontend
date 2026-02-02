@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('product-types', ProductTypeController::class);
 
     // Inventory
+    Route::get('/inventory', [InventoryController::class, 'index']);
     Route::post('/inventory/stock-in', [InventoryController::class, 'stockIn']);
     Route::get('/inventory/products-lookup', [InventoryController::class, 'getProducts']);
 });
