@@ -178,7 +178,7 @@ export const ROLE_PERMISSIONS = {
 
 // Sidebar menu configuration per role
 export const ROLE_MENUS = {
-    [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'warehouses', 'distributors', 'channels', 'categories'],
+    [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'warehouses', 'distributors', 'channels', 'categories', 'online_shops', 'brands', 'types', 'branches'],
     [ROLES.ANALIST]: ['dashboard', 'reports'],
     [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory'],
     [ROLES.AUDIT]: ['dashboard', 'audit', 'transactions'],
