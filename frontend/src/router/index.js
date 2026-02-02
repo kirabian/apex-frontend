@@ -141,6 +141,16 @@ const routes = [
                 }
             },
             {
+                path: 'online-shops',
+                name: 'OnlineShops',
+                component: () => import('../views/online-shop/Index.vue'),
+                meta: {
+                    title: 'Toko Online',
+                    menu: 'online_shops',
+                    permissions: ['master.view']
+                }
+            },
+            {
                 path: 'categories',
                 name: 'Categories',
                 component: () => import('../views/master/Categories.vue'),

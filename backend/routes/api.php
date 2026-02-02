@@ -16,9 +16,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('users', UserController::class);
 
     // Tambahkan ini di api.php
-    Route::get('/branches', function () {
-        return \App\Models\Branch::all();
-    });
+    // Branch Management (includes Online Shop)
+    Route::apiResource('branches', \App\Http\Controllers\BranchController::class);
 
     // Online Shop
     Route::prefix('online-shop')->group(function () {

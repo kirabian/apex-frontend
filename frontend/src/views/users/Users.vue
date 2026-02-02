@@ -81,6 +81,7 @@ function resetForm() {
   form.value = {
     full_name: "",
     username: "",
+    code_id: "", // Add code_id
     email: "", // Optional or remove if not used in backend logic explicitly
     role: "",
     branch_id: "",
@@ -88,6 +89,7 @@ function resetForm() {
     address: "",
     password: "",
     is_active: true,
+    created_at: null, // Add to prevent reactive issues if needed
   };
   showPassword.value = false;
 }
@@ -129,9 +131,9 @@ function formatLastSeen(dateString, timezone) {
 
   // Simplified timezone label
   const tzMap = {
-      'Asia/Jakarta': 'WIB',
-      'Asia/Makassar': 'WITA',
-      'Asia/Jayapura': 'WIT'
+    'Asia/Jakarta': 'WIB',
+    'Asia/Makassar': 'WITA',
+    'Asia/Jayapura': 'WIT'
   }
   let tzLabel = tzMap[timezone] || timezone || "WIB";
 
@@ -162,7 +164,7 @@ const filteredUsers = computed(() => {
   // Promoting "Nonaktif" to "Active Tab" as existing UI suggests.
 
   if (activeTab.value === 'deleted') {
-      return []; // Placeholder for now untill soft delete is implemented
+    return []; // Placeholder for now untill soft delete is implemented
   }
 
   // Search
@@ -178,10 +180,10 @@ const filteredUsers = computed(() => {
   // Filter Role
   if (selectedRole.value) {
     result = result.filter((u) => {
-        if (u.roles && u.roles.length > 0) {
-            return u.roles.some(r => r.name === selectedRole.value);
-        }
-        return false;
+      if (u.roles && u.roles.length > 0) {
+        return u.roles.some(r => r.name === selectedRole.value);
+      }
+      return false;
     });
   }
 
@@ -230,21 +232,22 @@ function openAddModal() {
 
 function openEditModal(user) {
   editingUser.value = user;
-  
+
   // Populate form
   form.value = {
     full_name: user.full_name,
     username: user.username,
+    code_id: user.code_id || "", // Populate code_id
     email: user.email,
     // Handle roles array from Spatie
-    role: user.roles && user.roles.length > 0 ? user.roles[0].name : '', 
+    role: user.roles && user.roles.length > 0 ? user.roles[0].name : '',
     branch_id: user.branch_id,
     timezone: user.timezone || "WIB",
     address: user.address,
     is_active: !!user.is_active,
     password: "", // Leave empty
   };
-  
+
   showModal.value = true;
 }
 
@@ -257,49 +260,49 @@ function closeModal() {
 async function saveUser() {
   isSaving.value = true;
   try {
-      if (editingUser.value) {
-          // Update
-          const payload = { ...form.value };
-          if (!payload.password) delete payload.password; // Don't send empty password
-          
-          const res = await usersApi.update(editingUser.value.id, payload);
-          
-          // Update local list
-          const index = users.value.findIndex(u => u.id === editingUser.value.id);
-          if (index !== -1) {
-              users.value[index] = res.data.data;
-          }
-          toast.success("User berhasil diperbarui!");
-      } else {
-          // Create
-          const res = await usersApi.create(form.value);
-          users.value.unshift(res.data.data);
-          toast.success("User baru berhasil ditambahkan!");
+    if (editingUser.value) {
+      // Update
+      const payload = { ...form.value };
+      if (!payload.password) delete payload.password; // Don't send empty password
+
+      const res = await usersApi.update(editingUser.value.id, payload);
+
+      // Update local list
+      const index = users.value.findIndex(u => u.id === editingUser.value.id);
+      if (index !== -1) {
+        users.value[index] = res.data.data;
       }
-      closeModal();
+      toast.success("User berhasil diperbarui!");
+    } else {
+      // Create
+      const res = await usersApi.create(form.value);
+      users.value.unshift(res.data.data);
+      toast.success("User baru berhasil ditambahkan!");
+    }
+    closeModal();
   } catch (error) {
-      console.error("Save error", error);
-      const msg = error.response?.data?.message || "Gagal menyimpan user.";
-      toast.error(msg);
+    console.error("Save error", error);
+    const msg = error.response?.data?.message || "Gagal menyimpan user.";
+    toast.error(msg);
   } finally {
-      isSaving.value = false;
+    isSaving.value = false;
   }
 }
 
 // Toggle Status (Active/Inactive)
 async function toggleStatus(user) {
   try {
-      const newStatus = !user.is_active;
-      // Optimistic update
-      user.is_active = newStatus;
-      
-      await usersApi.update(user.id, { is_active: newStatus });
-      
-      toast.info(newStatus ? "User diaktifkan." : "User dinonaktifkan.");
+    const newStatus = !user.is_active;
+    // Optimistic update
+    user.is_active = newStatus;
+
+    await usersApi.update(user.id, { is_active: newStatus });
+
+    toast.info(newStatus ? "User diaktifkan." : "User dinonaktifkan.");
   } catch (error) {
-      // Revert on failure
-      user.is_active = !user.is_active;
-      toast.error("Gagal mengubah status user.");
+    // Revert on failure
+    user.is_active = !user.is_active;
+    toast.error("Gagal mengubah status user.");
   }
 }
 
@@ -311,31 +314,31 @@ function softDeleteUser(id) {
   // UI has two buttons: Trash (Soft Delete) and X (Permanent).
   // I will map Trash -> Deactivate (is_active=false)
   // X -> Persistent Delete
-  
+
   const user = users.value.find(u => u.id === id);
   if (user) {
-      toggleStatus(user);
+    toggleStatus(user);
   }
 }
 
 // Restore User
 function restoreUser(id) {
-    const user = users.value.find(u => u.id === id);
-    if (user && !user.is_active) {
-        toggleStatus(user);
-    }
+  const user = users.value.find(u => u.id === id);
+  if (user && !user.is_active) {
+    toggleStatus(user);
+  }
 }
 
 // Permanent Delete
 async function permanentDeleteUser(id) {
   if (!confirm("HAPUS PERMANEN? Data tidak dapat dikembalikan!")) return;
-  
+
   try {
-      await usersApi.delete(id);
-      users.value = users.value.filter(u => u.id !== id);
-      toast.success("User berhasil dihapus permanen.");
+    await usersApi.delete(id);
+    users.value = users.value.filter(u => u.id !== id);
+    toast.success("User berhasil dihapus permanen.");
   } catch (error) {
-      toast.error("Gagal menghapus user.");
+    toast.error("Gagal menghapus user.");
   }
 }
 </script>
@@ -358,20 +361,13 @@ async function permanentDeleteUser(id) {
 
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div
-        v-for="(stat, index) in stats"
-        :key="index"
-        class="card flex items-center gap-4"
-      >
-        <div
-          class="w-12 h-12 rounded-xl flex items-center justify-center"
-          :class="{
-            'bg-blue-600': stat.color === 'blue',
-            'bg-emerald-600': stat.color === 'emerald',
-            'bg-violet-600': stat.color === 'violet',
-            'bg-amber-600': stat.color === 'amber',
-          }"
-        >
+      <div v-for="(stat, index) in stats" :key="index" class="card flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
+          'bg-blue-600': stat.color === 'blue',
+          'bg-emerald-600': stat.color === 'emerald',
+          'bg-violet-600': stat.color === 'violet',
+          'bg-amber-600': stat.color === 'amber',
+        }">
           <component :is="stat.icon" :size="20" class="text-white" />
         </div>
         <div>
@@ -384,30 +380,22 @@ async function permanentDeleteUser(id) {
     <!-- Filters & Tabs -->
     <div class="card space-y-4">
       <!-- Tabs -->
-      <div
-        class="flex border-b border-slate-700/50 overflow-x-auto hide-scrollbar"
-      >
-        <button
-          @click="activeTab = 'active'"
+      <div class="flex border-b border-slate-700/50 overflow-x-auto hide-scrollbar">
+        <button @click="activeTab = 'active'"
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap"
-          :class="
-            activeTab === 'active'
-              ? 'border-blue-500 text-blue-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          "
-        >
+          :class="activeTab === 'active'
+            ? 'border-blue-500 text-blue-400'
+            : 'border-transparent text-slate-400 hover:text-white'
+            ">
           <Users :size="16" />
           User Aktif & Inaktif
         </button>
-        <button
-          @click="activeTab = 'deleted'"
+        <button @click="activeTab = 'deleted'"
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap"
-          :class="
-            activeTab === 'deleted'
-              ? 'border-red-500 text-red-400'
-              : 'border-transparent text-slate-400 hover:text-white'
-          "
-        >
+          :class="activeTab === 'deleted'
+            ? 'border-red-500 text-red-400'
+            : 'border-transparent text-slate-400 hover:text-white'
+            ">
           <Trash2 :size="16" />
           Terhapus (Soft Delete)
         </button>
@@ -415,35 +403,19 @@ async function permanentDeleteUser(id) {
 
       <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
         <div class="relative w-full md:flex-1">
-          <Search
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            :size="18"
-          />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Cari nama atau email..."
-            class="input pl-10 w-full"
-          />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" :size="18" />
+          <input v-model="searchQuery" type="text" placeholder="Cari nama atau email..." class="input pl-10 w-full" />
         </div>
         <div class="flex gap-4 w-full md:w-auto">
           <select v-model="selectedRole" class="input w-full md:w-48">
             <option value="">Semua Role</option>
-            <option
-              v-for="role in rolesList"
-              :key="role.value"
-              :value="role.value"
-            >
+            <option v-for="role in rolesList" :key="role.value" :value="role.value">
               {{ role.label }}
             </option>
           </select>
           <select v-model="selectedBranch" class="input w-full md:w-48">
             <option value="">Semua Cabang</option>
-            <option
-              v-for="branch in branches"
-              :key="branch.id"
-              :value="branch.id"
-            >
+            <option v-for="branch in branches" :key="branch.id" :value="branch.id">
               {{ branch.name }}
             </option>
           </select>
@@ -471,20 +443,16 @@ async function permanentDeleteUser(id) {
           </thead>
           <tbody>
             <tr v-if="filteredUsers.length === 0">
-                <td colspan="6" class="text-center py-8 text-slate-500">
-                    Tidak ada user ditemukan
-                </td>
+              <td colspan="6" class="text-center py-8 text-slate-500">
+                Tidak ada user ditemukan
+              </td>
             </tr>
             <tr v-for="user in filteredUsers" :key="user.id">
               <td>
                 <div class="flex items-center gap-3">
-                  <img
-                    :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      user.full_name || user.username
-                    )}&background=3b82f6&color=fff`"
-                    class="w-10 h-10 rounded-xl"
-                    :alt="user.full_name"
-                  />
+                  <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    user.full_name || user.username
+                  )}&background=3b82f6&color=fff`" class="w-10 h-10 rounded-xl" :alt="user.full_name" />
                   <div>
                     <p class="font-medium text-white">{{ user.full_name }}</p>
                     <p class="text-xs text-slate-500">{{ user.username }}</p>
@@ -495,87 +463,60 @@ async function permanentDeleteUser(id) {
                 <span v-for="role in user.roles" :key="role.id" class="badge badge-info mr-1">{{
                   ROLE_LABELS[role.name] || role.name
                 }}</span>
-                <span v-if="!user.roles || user.roles.length === 0" class="badge bg-slate-700 text-slate-400">No Role</span>
+                <span v-if="!user.roles || user.roles.length === 0" class="badge bg-slate-700 text-slate-400">No
+                  Role</span>
               </td>
               <td>
-                <p class="text-slate-300">{{ user.branch ? user.branch.name : (user.branch_id === null ? 'Semua Cabang' : '-') }}</p>
-                <span
-                  class="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded"
-                  >{{ user.timezone || "WIB" }}</span
-                >
+                <p class="text-slate-300">{{ user.branch ? user.branch.name : (user.branch_id === null ? 'Semua Cabang'
+                  : '-') }}</p>
+                <span class="text-[10px] text-slate-500 font-mono bg-slate-800 px-1 rounded">{{ user.timezone || "WIB"
+                }}</span>
               </td>
               <td class="text-slate-400 text-sm font-mono">
                 {{ formatLastSeen(user.last_seen || user.lastSeen, user.timezone) }}
               </td>
               <td>
-                <div
-                  v-if="activeTab !== 'deleted'"
-                  class="flex items-center gap-2"
-                >
-                  <button
-                    @click="toggleStatus(user)"
+                <div v-if="activeTab !== 'deleted'" class="flex items-center gap-2">
+                  <button @click="toggleStatus(user)"
                     class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    :class="
-                      user.is_active
-                        ? 'bg-emerald-600'
-                        : 'bg-slate-700'
-                    "
-                    title="Klik untuk mengubah status"
-                  >
-                    <span
-                      class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform"
-                      :class="
-                        user.is_active
-                          ? 'translate-x-5'
-                          : 'translate-x-0'
-                      "
-                    ></span>
+                    :class="user.is_active
+                      ? 'bg-emerald-600'
+                      : 'bg-slate-700'
+                      " title="Klik untuk mengubah status">
+                    <span class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform" :class="user.is_active
+                      ? 'translate-x-5'
+                      : 'translate-x-0'
+                      "></span>
                   </button>
-                  <span
-                    class="text-xs font-medium"
-                    :class="
-                      user.is_active
-                        ? 'text-emerald-400'
-                        : 'text-slate-400'
-                    "
-                  >
+                  <span class="text-xs font-medium" :class="user.is_active
+                    ? 'text-emerald-400'
+                    : 'text-slate-400'
+                    ">
                     {{ user.is_active ? "Aktif" : "Nonaktif" }}
                   </span>
                 </div>
-                <span v-else class="badge bg-slate-700 text-slate-400"
-                  >Terhapus</span
-                >
+                <span v-else class="badge bg-slate-700 text-slate-400">Terhapus</span>
               </td>
               <td>
                 <div class="flex items-center justify-center gap-2">
                   <template v-if="activeTab !== 'deleted'">
-                    <button
-                      @click="openEditModal(user)"
-                      class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                      title="Edit User"
-                    >
+                    <button @click="openEditModal(user)" class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                      title="Edit User">
                       <Edit :size="16" class="text-blue-400" />
                     </button>
                     <!-- Soft delete maps to non-active for now, or use permanent delete if you want -->
                     <!-- Let's keep Trash2 as "Deactivate" visual helper if active, or actual delete if integrated -->
-                    <button
-                      v-if="user.is_active"
-                      @click="softDeleteUser(user.id)"
-                      class="p-2 hover:bg-yellow-500/20 rounded-lg transition-colors"
-                      title="Nonaktifkan"
-                    >
+                    <button v-if="user.is_active" @click="softDeleteUser(user.id)"
+                      class="p-2 hover:bg-yellow-500/20 rounded-lg transition-colors" title="Nonaktifkan">
                       <Shield :size="16" class="text-yellow-400" />
                     </button>
-                    <button
-                      @click="permanentDeleteUser(user.id)"
-                      class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                      title="Hapus Permanen"
-                    >
+                    <button @click="permanentDeleteUser(user.id)"
+                      class="p-2 hover:bg-red-500/20 rounded-lg transition-colors" title="Hapus Permanen">
                       <Trash2 :size="16" class="text-red-400" />
                     </button>
                   </template>
                   <template v-else>
-                     <!-- Restore Logic if soft deletes implemented -->
+                    <!-- Restore Logic if soft deletes implemented -->
                   </template>
                 </div>
               </td>
@@ -588,40 +529,30 @@ async function permanentDeleteUser(id) {
     <!-- Mobile Card View -->
     <div class="md:hidden space-y-4 pb-20">
       <div v-if="isLoading" class="p-8 flex justify-center">
-          <Loader2 class="animate-spin text-blue-500" :size="32" />
+        <Loader2 class="animate-spin text-blue-500" :size="32" />
       </div>
       <div v-for="user in filteredUsers" :key="user.id" class="card space-y-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <img
-              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                user.full_name
-              )}&background=3b82f6&color=fff`"
-              class="w-10 h-10 rounded-xl shrink-0"
-              :alt="user.full_name"
-            />
+            <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(
+              user.full_name
+            )}&background=3b82f6&color=fff`" class="w-10 h-10 rounded-xl shrink-0" :alt="user.full_name" />
             <div class="min-w-0 flex-1">
               <p class="font-medium text-white truncate">{{ user.full_name }}</p>
               <p class="text-xs text-slate-500 truncate">{{ user.username }}</p>
             </div>
           </div>
-          <span
-            v-if="user.roles && user.roles.length"
-            class="badge badge-info text-[10px] shrink-0 whitespace-nowrap"
-            >{{ ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}</span
-          >
+          <span v-if="user.roles && user.roles.length"
+            class="badge badge-info text-[10px] shrink-0 whitespace-nowrap">{{
+              ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}</span>
         </div>
 
-        <div
-          class="grid grid-cols-2 gap-3 text-sm border-t border-slate-700/30 pt-3"
-        >
+        <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-700/30 pt-3">
           <div class="min-w-0">
             <p class="text-slate-500 text-xs mb-1">Cabang</p>
             <p class="text-slate-300 truncate text-xs">{{ user.branch ? user.branch.name : '-' }}</p>
-            <span
-              class="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-1 inline-block"
-              >{{ user.timezone || "WIB" }}</span
-            >
+            <span class="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-1 inline-block">{{
+              user.timezone || "WIB" }}</span>
           </div>
           <div class="text-right min-w-0">
             <p class="text-slate-500 text-xs mb-1">Terakhir Dilihat</p>
@@ -631,49 +562,30 @@ async function permanentDeleteUser(id) {
           </div>
         </div>
 
-        <div
-          class="flex items-center justify-between border-t border-slate-700/50 pt-3"
-        >
+        <div class="flex items-center justify-between border-t border-slate-700/50 pt-3">
           <!-- Status Toggle -->
           <div v-if="activeTab !== 'deleted'" class="flex items-center gap-2">
-            <button
-              @click="toggleStatus(user)"
+            <button @click="toggleStatus(user)"
               class="w-10 h-5 rounded-full transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500/50 shrink-0"
-              :class="
-                user.is_active ? 'bg-emerald-600' : 'bg-slate-700'
-              "
-            >
-              <span
-                class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform"
-                :class="
-                  user.is_active ? 'translate-x-5' : 'translate-x-0'
-                "
-              ></span>
+              :class="user.is_active ? 'bg-emerald-600' : 'bg-slate-700'
+                ">
+              <span class="absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform" :class="user.is_active ? 'translate-x-5' : 'translate-x-0'
+                "></span>
             </button>
-            <span
-              class="text-xs font-medium"
-              :class="
-                user.is_active ? 'text-emerald-400' : 'text-slate-400'
-              "
-            >
+            <span class="text-xs font-medium" :class="user.is_active ? 'text-emerald-400' : 'text-slate-400'
+              ">
               {{ user.is_active ? "Aktif" : "Nonaktif" }}
             </span>
           </div>
-          
+
           <!-- Actions -->
           <div class="flex items-center gap-1">
-              <button
-                @click="openEditModal(user)"
-                class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                <Edit :size="16" class="text-blue-400" />
-              </button>
-              <button
-                @click="permanentDeleteUser(user.id)"
-                class="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-              >
-                <Trash2 :size="16" class="text-red-400" />
-              </button>
+            <button @click="openEditModal(user)" class="p-2 hover:bg-slate-700 rounded-lg transition-colors">
+              <Edit :size="16" class="text-blue-400" />
+            </button>
+            <button @click="permanentDeleteUser(user.id)" class="p-2 hover:bg-red-500/20 rounded-lg transition-colors">
+              <Trash2 :size="16" class="text-red-400" />
+            </button>
           </div>
         </div>
       </div>
@@ -681,22 +593,12 @@ async function permanentDeleteUser(id) {
 
     <!-- Add/Edit Modal -->
     <Teleport to="body">
-      <div
-        v-if="showModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      >
-        <div
-          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          @click="closeModal"
-        ></div>
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeModal"></div>
 
-        <div
-          class="relative bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl"
-        >
-          <button
-            @click="closeModal"
-            class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors"
-          >
+        <div class="relative bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl">
+          <button @click="closeModal"
+            class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors">
             <X :size="20" />
           </button>
 
@@ -706,62 +608,33 @@ async function permanentDeleteUser(id) {
 
           <form @submit.prevent="saveUser" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Nama Lengkap</label
-              >
-              <input
-                v-model="form.full_name"
-                type="text"
-                class="input"
-                placeholder="John Doe"
-                required
-              />
+              <label class="block text-sm font-medium text-slate-400 mb-2">Nama Lengkap</label>
+              <input v-model="form.full_name" type="text" class="input" placeholder="John Doe" required />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >Username</label
-                >
-                <input
-                  v-model="form.username"
-                  type="text"
-                  class="input"
-                  placeholder="johndoe"
-                  required
-                />
+                <label class="block text-sm font-medium text-slate-400 mb-2">Kode ID (Optional)</label>
+                <input v-model="form.code_id" type="text" class="input" placeholder="EMP-001" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >Email (Optional)</label
-                >
-                <input
-                  v-model="form.email"
-                  type="email"
-                  class="input"
-                  placeholder="john@example.com"
-                />
+                <label class="block text-sm font-medium text-slate-400 mb-2">Username</label>
+                <input v-model="form.username" type="text" class="input" placeholder="johndoe" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Email (Optional)</label>
+                <input v-model="form.email" type="email" class="input" placeholder="john@example.com" />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Password
-                {{ editingUser ? "(Kosongkan jika tidak diubah)" : "" }}</label
-              >
+              <label class="block text-sm font-medium text-slate-400 mb-2">Password
+                {{ editingUser ? "(Kosongkan jika tidak diubah)" : "" }}</label>
               <div class="relative">
-                <input
-                  v-model="form.password"
-                  :type="showPassword ? 'text' : 'password'"
-                  class="input pr-12"
-                  placeholder="••••••••"
-                  :required="!editingUser"
-                />
-                <button
-                  type="button"
-                  @click="showPassword = !showPassword"
-                  class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
-                >
+                <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="input pr-12"
+                  placeholder="••••••••" :required="!editingUser" />
+                <button type="button" @click="showPassword = !showPassword"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
                   <Eye v-if="!showPassword" :size="18" />
                   <EyeOff v-else :size="18" />
                 </button>
@@ -770,30 +643,18 @@ async function permanentDeleteUser(id) {
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >Role</label
-                >
+                <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
                 <select v-model="form.role" class="input" required>
                   <option value="">Pilih Role</option>
-                  <option
-                    v-for="role in rolesList"
-                    :key="role.value"
-                    :value="role.value"
-                  >
+                  <option v-for="role in rolesList" :key="role.value" :value="role.value">
                     {{ role.label }}
                   </option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2"
-                  >Zona Waktu</label
-                >
+                <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
                 <select v-model="form.timezone" class="input" required>
-                  <option
-                    v-for="tz in timezones"
-                    :key="tz.value"
-                    :value="tz.value"
-                  >
+                  <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
                     {{ tz.label }}
                   </option>
                 </select>
@@ -801,36 +662,25 @@ async function permanentDeleteUser(id) {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Cabang Utama</label
-              >
+              <label class="block text-sm font-medium text-slate-400 mb-2">Cabang Utama</label>
               <select v-model="form.branch_id" class="input">
                 <option value="">Pilih Cabang (Optional)</option>
-                <option
-                  v-for="branch in branches"
-                  :key="branch.id"
-                  :value="branch.id"
-                >
+                <option v-for="branch in branches" :key="branch.id" :value="branch.id">
                   {{ branch.name }}
                 </option>
               </select>
             </div>
-            
+
             <!-- Address -->
-             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2"
-                >Alamat (Optional)</label
-              >
-              <textarea v-model="form.address" class="input min-h-[80px]" placeholder="Alamat lengkap user..."></textarea>
+            <div>
+              <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
+              <textarea v-model="form.address" class="input min-h-[80px]"
+                placeholder="Alamat lengkap user..."></textarea>
             </div>
 
             <div class="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                @click="closeModal"
-                class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-                :disabled="isSaving"
-              >
+              <button type="button" @click="closeModal"
+                class="px-4 py-2 text-slate-400 hover:text-white transition-colors" :disabled="isSaving">
                 Batal
               </button>
               <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
@@ -849,11 +699,13 @@ async function permanentDeleteUser(id) {
 .animate-in {
   animation: fadeIn 0.3s ease-out;
 }
+
 @keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

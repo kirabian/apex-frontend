@@ -44,6 +44,7 @@ class UserController extends Controller
                 'name' => $request->full_name,
                 'full_name' => $request->full_name,
                 'username' => $request->username,
+                'code_id' => $request->code_id, // Add code_id
                 // TAMBAHKAN INI: Bikin email dummy agar database tidak error
                 'email' => $request->username . '@apexpos.com',
                 'password' => $request->password,
@@ -92,6 +93,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'full_name' => 'sometimes|string|max:255',
             'username' => ['sometimes', 'string', Rule::unique('users')->ignore($user->id)],
+            'code_id' => ['nullable', 'string', Rule::unique('users')->ignore($user->id)], // Validate code_id
             'password' => 'nullable|string|min:6',
             'role' => 'sometimes|string|exists:roles,name',
             'branch_id' => 'nullable|exists:branches,id',
