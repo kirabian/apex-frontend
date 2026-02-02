@@ -23,10 +23,11 @@ return [
         'http://localhost:5173',
         'https://stokps.com',
         'https://www.stokps.com',
-        'https://api.stokps.com'
+        'https://api.stokps.com',
+        env('FRONTEND_URL', 'https://stokps.com'),
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['*.stokps.com'],
 
     'allowed_headers' => ['*'],
 
