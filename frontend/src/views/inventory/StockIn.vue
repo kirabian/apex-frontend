@@ -94,38 +94,50 @@ const availableSpecs = computed(() => {
     };
 });
 
-// FIX LOGIKA: Pencocokan Super Akurat
-const autoSelectedProduct = computed(() => {
-    if (!selectedBrand.value || !selectedTypeName.value) return null;
+// FIX LOGIKA: Pencocokan dengan API Search
+// Ganti computed autoSelectedProduct dengan Watcher + API Call
+// karena limit 20 di awal tidak cukup.
+watch([selectedBrand, selectedTypeName], async () => {
+    if (!selectedBrand.value || !selectedTypeName.value) {
+        selectedProduct.value = null;
+        return;
+    }
 
-    // Get Brand Name from ID
-    const brandObj = brands.value.find(b => b.id === selectedBrand.value);
-    const brandName = brandObj ? brandObj.name : "";
+    try {
+        const brandObj = brands.value.find(b => b.id === selectedBrand.value);
+        const brandName = brandObj ? brandObj.name : "";
 
-    // Filter produk berdasarkan Brand Name dan Nama Tipe
-    const baseMatches = products.value.filter(p => {
-        // Match brand name (insensitive)
-        const dbBrand = (p.brand || "").toLowerCase().trim();
-        const selBrand = brandName.toLowerCase().trim();
-        const matchBrand = dbBrand === selBrand;
+        // Cari ke API dengan filter nama spesifik
+        // Note: Backend sudah support ?name=...
+        const response = await inventoryApi.getProductsLookup({
+            type: 'hp',
+            name: selectedTypeName.value
+        });
 
-        // Match Name
-        const matchName = p.name.toLowerCase().trim().includes(selectedTypeName.value.toLowerCase().trim());
+        const matches = response.data;
 
-        return matchBrand && matchName;
-    });
+        // Cari match yang pas Brand nya juga
+        const exactMatch = matches.find(p => {
+            const dbBrand = (p.brand || "").toLowerCase().trim();
+            const selBrand = brandName.toLowerCase().trim();
+            return dbBrand === selBrand &&
+                p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim();
+        });
 
-    if (baseMatches.length === 0) return null;
+        if (exactMatch) {
+            selectedProduct.value = exactMatch.id;
+        } else if (matches.length > 0) {
+            // Fallback: ambil match pertama jika ada (misal brand beda dikit atau null)
+            selectedProduct.value = matches[0].id;
+        } else {
+            selectedProduct.value = null;
+        }
 
-    // Cari yang RAM dan ROM nya cocok (setelah dibersihkan dari huruf)
-    // Note: Product table does NOT have ram/storage columns, so this detail match will likely fail 
-    // unless p.ram/p.storage acts as a fallback or if we rely on baseMatches[0].
-
-    // Jika tidak ketemu yang spesifik tapi Merk & Tipe sudah ada, ambil yang pertama sebagai fallback
-    return baseMatches[0].id;
+    } catch (e) {
+        console.error("Gagal lookup product", e);
+        selectedProduct.value = null;
+    }
 });
-
-watch(autoSelectedProduct, (newId) => { selectedProduct.value = newId; });
 watch(selectedBrand, () => { selectedTypeName.value = ""; selectedRam.value = ""; selectedStorage.value = ""; });
 watch(selectedTypeName, () => { selectedRam.value = ""; selectedStorage.value = ""; });
 
@@ -270,7 +282,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>

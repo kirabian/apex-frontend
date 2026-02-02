@@ -127,6 +127,9 @@ class InventoryController extends Controller
         if ($request->type) {
             $query->where('type', $request->type);
         }
+        if ($request->name) {
+            $query->where('name', 'like', '%' . $request->name . '%');
+        }
         return response()->json($query->select('id', 'name', 'type', 'sku', 'brand')->limit(20)->get());
     }
 }
