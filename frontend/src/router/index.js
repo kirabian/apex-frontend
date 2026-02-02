@@ -160,6 +160,16 @@ const routes = [
                     permissions: ['master.view']
                 }
             },
+            {
+                path: 'branches',
+                name: 'Branches',
+                component: () => import('../views/branches/Index.vue'),
+                meta: {
+                    title: 'Cabang Fisik',
+                    menu: 'branches',
+                    permissions: ['branches.view']
+                }
+            },
 
             // Online Shop Routes
             {

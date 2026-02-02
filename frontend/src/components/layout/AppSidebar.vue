@@ -45,6 +45,9 @@ const menuItems = [
     { id: "online_scan", path: "/online-shop/scan", label: "Scan Pesanan", icon: ScanBarcode },
     { id: "online_analysis", path: "/online-shop/analysis", label: "Analisa Shopee", icon: LineChart },
 
+    // Modul Cabang Fisik (TAMBAHKAN INI)
+    { id: "branches", path: "/branches", label: "Cabang Fisik", icon: Building2 },
+
     //   { id: "pos", path: "/pos", label: "Kasir (POS)", icon: ShoppingCart },
     { id: "inventory", path: "/inventory", label: "Inventory", icon: Box },
     { id: "products", path: "/products", label: "Produk", icon: Package },
