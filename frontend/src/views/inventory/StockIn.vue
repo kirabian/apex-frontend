@@ -150,29 +150,31 @@ async function fetchInitialData() {
 }
 
 function selectUserPlacement(user) {
+    // 1. Logika penentuan ID & Tipe lokasi (Untuk kebutuhan database)
     if (user.online_shop_id) {
         placementType.value = 'online_shop';
         placementId.value = user.online_shop_id;
-        placementLabel.value = `Online: ${user.online_shop?.name || user.username}`;
     } else if (user.warehouse_id) {
         placementType.value = 'warehouse';
         placementId.value = user.warehouse_id;
-        placementLabel.value = `Gudang: ${user.warehouse?.name || user.username}`;
     } else if (user.branch_id) {
         placementType.value = 'branch';
         placementId.value = user.branch_id;
-        placementLabel.value = `Cabang: ${user.branch?.name || user.username}`;
     } else {
-        // Fallback logic
+        // Fallback jika user adalah role toko_online tapi belum set ID
         if (user.roles?.some(r => r.name === 'toko_online')) {
             placementType.value = 'online_shop';
             placementId.value = user.online_shop_id || 1;
-            placementLabel.value = `Online: ${user.username}`;
         } else {
             toast.error("Akun ini tidak memiliki lokasi inventory yang valid.");
             return;
         }
     }
+
+    // 2. FIX: Tampilkan Full Name orangnya, bukan nama cabangnya
+    // Kita pakai full_name dari model user, kalau kosong baru pakai username
+    placementLabel.value = user.full_name || user.name || user.username;
+
     nextStep();
 }
 
@@ -350,7 +352,7 @@ onMounted(() => {
                                 :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
                                 <component :is="isManualDistributor ? List : Plus" :size="20" />
                                 <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                    }}</span>
+                                }}</span>
                             </button>
                         </div>
 
@@ -376,7 +378,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
