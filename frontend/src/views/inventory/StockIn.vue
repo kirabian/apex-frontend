@@ -380,7 +380,7 @@ onMounted(() => { fetchInitialData(); });
                         <div class="flex flex-col"><span
                                 class="text-[10px] text-text-secondary uppercase font-bold">Dist</span><span
                                 class="font-bold text-text-primary text-sm truncate uppercase">{{
-                                selectedDistributorName }}</span></div>
+                                    selectedDistributorName }}</span></div>
                     </div>
                 </div>
 
@@ -408,7 +408,7 @@ onMounted(() => { fetchInitialData(); });
                         <select v-model="selectedRam" :disabled="!selectedTypeName"
                             class="input bg-surface-900 h-12 disabled:opacity-30">
                             <option value="">-- Semua RAM --</option>
-                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }} GB</option>
+                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }}</option>
                         </select>
                     </div>
                     <div class="space-y-2">
@@ -416,7 +416,7 @@ onMounted(() => { fetchInitialData(); });
                         <select v-model="selectedStorage" :disabled="!selectedTypeName"
                             class="input bg-surface-900 h-12 disabled:opacity-30">
                             <option value="">-- Semua ROM --</option>
-                            <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }} GB</option>
+                            <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }}</option>
                         </select>
                     </div>
                     <div v-if="!selectedProduct && selectedTypeName"
@@ -447,7 +447,7 @@ onMounted(() => { fetchInitialData(); });
                                 </select></div>
                             <div class="space-y-1.5"><label
                                     class="text-[10px] font-bold text-emerald-500 uppercase">Modal ({{
-                                    formatRupiah(row.cost_price) }})</label><input v-model="row.cost_price"
+                                        formatRupiah(row.cost_price) }})</label><input v-model="row.cost_price"
                                     type="number" class="input bg-surface-900" /></div>
                             <div class="space-y-1.5"><label class="text-[10px] font-bold text-blue-500 uppercase">Jual
                                     ({{ formatRupiah(row.selling_price) }})</label><input v-model="row.selling_price"
@@ -491,7 +491,7 @@ onMounted(() => { fetchInitialData(); });
                 <button v-if="currentStep === 4" @click="submitStockIn" :disabled="!canSubmit || isSubmitting"
                     class="btn btn-primary px-10 h-14 rounded-2xl flex-1 md:flex-none uppercase text-xs tracking-widest font-black shadow-xl shadow-emerald-600/20 disabled:grayscale">
                     <Loader2 v-if="isSubmitting" class="animate-spin mr-2" /> {{ isSubmitting ? 'Menyimpan...' :
-                    'Selesai & Simpan' }}
+                        'Selesai & Simpan' }}
                 </button>
             </div>
         </div>
