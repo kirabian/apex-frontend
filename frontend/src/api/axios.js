@@ -107,9 +107,13 @@ export const users = {
     delete: (id) => api.delete(`/users/${id}`)
 }
 
+// Tambahkan ini di src/api/axios.js
 export const branches = {
-    list: () => api.get('/branches'),
-    get: (id) => api.get(`/branches/${id}`)
+    list: (params) => api.get('/branches', { params }),
+    get: (id) => api.get(`/branches/${id}`),
+    create: (data) => api.post('/branches', data),
+    update: (id, data) => api.put(`/branches/${id}`, data),
+    delete: (id) => api.delete(`/branches/${id}`)
 }
 
 export const reports = {

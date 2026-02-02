@@ -11,7 +11,7 @@ import {
     CheckCircle,
     XCircle
 } from 'lucide-vue-next';
-import { onlineShop as api } from '../../api/axios';
+import api, { onlineShop } from '../../api/axios';
 import ShopModal from './ShopModal.vue';
 import { useToast } from '../../composables/useToast';
 const toast = useToast();
@@ -25,6 +25,7 @@ const editingShop = ref(null);
 const fetchShops = async () => {
     loading.value = true;
     try {
+        // Sekarang api.get() akan berfungsi karena 'api' adalah instance Axios
         const response = await api.get('/branches', { params: { type: 'online' } });
         shops.value = response.data.data.filter(s => s.type === 'online');
     } catch (error) {
@@ -32,6 +33,18 @@ const fetchShops = async () => {
         toast.error("Gagal memuat data toko online");
     } finally {
         loading.value = false;
+    }
+};
+
+const handleDelete = async (id) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return;
+    try {
+        // Sekarang api.delete() juga akan berfungsi
+        await api.delete(`/branches/${id}`);
+        toast.success('Toko berhasil dihapus');
+        fetchShops();
+    } catch (error) {
+        toast.error('Gagal menghapus toko');
     }
 };
 
@@ -55,17 +68,17 @@ const openEditModal = (shop) => {
     showModal.value = true;
 };
 
-const handleDelete = async (id) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return;
+// const handleDelete = async (id) => {
+//     if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return;
 
-    try {
-        await api.delete(`/branches/${id}`);
-        toast.success('Toko berhasil dihapus');
-        fetchShops();
-    } catch (error) {
-        toast.error('Gagal menghapus toko');
-    }
-};
+//     try {
+//         await api.delete(`/branches/${id}`);
+//         toast.success('Toko berhasil dihapus');
+//         fetchShops();
+//     } catch (error) {
+//         toast.error('Gagal menghapus toko');
+//     }
+// };
 
 const handleSaved = () => {
     showModal.value = false;
