@@ -27,34 +27,29 @@ const authStore = useAuthStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const distributors = ref([]);
-// Tambahkan ini di bawah currentStep
 const currentStep = ref(1);
-const isManualDistributor = ref(false); // Buat kontrol tombol toggle
-const newDistributorName = ref("");      // Buat nampung inputan nama manual
+const isManualDistributor = ref(false);
+const newDistributorName = ref("");
 
 const targetUsers = ref([]);
 const placementLabel = ref("");
 
 // Step 1: Placement / Account
-const placementType = ref("branch"); // 'branch', 'warehouse', 'online_shop'
+const placementType = ref("branch");
 const placementId = ref(null);
-const placementOptions = ref([]); // To populate if user can choose
-// For now we'll simulate options or just show current user's location
-// MENJADI INI:
+const placementOptions = ref([]);
+
 const placementName = computed(() => {
     return placementLabel.value || "Lokasi Belum Terpilih";
 });
 
 // Step 2: Item Type
-const itemType = ref("hp"); // 'hp' or 'non-hp'
+const itemType = ref("hp");
 
 // Step 3: Distributor
 const selectedDistributor = ref("");
 const selectedDistributorName = computed(() => {
-    // Jika manual, tampilkan apa yang diketik
     if (isManualDistributor.value) return newDistributorName.value || 'Distributor Baru';
-
-    // Jika pilih dari list, cari namanya berdasarkan ID
     const d = distributors.value.find(x => x.id === selectedDistributor.value);
     return d ? d.name : '-';
 });
@@ -67,19 +62,65 @@ const imeiRows = ref([
 ]);
 const nonHpForm = ref({ quantity: 1 });
 
-// Computed
+// Step 4: Hierarchical Selection State
+const brands = ref([]);
+const allowedTypes = ref([]);
+const selectedBrand = ref(null);
+const selectedTypeName = ref("");
+const selectedRam = ref("");
+const selectedStorage = ref("");
 
-// UPDATE LOGIKA INI:
+// Computed for Selection Logic
+const filteredTypes = computed(() => {
+    if (!selectedBrand.value) return [];
+    return allowedTypes.value.filter(t => t.brand_id === selectedBrand.value);
+});
+
+const uniqueTypeNames = computed(() => {
+    const names = new Set(filteredTypes.value.map(t => t.name));
+    return Array.from(names);
+});
+
+const availableSpecs = computed(() => {
+    if (!selectedTypeName.value) return { rams: [], storages: [] };
+    const matching = allowedTypes.value.filter(t => t.name === selectedTypeName.value);
+    const rams = new Set(matching.map(t => t.ram).filter(Boolean));
+    const storages = new Set(matching.map(t => t.storage).filter(Boolean));
+    return {
+        rams: Array.from(rams).sort((a, b) => a - b),
+        storages: Array.from(storages).sort((a, b) => a - b)
+    };
+});
+
+// Logic to find product_id from choices
+const autoSelectedProduct = computed(() => {
+    if (!selectedBrand.value || !selectedTypeName.value) return null;
+    const found = products.value.find(p => {
+        const matchBrand = p.brand_id === selectedBrand.value;
+        const matchName = p.name.includes(selectedTypeName.value);
+        const matchRam = !selectedRam.value || p.ram == selectedRam.value;
+        const matchStorage = !selectedStorage.value || p.storage == selectedStorage.value;
+        return matchBrand && matchName && matchRam && matchStorage;
+    });
+    return found ? found.id : null;
+});
+
+// Watchers
+watch(autoSelectedProduct, (newId) => { selectedProduct.value = newId; });
+watch(selectedBrand, () => { selectedTypeName.value = ""; selectedRam.value = ""; selectedStorage.value = ""; });
+watch(selectedTypeName, () => { selectedRam.value = ""; selectedStorage.value = ""; });
+watch(itemType, async () => {
+    const prodResponse = await inventoryApi.getProductsLookup({ type: itemType.value });
+    products.value = prodResponse.data;
+    selectedProduct.value = null;
+});
+
+// Navigation Computed
 const canNext = computed(() => {
     if (currentStep.value === 1) return !!placementId.value;
     if (currentStep.value === 2) return !!itemType.value;
     if (currentStep.value === 3) {
-        // Tombol lanjut nyala jika: 
-        // Pilih dari list (selectedDistributor ada isinya) 
-        // ATAU Input manual (newDistributorName ada isinya)
-        if (isManualDistributor.value) {
-            return newDistributorName.value.length > 2; // Minimal 3 karakter
-        }
+        if (isManualDistributor.value) return newDistributorName.value.length > 2;
         return !!selectedDistributor.value;
     }
     return false;
@@ -95,13 +136,8 @@ const canSubmit = computed(() => {
 });
 
 // Methods
-function nextStep() {
-    if (canNext.value) currentStep.value++;
-}
-
-function prevStep() {
-    if (currentStep.value > 1) currentStep.value--;
-}
+function nextStep() { if (canNext.value) currentStep.value++; }
+function prevStep() { if (currentStep.value > 1) currentStep.value--; }
 
 function addImeiRow() {
     const lastRow = imeiRows.value[imeiRows.value.length - 1];
@@ -117,15 +153,41 @@ function addImeiRow() {
 }
 
 function removeImeiRow(index) {
-    if (imeiRows.value.length > 1) {
-        imeiRows.value.splice(index, 1);
+    if (imeiRows.value.length > 1) imeiRows.value.splice(index, 1);
+}
+
+async function fetchInitialData() {
+    isLoading.value = true;
+    try {
+        const [distResp, userResp, brandsResp, typesResp, prodResp] = await Promise.all([
+            distributorsApi.list(),
+            usersApi.list(),
+            brandsApi.list(),
+            productTypesApi.list(),
+            inventoryApi.getProductsLookup({ type: 'hp' })
+        ]);
+
+        distributors.value = distResp.data.data;
+        brands.value = brandsResp.data.data || brandsResp.data;
+        allowedTypes.value = typesResp.data.data || typesResp.data;
+        products.value = prodResp.data;
+
+        const allUsers = userResp.data.data || userResp.data;
+        const { user: loggedInUser } = authStore;
+        targetUsers.value = allUsers.filter(u => {
+            const hasOnlineRole = u.roles && u.roles.some(r => r.name === 'toko_online');
+            const isSelf = u.id === loggedInUser?.id;
+            return hasOnlineRole || isSelf || u.online_shop_id;
+        });
+    } catch (error) {
+        console.error(error);
+        toast.error("Gagal memuat data awal");
+    } finally {
+        isLoading.value = false;
     }
 }
 
-
-
 function selectUserPlacement(user) {
-    // 1. Logika penentuan ID & Tipe lokasi (Untuk kebutuhan database)
     if (user.online_shop_id) {
         placementType.value = 'online_shop';
         placementId.value = user.online_shop_id;
@@ -136,7 +198,6 @@ function selectUserPlacement(user) {
         placementType.value = 'branch';
         placementId.value = user.branch_id;
     } else {
-        // Fallback jika user adalah role toko_online tapi belum set ID
         if (user.roles?.some(r => r.name === 'toko_online')) {
             placementType.value = 'online_shop';
             placementId.value = user.online_shop_id || 1;
@@ -145,114 +206,35 @@ function selectUserPlacement(user) {
             return;
         }
     }
-
-    // 2. FIX: Tampilkan Full Name orangnya, bukan nama cabangnya
-    // Kita pakai full_name dari model user, kalau kosong baru pakai username
     placementLabel.value = user.full_name || user.name || user.username;
-
     nextStep();
-}
-
-// Step 4: Product Hierarchical Selection
-const brands = ref([]);
-const allowedTypes = ref([]);
-const filteredTypes = computed(() => {
-    if (!selectedBrand.value) return [];
-    return allowedTypes.value.filter(t => t.brand_id === selectedBrand.value);
-});
-// Unique Type Names to avoid duplicates if multiple types share name
-const uniqueTypeNames = computed(() => {
-    const names = new Set(filteredTypes.value.map(t => t.name));
-    return Array.from(names);
-});
-
-// Selection State
-const selectedBrand = ref(null);
-const selectedTypeName = ref("");
-const selectedRam = ref("");
-const selectedStorage = ref("");
-
-// Available Specs based on Type Name
-const availableSpecs = computed(() => {
-    if (!selectedTypeName.value) return { rams: [], storages: [] };
-    // Find all types with this name -> extract rams and storages
-    const matching = allowedTypes.value.filter(t => t.name === selectedTypeName.value);
-    const rams = new Set(matching.map(t => t.ram).filter(Boolean));
-    const storages = new Set(matching.map(t => t.storage).filter(Boolean));
-    return {
-        rams: Array.from(rams),
-        storages: Array.from(storages)
-    };
-});
-
-// Watchers to reset downstream
-watch(selectedBrand, () => { selectedTypeName.value = ""; selectedRam.value = ""; selectedStorage.value = ""; });
-watch(selectedTypeName, () => { selectedRam.value = ""; selectedStorage.value = ""; });
-
-async function fetchInitialData() {
-    isLoading.value = true;
-    try {
-        const [distResp, userResp, brandsResp, typesResp, prodResp] = await Promise.all([
-            distributorsApi.list(),
-            usersApi.list(),
-            brandsApi.list(),
-            productTypesApi.list(),
-            inventoryApi.getProductsLookup({ type: 'hp' }) // Pre-fetch HP products to map ID
-        ]);
-
-        distributors.value = distResp.data.data;
-        brands.value = brandsResp.data.data || brandsResp.data;
-        allowedTypes.value = typesResp.data.data || typesResp.data;
-        products.value = prodResp.data; // Keep this to map name -> product_id
-
-        const allUsers = userResp.data.data || userResp.data;
-        const { user: loggedInUser } = authStore;
-        targetUsers.value = allUsers.filter(u => {
-            const hasOnlineRole = u.roles && u.roles.some(r => r.name === 'toko_online');
-            const isSelf = u.id === loggedInUser?.id;
-            return hasOnlineRole || isSelf || u.online_shop_id;
-        });
-
-    } catch (error) {
-        console.error(error);
-        toast.error("Gagal memuat data awal");
-    } finally {
-        isLoading.value = false;
-    }
 }
 
 async function submitStockIn() {
     if (!canSubmit.value) return;
     isSubmitting.value = true;
-
     try {
         const payload = {
             product_id: selectedProduct.value,
-            // LOGIKA DINAMIS: Kirim ID kalau ada, atau kirim Nama kalau manual
             distributor_id: isManualDistributor.value ? null : selectedDistributor.value,
             new_distributor_name: isManualDistributor.value ? newDistributorName.value : null,
-
             type: itemType.value,
             placement_type: placementType.value,
             placement_id: placementId.value,
         };
-
         if (itemType.value === 'hp') {
             payload.imeis = imeiRows.value;
         } else {
             payload.quantity = nonHpForm.value.quantity;
         }
-
         await inventoryApi.stockIn(payload);
         toast.success("Stok berhasil ditambahkan!");
-
-        // Reset or Redirect?
-        // Let's reset to Step 1
         currentStep.value = 1;
         isManualDistributor.value = false;
         newDistributorName.value = "";
         selectedDistributor.value = "";
-
+        selectedBrand.value = null;
+        selectedTypeName.value = "";
     } catch (error) {
         console.error(error);
         toast.error(error.response?.data?.message || "Gagal input stok");
@@ -261,9 +243,7 @@ async function submitStockIn() {
     }
 }
 
-onMounted(() => {
-    fetchInitialData();
-});
+onMounted(() => { fetchInitialData(); });
 </script>
 
 <template>
@@ -277,7 +257,6 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Progress Indicator -->
         <div class="flex items-center justify-between mb-8 px-4">
             <div v-for="step in [1, 2, 3, 4]" :key="step" class="flex items-center">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors duration-300"
@@ -289,27 +268,19 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Main Card -->
         <div class="card p-8 border-t-4 border-t-primary-500 min-h-[400px] flex flex-col">
-
-            <!-- Step 1: Account Selection -->
             <div v-if="currentStep === 1" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Akun / User Target</h2>
-
                 <div v-if="isLoading" class="flex justify-center py-8">
                     <Loader2 class="animate-spin text-primary-500" :size="32" />
                 </div>
-
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
                         class="p-4 rounded-xl border border-surface-700 bg-surface-800 cursor-pointer hover:border-primary-500 hover:bg-surface-800/80 transition-all group relative overflow-hidden">
-
-                        <!-- Active Indicator -->
-                        <div v-if="placementLabel && placementLabel.includes(user.username)"
+                        <div v-if="placementLabel === (user.full_name || user.name)"
                             class="absolute top-2 right-2 text-primary-500">
                             <CheckCircle2 :size="20" />
                         </div>
-
                         <div class="flex items-center gap-4">
                             <div
                                 class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
@@ -318,216 +289,161 @@ onMounted(() => {
                             <div>
                                 <h3 class="font-bold text-text-primary group-hover:text-primary-400 transition-colors">
                                     {{ user.name }}</h3>
-                                <div class="flex items-center gap-2 mt-1">
-                                    <span
-                                        class="text-xs px-2 py-0.5 rounded-full bg-surface-700 text-text-secondary border border-surface-600">
-                                        {{ user.role || (user.roles && user.roles[0]?.name) || 'User' }}
-                                    </span>
-                                </div>
-                                <p class="text-xs text-text-secondary mt-1 truncate max-w-[150px]">
-                                    {{ user.username }}
-                                </p>
+                                <span
+                                    class="text-xs px-2 py-0.5 rounded-full bg-surface-700 text-text-secondary border border-surface-600">
+                                    {{ user.roles?.[0]?.name || 'User' }}
+                                </span>
                             </div>
                         </div>
-                    </div>
-
-                    <div v-if="targetUsers.length === 0" class="col-span-full text-center py-8 text-text-secondary">
-                        Tidak ada akun Toko Online / User yang ditemukan.
                     </div>
                 </div>
             </div>
 
-            <!-- Step 2: Item Type -->
             <div v-if="currentStep === 2" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Tipe Produk</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button @click="itemType = 'hp'"
-                        class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4 hover:scale-105"
-                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800 hover:border-primary-500/50'">
+                        class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4"
+                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800'">
                         <Smartphone :size="48"
                             :class="itemType === 'hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-lg font-bold"
-                            :class="itemType === 'hp' ? 'text-primary-500' : 'text-text-secondary'">Handphone /
-                            IMEI</span>
+                        <span class="text-lg font-bold">Handphone / IMEI</span>
                     </button>
-
                     <button @click="itemType = 'non-hp'"
-                        class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4 hover:scale-105"
-                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800 hover:border-primary-500/50'">
+                        class="p-6 rounded-xl border-2 transition-all flex flex-col items-center gap-4"
+                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-800'">
                         <Box :size="48" :class="itemType === 'non-hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-lg font-bold"
-                            :class="itemType === 'non-hp' ? 'text-primary-500' : 'text-text-secondary'">Produk Biasa /
-                            Non-HP</span>
+                        <span class="text-lg font-bold">Produk Biasa / Non-HP</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Step 3: Distributor -->
             <div v-if="currentStep === 3" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Distributor</h2>
-
                 <div class="bg-surface-900/50 p-6 rounded-xl border border-surface-700">
                     <label class="label">Distributor Supply</label>
-
-                    <div class="flex flex-col gap-4">
-                        <div class="flex gap-2">
-                            <!-- Select Mode -->
-                            <select v-if="!isManualDistributor" v-model="selectedDistributor"
-                                class="input flex-1 h-12 text-lg">
-                                <option value="" disabled>-- Pilih Distributor --</option>
-                                <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
-                            </select>
-
-                            <!-- Manual Input Mode -->
-                            <input v-else v-model="newDistributorName" placeholder="Ketikan nama distributor baru..."
-                                class="input flex-1 h-12 text-lg" />
-
-                            <button type="button" @click="isManualDistributor = !isManualDistributor"
-                                class="btn btn-outline h-12 px-4 flex items-center gap-2 transition-all"
-                                :class="isManualDistributor ? 'border-primary-500 text-primary-500 bg-primary-500/10' : ''"
-                                :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
-                                <component :is="isManualDistributor ? List : Plus" :size="20" />
-                                <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                    }}</span>
-                            </button>
-                        </div>
-
-                        <p class="text-xs text-text-secondary" v-if="isManualDistributor">
-                            * Distributor baru akan otomatis disimpan ke database saat anda menyelesikan input stok.
-                        </p>
+                    <div class="flex gap-2">
+                        <select v-if="!isManualDistributor" v-model="selectedDistributor"
+                            class="input flex-1 h-12 text-lg">
+                            <option value="" disabled>-- Pilih Distributor --</option>
+                            <option v-for="d in distributors" :key="d.id" :value="d.id">{{ d.name }}</option>
+                        </select>
+                        <input v-else v-model="newDistributorName" placeholder="Ketikan nama distributor baru..."
+                            class="input flex-1 h-12 text-lg" />
+                        <button type="button" @click="isManualDistributor = !isManualDistributor"
+                            class="btn btn-outline h-12 px-4 flex items-center gap-2"
+                            :class="isManualDistributor ? 'border-primary-500 text-primary-500' : ''">
+                            <component :is="isManualDistributor ? List : Plus" :size="20" />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Step 4: Input Form & Summary -->
             <div v-if="currentStep === 4" class="space-y-6 animate-in slide-in-from-right">
-
-                <!-- Summary Header (Read-Only) -->
                 <div
                     class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-surface-900 rounded-xl p-3 border border-surface-700/50 text-sm">
                     <div class="flex items-center gap-2 px-3">
-                        <Building :size="14" class="text-text-secondary" />
-                        <span class="text-text-secondary">Akun:</span>
-                        <span class="font-bold text-text-primary">{{ placementName }}</span>
+                        <Building :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
+                            placementName }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
-                        <Box :size="14" class="text-text-secondary" />
-                        <span class="text-text-secondary">Tipe:</span>
-                        <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                        }}</span>
+                        <Box :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
+                            itemType === 'hp' ? 'HP' : 'Non-HP' }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
-                        <Truck :size="14" class="text-text-secondary" />
-                        <span class="text-text-secondary">Dist:</span>
-                        <span class="font-bold text-text-primary">{{ selectedDistributorName }}</span>
+                        <Truck :size="14" class="text-text-secondary" /><span class="font-bold text-text-primary">{{
+                            selectedDistributorName }}</span>
                     </div>
                 </div>
 
-                <!-- Product Selection in Form -->
-                <div>
-                    <label class="label">Pilih Produk</label>
-                    <select v-model="selectedProduct" class="input w-full">
-                        <option :value="null">-- Pilih Produk --</option>
-                        <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }} ({{ p.sku }})</option>
-                    </select>
-                    <p v-if="!products.length" class="text-xs text-orange-400 mt-1">Tidak ada produk untuk tipe ini.</p>
+                <div
+                    class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-surface-900/30 p-6 rounded-2xl border border-surface-700">
+                    <div>
+                        <label class="label">Pilih Merk</label>
+                        <select v-model="selectedBrand" class="input">
+                            <option :value="null">-- Pilih Merk --</option>
+                            <option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">Pilih Tipe</label>
+                        <select v-model="selectedTypeName" :disabled="!selectedBrand" class="input disabled:opacity-50">
+                            <option value="">-- Pilih Tipe --</option>
+                            <option v-for="name in uniqueTypeNames" :key="name" :value="name">{{ name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">RAM</label>
+                        <select v-model="selectedRam" :disabled="!selectedTypeName" class="input disabled:opacity-50">
+                            <option value="">-- Semua RAM --</option>
+                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }} GB</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">ROM</label>
+                        <select v-model="selectedStorage" :disabled="!selectedTypeName"
+                            class="input disabled:opacity-50">
+                            <option value="">-- Semua ROM --</option>
+                            <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }} GB</option>
+                        </select>
+                    </div>
                 </div>
 
-                <!-- HP / IMEI Input Form -->
                 <div v-if="itemType === 'hp'" class="space-y-4">
                     <div v-for="(row, index) in imeiRows" :key="index"
-                        class="p-4 bg-surface-900/50 rounded-xl border border-surface-700 relative group animate-in slide-in-from-bottom-2">
-                        <!-- Remove Button -->
+                        class="p-4 bg-surface-900/50 rounded-xl border border-surface-700 relative group">
                         <button @click="removeImeiRow(index)" v-if="imeiRows.length > 1"
                             class="absolute top-2 right-2 text-text-secondary hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 :size="18" />
                         </button>
-
-                        <h4 class="text-sm font-bold text-text-secondary mb-3">Unit ke-{{ index + 1 }}</h4>
-
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">IMEI / Serial Number</label>
-                                <div class="relative">
-                                    <ScanBarcode :size="16" class="absolute left-3 top-3 text-text-secondary" />
-                                    <input v-model="row.imei" placeholder="Scan atau ketik IMEI"
-                                        class="input pl-9 font-mono" />
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">Kondisi</label>
-                                <select v-model="row.condition" class="input">
-                                    <option value="new">Baru (New)</option>
-                                    <option value="second">Bekas (Second)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">Specs (RAM/ROM)</label>
-                                <div class="flex gap-2">
-                                    <input v-model="row.ram" placeholder="RAM" class="input w-1/2" />
-                                    <input v-model="row.storage" placeholder="ROM" class="input w-1/2" />
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">Warna</label>
-                                <input v-model="row.color" placeholder="Warna unit" class="input" />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-surface-700/30">
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">Harga Modal (Beli)</label>
-                                <input v-model="row.cost_price" type="number" class="input" />
-                            </div>
-                            <div>
-                                <label class="text-xs text-text-secondary mb-1 block">Harga Jual (SRP)</label>
-                                <input v-model="row.selling_price" type="number" class="input" />
-                            </div>
+                            <div><label class="text-xs text-text-secondary mb-1 block">IMEI</label><input
+                                    v-model="row.imei" class="input font-mono" /></div>
+                            <div><label class="text-xs text-text-secondary mb-1 block">Kondisi</label><select
+                                    v-model="row.condition" class="input">
+                                    <option value="new">Baru</option>
+                                    <option value="second">Bekas</option>
+                                </select></div>
+                            <div><label class="text-xs text-text-secondary mb-1 block">Harga Modal</label><input
+                                    v-model="row.cost_price" type="number" class="input" /></div>
+                            <div><label class="text-xs text-text-secondary mb-1 block">Harga Jual</label><input
+                                    v-model="row.selling_price" type="number" class="input" /></div>
                         </div>
                     </div>
-
                     <button @click="addImeiRow"
-                        class="btn btn-outline w-full border-dashed border-2 py-3 text-text-secondary hover:text-primary-500 hover:border-primary-500 hover:bg-primary-500/10">
-                        <Plus :size="20" class="mr-2" /> Tambah Unit Lain (Batch Input)
+                        class="btn btn-outline w-full border-dashed border-2 py-3 text-text-secondary hover:text-primary-500">
+                        <Plus :size="20" class="mr-2" /> Tambah Unit
                     </button>
                 </div>
 
-                <!-- Non-HP Input Form -->
-                <div v-else class="p-6 bg-surface-900/50 rounded-xl border border-surface-700 text-center space-y-4">
-                    <div>
-                        <label class="label text-center">Jumlah Stok Masuk</label>
-                        <div class="flex justify-center items-center gap-4">
-                            <button @click="nonHpForm.quantity > 1 ? nonHpForm.quantity-- : null"
-                                class="w-12 h-12 rounded-xl bg-surface-800 hover:bg-surface-700 flex items-center justify-center text-xl font-bold">-</button>
-                            <input v-model="nonHpForm.quantity" type="number"
-                                class="w-32 text-center text-2xl font-bold bg-transparent border-none focus:ring-0 text-text-primary"
-                                min="1" />
-                            <button @click="nonHpForm.quantity++"
-                                class="w-12 h-12 rounded-xl bg-surface-800 hover:bg-surface-700 flex items-center justify-center text-xl font-bold">+</button>
-                        </div>
+                <div v-else class="p-6 bg-surface-900/50 rounded-xl border border-surface-700 text-center">
+                    <label class="label">Jumlah Stok</label>
+                    <div class="flex justify-center items-center gap-4">
+                        <button @click="nonHpForm.quantity > 1 ? nonHpForm.quantity-- : null"
+                            class="w-12 h-12 rounded-xl bg-surface-800">-</button>
+                        <input v-model="nonHpForm.quantity" type="number"
+                            class="w-32 text-center text-2xl font-bold bg-transparent border-none text-text-primary"
+                            min="1" />
+                        <button @click="nonHpForm.quantity++" class="w-12 h-12 rounded-xl bg-surface-800">+</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Navigation Buttons -->
             <div class="mt-auto pt-8 border-t border-surface-700 flex justify-between">
                 <button v-if="currentStep > 1" @click="prevStep" class="btn btn-secondary px-6">
                     <ChevronLeft :size="20" /> Kembali
                 </button>
-                <div v-else></div> <!-- Spacer -->
-
-                <button v-if="currentStep < 4" @click="nextStep" :disabled="!canNext" class="btn btn-primary px-8">
-                    Lanjut
+                <div v-else></div>
+                <button v-if="currentStep < 4" @click="nextStep" :disabled="!canNext"
+                    class="btn btn-primary px-8">Lanjut
                     <ChevronRight :size="20" />
                 </button>
-
                 <button v-if="currentStep === 4" @click="submitStockIn" :disabled="!canSubmit || isSubmitting"
                     class="btn btn-primary px-8 shadow-lg shadow-primary-500/20">
-                    <Loader2 v-if="isSubmitting" class="animate-spin mr-2" />
-                    {{ isSubmitting ? 'Simpan Data' : 'Selesai & Simpan' }}
+                    <Loader2 v-if="isSubmitting" class="animate-spin mr-2" /> {{ isSubmitting ? 'Menyimpan...' :
+                    'Selesai & Simpan' }}
                 </button>
             </div>
-
         </div>
     </div>
 </template>
