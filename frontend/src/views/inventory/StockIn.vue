@@ -40,10 +40,9 @@ const placementType = ref("branch"); // 'branch', 'warehouse', 'online_shop'
 const placementId = ref(null);
 const placementOptions = ref([]); // To populate if user can choose
 // For now we'll simulate options or just show current user's location
+// MENJADI INI:
 const placementName = computed(() => {
-    // Logic to get friendly name
-    if (placementId.value) return `${placementType.value.toUpperCase()} #${placementId.value}`;
-    return "Lokasi Saya";
+    return placementLabel.value || "Lokasi Belum Terpilih";
 });
 
 // Step 2: Item Type
@@ -351,7 +350,7 @@ onMounted(() => {
                                 :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
                                 <component :is="isManualDistributor ? List : Plus" :size="20" />
                                 <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                }}</span>
+                                    }}</span>
                             </button>
                         </div>
 
@@ -377,7 +376,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
