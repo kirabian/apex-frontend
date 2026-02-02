@@ -13,8 +13,7 @@ import {
 } from 'lucide-vue-next';
 import { onlineShop as api } from '../../api/axios';
 import ShopModal from './ShopModal.vue';
-import { useToast } from 'vue-toastification';
-
+import { useToast } from '../../composables/useToast';
 const toast = useToast();
 const shops = ref([]);
 const loading = ref(false);
