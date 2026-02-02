@@ -157,8 +157,8 @@ const handleSaved = () => {
 </template>
 
 <style scoped>
-/* Gabungkan semua style di satu blok dan gunakan @reference */
-@reference "../../assets/index.css";
+/* Tambahkan satu ../ lagi agar jalurnya pas ke folder assets */
+@reference "../../../assets/index.css";
 
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
