@@ -122,32 +122,7 @@ function removeImeiRow(index) {
     }
 }
 
-async function fetchInitialData() {
-    isLoading.value = true;
-    try {
-        const distResponse = await distributorsApi.list();
-        distributors.value = distResponse.data.data;
 
-        // Fetch Users for Account Selection
-        const usersResponse = await usersApi.list();
-        const allUsers = usersResponse.data.data || usersResponse.data;
-
-        // Filter: Show users that have 'toko_online' role or similar useful roles
-        const { user: loggedInUser } = authStore;
-        targetUsers.value = allUsers.filter(u => {
-            const hasOnlineRole = u.roles && u.roles.some(r => r.name === 'toko_online');
-            // Also include self
-            const isSelf = u.id === loggedInUser?.id;
-            return hasOnlineRole || isSelf || u.online_shop_id;
-        });
-
-    } catch (error) {
-        console.error(error);
-        toast.error("Gagal memuat data awal");
-    } finally {
-        isLoading.value = false;
-    }
-}
 
 function selectUserPlacement(user) {
     // 1. Logika penentuan ID & Tipe lokasi (Untuk kebutuhan database)
@@ -413,7 +388,7 @@ onMounted(() => {
                                 :title="isManualDistributor ? 'Pilih dari daftar' : 'Tambah Baru'">
                                 <component :is="isManualDistributor ? List : Plus" :size="20" />
                                 <span class="hidden md:inline">{{ isManualDistributor ? 'Pilih List' : 'Buat Baru'
-                                }}</span>
+                                    }}</span>
                             </button>
                         </div>
 
@@ -439,7 +414,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
