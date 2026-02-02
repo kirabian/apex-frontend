@@ -365,7 +365,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
@@ -415,10 +415,10 @@ onMounted(fetchInitialData);
                                 </select></div>
                             <div><label class="label text-[10px] uppercase text-emerald-500">Modal ({{
                                 formatRupiah(row.cost_price) }})</label><input v-model="row.cost_price"
-                                    type="number" class="input bg-surface-900" /></div>
+                                    type="number" class="input bg-surface-900" placeholder="0" /></div>
                             <div><label class="label text-[10px] uppercase text-blue-500">Jual ({{
                                 formatRupiah(row.selling_price) }})</label><input v-model="row.selling_price"
-                                    type="number" class="input bg-surface-900" /></div>
+                                    type="number" class="input bg-surface-900" placeholder="0" /></div>
                         </div>
                     </div>
                     <button @click="addImeiRow" class="btn btn-outline w-full border-dashed border-2 py-4 rounded-3xl">
