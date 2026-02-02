@@ -101,8 +101,8 @@ function getStockStatus(product) {
     <!-- Header -->
     <div class="flex justify-between items-end">
       <div>
-        <h1 class="text-2xl font-bold text-white tracking-tight">Inventory</h1>
-        <p class="text-slate-500 mt-1">Kelola stok produk di semua cabang</p>
+        <h1 class="text-2xl font-bold text-text-primary tracking-tight">Inventory</h1>
+        <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
       <div class="flex gap-3">
         <button class="btn btn-secondary">
@@ -118,25 +118,18 @@ function getStockStatus(product) {
 
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div
-        v-for="(stat, index) in stats"
-        :key="index"
-        class="card flex items-center gap-4"
-      >
-        <div
-          class="w-12 h-12 rounded-xl flex items-center justify-center"
-          :class="{
-            'bg-blue-600': stat.color === 'blue',
-            'bg-emerald-600': stat.color === 'emerald',
-            'bg-amber-600': stat.color === 'amber',
-            'bg-red-600': stat.color === 'red',
-          }"
-        >
+      <div v-for="(stat, index) in stats" :key="index" class="card flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
+          'bg-blue-600': stat.color === 'blue',
+          'bg-emerald-600': stat.color === 'emerald',
+          'bg-amber-600': stat.color === 'amber',
+          'bg-red-600': stat.color === 'red',
+        }">
           <component :is="stat.icon" :size="20" class="text-white" />
         </div>
         <div>
-          <p class="text-slate-500 text-sm">{{ stat.label }}</p>
-          <p class="text-xl font-bold text-white">{{ stat.value }}</p>
+          <p class="text-text-secondary text-sm">{{ stat.label }}</p>
+          <p class="text-xl font-bold text-text-primary">{{ stat.value }}</p>
         </div>
       </div>
     </div>
@@ -146,16 +139,8 @@ function getStockStatus(product) {
       <div class="flex flex-wrap items-center gap-4">
         <!-- Search -->
         <div class="relative flex-1 min-w-[250px]">
-          <Search
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            :size="18"
-          />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Cari produk, SKU, atau brand..."
-            class="input pl-10"
-          />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
+          <input v-model="searchQuery" type="text" placeholder="Cari produk, SKU, atau brand..." class="input pl-10" />
         </div>
 
         <!-- Category Filter -->
@@ -167,22 +152,16 @@ function getStockStatus(product) {
         </select>
 
         <!-- Stock Filter -->
-        <div class="flex rounded-xl bg-slate-800 p-1">
-          <button
-            v-for="filter in [
-              { id: 'all', label: 'Semua' },
-              { id: 'low', label: 'Menipis' },
-              { id: 'out', label: 'Habis' },
-            ]"
-            :key="filter.id"
-            @click="showStockFilter = filter.id"
-            class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-            :class="
-              showStockFilter === filter.id
+        <div class="flex rounded-xl bg-surface-800 p-1">
+          <button v-for="filter in [
+            { id: 'all', label: 'Semua' },
+            { id: 'low', label: 'Menipis' },
+            { id: 'out', label: 'Habis' },
+          ]" :key="filter.id" @click="showStockFilter = filter.id"
+            class="px-4 py-2 text-sm font-medium rounded-lg transition-colors" :class="showStockFilter === filter.id
                 ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:text-white'
-            "
-          >
+                : 'text-text-secondary hover:text-text-primary'
+              ">
             {{ filter.label }}
           </button>
         </div>
@@ -213,54 +192,44 @@ function getStockStatus(product) {
           <tbody>
             <tr v-if="inventoryStore.isLoading">
               <td colspan="7" class="text-center py-12">
-                <RefreshCw
-                  :size="24"
-                  class="animate-spin mx-auto text-blue-400 mb-2"
-                />
-                <p class="text-slate-500">Memuat data...</p>
+                <RefreshCw :size="24" class="animate-spin mx-auto text-blue-400 mb-2" />
+                <p class="text-text-secondary">Memuat data...</p>
               </td>
             </tr>
             <tr v-else-if="filteredProducts.length === 0">
               <td colspan="7" class="text-center py-12">
-                <Box :size="48" class="mx-auto text-slate-600 mb-2" />
-                <p class="text-slate-500">Tidak ada produk ditemukan</p>
+                <Box :size="48" class="mx-auto text-text-secondary mb-2" />
+                <p class="text-text-secondary">Tidak ada produk ditemukan</p>
               </td>
             </tr>
             <tr v-else v-for="product in filteredProducts" :key="product.id">
-              <td class="font-mono text-sm text-slate-400">
+              <td class="font-mono text-sm text-text-secondary">
                 {{ product.sku }}
               </td>
               <td>
                 <div class="flex items-center gap-3">
-                  <div
-                    class="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center"
-                  >
-                    <Package :size="16" class="text-slate-400" />
+                  <div class="w-10 h-10 bg-surface-700 rounded-lg flex items-center justify-center">
+                    <Package :size="16" class="text-text-secondary" />
                   </div>
                   <div>
-                    <p class="font-medium text-white">{{ product.name }}</p>
-                    <p class="text-xs text-slate-500">{{ product.brand }}</p>
+                    <p class="font-medium text-text-primary">{{ product.name }}</p>
+                    <p class="text-xs text-text-secondary">{{ product.brand }}</p>
                   </div>
                 </div>
               </td>
-              <td class="text-slate-400">{{ product.category }}</td>
-              <td class="text-white font-medium">
+              <td class="text-text-secondary">{{ product.category }}</td>
+              <td class="text-text-primary font-medium">
                 {{ formatCurrency(product.price) }}
               </td>
               <td class="text-center">
-                <span
-                  class="font-bold"
-                  :class="
-                    product.stock <= product.minStock
-                      ? 'text-amber-400'
-                      : 'text-white'
-                  "
-                >
+                <span class="font-bold" :class="product.stock <= product.minStock
+                    ? 'text-amber-400'
+                    : 'text-text-primary'
+                  ">
                   {{ product.stock }}
                 </span>
-                <span class="text-slate-600 text-sm">
-                  / {{ product.minStock }}</span
-                >
+                <span class="text-text-secondary text-sm">
+                  / {{ product.minStock }}</span>
               </td>
               <td>
                 <span class="badge" :class="getStockStatus(product).class">
@@ -269,15 +238,11 @@ function getStockStatus(product) {
               </td>
               <td>
                 <div class="flex items-center justify-center gap-2">
-                  <button
-                    class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                  >
-                    <Eye :size="16" class="text-slate-400" />
+                  <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
+                    <Eye :size="16" class="text-text-secondary" />
                   </button>
-                  <button
-                    class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                  >
-                    <Edit :size="16" class="text-slate-400" />
+                  <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
+                    <Edit :size="16" class="text-text-secondary" />
                   </button>
                 </div>
               </td>
@@ -293,11 +258,13 @@ function getStockStatus(product) {
 .animate-in {
   animation: fadeIn 0.3s ease-out;
 }
+
 @keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

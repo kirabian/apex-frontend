@@ -312,10 +312,10 @@ function getPlacementName(user) {
     <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2">
           <Users :size="28" class="text-blue-500" /> Staff & Role
         </h1>
-        <p class="text-slate-500 mt-1">Kelola pengguna dan hak akses</p>
+        <p class="text-text-secondary mt-1">Kelola pengguna dan hak akses</p>
       </div>
       <button @click="openAddModal" class="btn btn-primary w-full md:w-auto flex justify-center">
         <UserPlus :size="18" />
@@ -331,8 +331,8 @@ function getPlacementName(user) {
           <component :is="stat.icon" :size="24" />
         </div>
         <div>
-          <p class="text-slate-500 text-sm">{{ stat.label }}</p>
-          <p class="text-xl font-bold text-white">{{ stat.value }}</p>
+          <p class="text-text-secondary text-sm">{{ stat.label }}</p>
+          <p class="text-xl font-bold text-text-primary">{{ stat.value }}</p>
         </div>
       </div>
     </div>
@@ -341,7 +341,7 @@ function getPlacementName(user) {
     <div class="card space-y-4">
       <div class="flex flex-col md:flex-row gap-4">
         <div class="relative w-full md:flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" :size="18" />
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
           <input v-model="searchQuery" type="text" placeholder="Cari nama atau email..." class="input pl-10 w-full" />
         </div>
         <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -361,36 +361,40 @@ function getPlacementName(user) {
     <div class="card p-0 hidden md:block overflow-hidden">
       <div v-if="isLoading" class="p-12 flex justify-center items-center">
         <Loader2 class="animate-spin text-blue-500" :size="32" />
-        <span class="ml-3 text-slate-400">Memuat data user...</span>
+        <span class="ml-3 text-text-secondary">Memuat data user...</span>
       </div>
       <div v-else class="overflow-x-auto">
         <table class="table w-full">
           <thead>
             <tr>
-              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">User</th>
-              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Role</th>
-              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Penempatan
+              <th class="text-left py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">User</th>
+              <th class="text-left py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">Role</th>
+              <th class="text-left py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">
+                Penempatan
               </th>
-              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Aktifitas</th>
-              <th class="text-left py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Status</th>
-              <th class="text-right py-4 px-6 text-slate-400 font-medium text-sm uppercase tracking-wider">Aksi</th>
+              <th class="text-left py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">Aktifitas
+              </th>
+              <th class="text-left py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">Status
+              </th>
+              <th class="text-right py-4 px-6 text-text-secondary font-medium text-sm uppercase tracking-wider">Aksi
+              </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-700/50">
+          <tbody class="divide-y divide-surface-700/50">
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="6" class="text-center py-12 text-slate-500">
+              <td colspan="6" class="text-center py-12 text-text-secondary">
                 Tidak ada user ditemukan
               </td>
             </tr>
-            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-800/50 transition-colors">
+            <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-surface-800/50 transition-colors">
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <img
                     :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=3b82f6&color=fff`"
                     class="w-10 h-10 rounded-xl object-cover" :alt="user.full_name" />
                   <div>
-                    <p class="font-medium text-white">{{ user.full_name }}</p>
-                    <p class="text-xs text-slate-500 font-mono">{{ user.username }}</p>
+                    <p class="font-medium text-text-primary">{{ user.full_name }}</p>
+                    <p class="text-xs text-text-secondary font-mono">{{ user.username }}</p>
                   </div>
                 </div>
               </td>
@@ -399,16 +403,16 @@ function getPlacementName(user) {
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
                   {{ ROLE_LABELS[user.roles[0].name] || user.roles[0].name }}
                 </span>
-                <span v-else class="text-xs text-slate-500 italic">No Role</span>
+                <span v-else class="text-xs text-text-secondary italic">No Role</span>
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <MapPin :size="14" class="text-slate-500" />
-                  <span class="text-sm text-slate-300">{{ getPlacementName(user) }}</span>
+                  <MapPin :size="14" class="text-text-secondary" />
+                  <span class="text-sm text-text-primary">{{ getPlacementName(user) }}</span>
                 </div>
-                <div class="text-[10px] text-slate-500 mt-1 pl-5 font-mono">{{ user.timezone || 'WIB' }}</div>
+                <div class="text-[10px] text-text-secondary mt-1 pl-5 font-mono">{{ user.timezone || 'WIB' }}</div>
               </td>
-              <td class="px-6 py-4 text-sm text-slate-400">
+              <td class="px-6 py-4 text-sm text-text-secondary">
                 {{ formatLastSeen(user.last_seen, user.timezone) }}
               </td>
               <td class="px-6 py-4">
@@ -422,11 +426,11 @@ function getPlacementName(user) {
               <td class="px-6 py-4">
                 <div class="flex justify-end gap-2">
                   <button @click="openEditModal(user)"
-                    class="p-2 hover:bg-slate-700 rounded-lg text-blue-400 transition-colors" title="Edit">
+                    class="p-2 hover:bg-surface-700 rounded-lg text-blue-400 transition-colors" title="Edit">
                     <Edit :size="16" />
                   </button>
                   <button @click="permanentDeleteUser(user.id)"
-                    class="p-2 hover:bg-slate-700 rounded-lg text-red-400 transition-colors" title="Hapus">
+                    class="p-2 hover:bg-surface-700 rounded-lg text-red-400 transition-colors" title="Hapus">
                     <Trash2 :size="16" />
                   </button>
                 </div>
@@ -449,8 +453,8 @@ function getPlacementName(user) {
               :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=3b82f6&color=fff`"
               class="w-10 h-10 rounded-xl" />
             <div>
-              <p class="font-medium text-white">{{ user.full_name }}</p>
-              <p class="text-xs text-slate-500">{{ user.username }}</p>
+              <p class="font-medium text-text-primary">{{ user.full_name }}</p>
+              <p class="text-xs text-text-secondary">{{ user.username }}</p>
             </div>
           </div>
           <span v-if="user.roles && user.roles.length"
@@ -459,13 +463,13 @@ function getPlacementName(user) {
           </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-700/50 pt-3">
+        <div class="grid grid-cols-2 gap-3 text-sm border-t border-surface-700/50 pt-3">
           <div>
-            <p class="text-slate-500 text-xs mb-1">Penempatan</p>
-            <p class="text-slate-300">{{ getPlacementName(user) }}</p>
+            <p class="text-text-secondary text-xs mb-1">Penempatan</p>
+            <p class="text-text-primary">{{ getPlacementName(user) }}</p>
           </div>
           <div class="text-right">
-            <p class="text-slate-500 text-xs mb-1">Status</p>
+            <p class="text-text-secondary text-xs mb-1">Status</p>
             <div class="inline-flex items-center gap-1.5">
               <div :class="`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-500'}`"></div>
               <span :class="user.is_active ? 'text-emerald-400' : 'text-red-400'">{{ user.is_active ? 'Aktif' :
@@ -474,13 +478,13 @@ function getPlacementName(user) {
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-700/50">
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-700/50">
           <button @click="openEditModal(user)"
-            class="btn-sm btn-outline text-blue-400 border-slate-700 hover:bg-slate-800">
+            class="btn-sm btn-outline text-blue-400 border-surface-700 hover:bg-surface-800">
             <Edit :size="14" class="mr-1" /> Edit
           </button>
           <button @click="permanentDeleteUser(user.id)"
-            class="btn-sm btn-outline text-red-400 border-slate-700 hover:bg-slate-800">
+            class="btn-sm btn-outline text-red-400 border-surface-700 hover:bg-surface-800">
             <Trash2 :size="14" class="mr-1" /> Hapus
           </button>
         </div>
@@ -495,11 +499,11 @@ function getPlacementName(user) {
         <div
           class="relative bg-surface-800 rounded-2xl border border-surface-700 w-full max-w-lg p-6 shadow-2xl animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
           <button @click="closeModal"
-            class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors">
+            class="absolute top-4 right-4 p-2 text-text-secondary hover:text-text-primary transition-colors">
             <X :size="20" />
           </button>
 
-          <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <h3 class="text-xl font-bold text-text-primary mb-6 flex items-center gap-2">
             <UserPlus v-if="!editingUser" class="text-primary-500" :size="24" />
             <Edit v-else class="text-blue-500" :size="24" />
             {{ editingUser ? "Edit User" : "Tambah User Baru" }}
@@ -529,7 +533,7 @@ function getPlacementName(user) {
                 <input v-model="form.password" :type="showPassword ? 'text' : 'password'" class="input pr-10"
                   placeholder="••••••••" :required="!editingUser" />
                 <button type="button" @click="showPassword = !showPassword"
-                  class="absolute right-3 top-2.5 text-slate-500 hover:text-white">
+                  class="absolute right-3 top-2.5 text-text-secondary hover:text-text-primary">
                   <Eye v-if="!showPassword" :size="18" />
                   <EyeOff v-else :size="18" />
                 </button>
@@ -581,8 +585,9 @@ function getPlacementName(user) {
               </select>
             </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t border-slate-700/50">
-              <button type="button" @click="closeModal" class="btn text-slate-400 hover:text-white">Batal</button>
+            <div class="flex justify-end gap-3 pt-4 border-t border-surface-700/50">
+              <button type="button" @click="closeModal"
+                class="btn text-text-secondary hover:text-text-primary">Batal</button>
               <button type="submit" class="btn btn-primary" :disabled="isSaving">
                 <Loader2 v-if="isSaving" class="animate-spin mr-2" :size="18" />
                 {{ isSaving ? 'Menyimpan...' : 'Simpan User' }}
@@ -599,11 +604,11 @@ function getPlacementName(user) {
 @reference "../../style.css";
 
 .label {
-  @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide;
+  @apply block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wide;
 }
 
 .input {
-  @apply w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-slate-600;
+  @apply w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all placeholder:text-text-secondary;
 }
 
 .animate-in {
