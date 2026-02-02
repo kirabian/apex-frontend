@@ -16,7 +16,8 @@ use App\Http\Controllers\InventoryController;
 
 // ... (previous routes)
 
-// Public routes
+
+
 Route::post('/login', [AuthController::class, 'login']);
 
 // Protected routes
