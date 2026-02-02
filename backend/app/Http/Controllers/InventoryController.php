@@ -153,6 +153,16 @@ class InventoryController extends Controller
                 ]);
             }
 
+            // Update Master Product Price (Sync with latest Stock In Selling Price)
+            if ($request->type === 'hp' && count($request->imeis) > 0) {
+                // Use the first item's selling price as the master price
+                $product->update(['price' => $request->imeis[0]['selling_price']]);
+            }
+            // For non-hp, we might need similar logic if price is passed, but currently it's quantity only?
+            // Checking validation: Non-HP doesn't seem to have price input in stockIn validation?
+            // Actually it does not. Non-HP stock in is just quantity.
+            // So only update for HP for now.
+
             DB::commit();
             return response()->json(['message' => 'Stock in successful'], 201);
 
