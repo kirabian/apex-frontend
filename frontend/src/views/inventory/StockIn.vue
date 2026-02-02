@@ -17,6 +17,7 @@ import {
     ChevronRight,
     ChevronLeft,
     CheckCircle2,
+    XCircle,
     List
 } from "lucide-vue-next";
 
@@ -96,23 +97,25 @@ const availableSpecs = computed(() => {
     const rams = new Set(matching.map(t => t.ram).filter(Boolean));
     const storages = new Set(matching.map(t => t.storage).filter(Boolean));
     return {
-        rams: Array.from(rams).sort((a, b) => a - b),
-        storages: Array.from(storages).sort((a, b) => a - b)
+        rams: Array.from(rams).sort((a, b) => parseInt(a) - parseInt(b)),
+        storages: Array.from(storages).sort((a, b) => parseInt(a) - parseInt(b))
     };
 });
 
-// FIX LOGIKA PENCARIAN PRODUK: Lebih akurat mencocokan pilihan dropdown dengan data DB
+// FIX LOGIKA PENCARIAN PRODUK: Membersihkan satuan "GB" agar matching dengan database
 const autoSelectedProduct = computed(() => {
     if (!selectedBrand.value || !selectedTypeName.value) return null;
 
     const found = products.value.find(p => {
         const matchBrand = p.brand_id === selectedBrand.value;
-        // Gunakan toLowerCase dan trim agar "Iphone 15 Pro" cocok dengan "iphone 15 pro"
         const matchName = p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim();
 
-        // Cek RAM & ROM (Hanya jika spek tersebut dipilih di dropdown)
-        const matchRam = !selectedRam.value || String(p.ram) === String(selectedRam.value).replace(/\D/g, '');
-        const matchStorage = !selectedStorage.value || String(p.storage) === String(selectedStorage.value).replace(/\D/g, '');
+        // Membersihkan string "8GB GB" menjadi "8" untuk dicocokkan ke database
+        const cleanSelectedRam = selectedRam.value ? String(selectedRam.value).replace(/[^0-9]/g, '') : null;
+        const cleanSelectedStorage = selectedStorage.value ? String(selectedStorage.value).replace(/[^0-9]/g, '') : null;
+
+        const matchRam = !selectedRam.value || String(p.ram) === cleanSelectedRam;
+        const matchStorage = !selectedStorage.value || String(p.storage) === cleanSelectedStorage;
 
         return matchBrand && matchName && matchRam && matchStorage;
     });
@@ -141,16 +144,13 @@ const canNext = computed(() => {
     return false;
 });
 
-// FIX TOMBOL SELESAI & SIMPAN: Memastikan tombol aktif jika data terisi
+// FIX TOMBOL SELESAI & SIMPAN: Memastikan tombol aktif jika produk ditemukan
 const canSubmit = computed(() => {
-    // 1. Harus ada produk yang terpilih (ID tidak null)
     if (!selectedProduct.value) return false;
 
     if (itemType.value === 'hp') {
-        // 2. Untuk HP: Minimal 1 baris, IMEI diisi, dan Harga Modal > 0
         return imeiRows.value.length > 0 && imeiRows.value.every(r => r.imei.trim().length >= 5 && r.cost_price > 0);
     } else {
-        // 3. Untuk Non-HP: Quantity harus lebih dari 0
         return nonHpForm.value.quantity > 0;
     }
 });
@@ -217,14 +217,6 @@ function selectUserPlacement(user) {
     } else if (user.branch_id) {
         placementType.value = 'branch';
         placementId.value = user.branch_id;
-    } else {
-        if (user.roles?.some(r => r.name === 'toko_online')) {
-            placementType.value = 'online_shop';
-            placementId.value = user.online_shop_id || 1;
-        } else {
-            toast.error("Akun ini tidak memiliki lokasi inventory yang valid.");
-            return;
-        }
     }
     placementLabel.value = user.full_name || user.name || user.username;
     nextStep();
@@ -250,9 +242,6 @@ async function submitStockIn() {
         await inventoryApi.stockIn(payload);
         toast.success("Stok berhasil ditambahkan!");
         currentStep.value = 1;
-        isManualDistributor.value = false;
-        newDistributorName.value = "";
-        selectedDistributor.value = "";
         selectedBrand.value = null;
         selectedTypeName.value = "";
     } catch (error) {
@@ -273,7 +262,7 @@ onMounted(() => { fetchInitialData(); });
                 <h1 class="text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2">
                     <Box :size="28" class="text-blue-500" /> Input Barang Masuk
                 </h1>
-                <p class="text-text-secondary mt-1">Tambah stok ke inventory (Step {{ currentStep }}/4)</p>
+                <p class="text-text-secondary mt-1 text-sm">Input persediaan stok baru (Step {{ currentStep }}/4)</p>
             </div>
         </div>
 
@@ -325,26 +314,24 @@ onMounted(() => { fetchInitialData(); });
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <button @click="itemType = 'hp'"
                         class="p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-5 hover:scale-[1.02]"
-                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/10' : 'border-surface-700 bg-surface-900'">
+                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Smartphone :size="56"
                             :class="itemType === 'hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-xl font-bold"
-                            :class="itemType === 'hp' ? 'text-white' : 'text-text-secondary'">Handphone / IMEI</span>
+                        <span class="text-xl font-bold">Handphone / IMEI</span>
                     </button>
                     <button @click="itemType = 'non-hp'"
                         class="p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-5 hover:scale-[1.02]"
-                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/10' : 'border-surface-700 bg-surface-900'">
+                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Box :size="56" :class="itemType === 'non-hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-xl font-bold"
-                            :class="itemType === 'non-hp' ? 'text-white' : 'text-text-secondary'">Produk Biasa</span>
+                        <span class="text-xl font-bold">Produk Biasa</span>
                     </button>
                 </div>
             </div>
 
             <div v-if="currentStep === 3" class="space-y-6 animate-in slide-in-from-right">
                 <h2 class="text-xl font-bold text-text-primary">Pilih Distributor</h2>
-                <div class="bg-surface-900 p-8 rounded-3xl border border-surface-700">
-                    <label class="label text-sm font-bold uppercase tracking-widest text-text-secondary mb-4">Pemasok
+                <div class="bg-surface-900 p-8 rounded-3xl border border-surface-700 shadow-inner">
+                    <label class="label text-xs uppercase font-black tracking-widest text-text-secondary mb-4">Pemasok
                         Barang</label>
                     <div class="flex gap-3">
                         <select v-if="!isManualDistributor" v-model="selectedDistributor"
@@ -365,7 +352,7 @@ onMounted(() => { fetchInitialData(); });
 
             <div v-if="currentStep === 4" class="space-y-6 animate-in slide-in-from-right">
                 <div
-                    class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700">
+                    class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 shadow-inner">
                     <div class="flex items-center gap-3 px-3">
                         <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
                             <Building :size="16" />
@@ -433,8 +420,8 @@ onMounted(() => { fetchInitialData(); });
                         </select>
                     </div>
                     <div v-if="!selectedProduct && selectedTypeName"
-                        class="col-span-full py-2 px-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center gap-2">
-                        <XCircle :size="14" /> Produk dengan kombinasi spesifikasi ini belum terdaftar di Master Data.
+                        class="col-span-full py-2 px-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-center gap-2 animate-pulse">
+                        <XCircle :size="14" /> Kombinasi spek belum terdaftar di Master Data.
                     </div>
                 </div>
 
@@ -473,7 +460,8 @@ onMounted(() => { fetchInitialData(); });
                     </button>
                 </div>
 
-                <div v-else class="p-10 bg-surface-900/50 rounded-3xl border border-surface-700 text-center">
+                <div v-else
+                    class="p-10 bg-surface-900/50 rounded-3xl border border-surface-700 text-center shadow-inner">
                     <label class="label text-sm uppercase font-bold text-text-secondary mb-6 block">Jumlah Stok
                         Masuk</label>
                     <div class="flex justify-center items-center gap-6">
@@ -490,7 +478,7 @@ onMounted(() => { fetchInitialData(); });
 
             <div class="mt-auto pt-8 border-t border-surface-700 flex justify-between gap-4">
                 <button v-if="currentStep > 1" @click="prevStep"
-                    class="btn btn-secondary px-8 bg-surface-900 hover:bg-surface-700 h-14 rounded-2xl flex-1 md:flex-none uppercase text-xs tracking-widest">
+                    class="btn btn-secondary px-8 bg-surface-900 hover:bg-surface-700 h-14 rounded-2xl flex-1 md:flex-none uppercase text-xs tracking-widest font-black">
                     <ChevronLeft :size="18" class="mr-2" /> Kembali
                 </button>
                 <div v-else class="flex-1 md:flex-none"></div>
@@ -534,7 +522,7 @@ onMounted(() => { fetchInitialData(); });
 }
 
 .btn-outline {
-    @apply border border-surface-700 hover:border-primary-500/50 text-text-secondary hover:text-primary-500;
+    @apply border border-surface-700 hover:border-primary-500/50 text-text-secondary hover:text-primary-500 shadow-sm;
 }
 
 /* Chrome, Safari, Edge, Opera */
