@@ -98,29 +98,31 @@ const availableSpecs = computed(() => {
 const autoSelectedProduct = computed(() => {
     if (!selectedBrand.value || !selectedTypeName.value) return null;
 
-    // Filter produk berdasarkan Brand dan Nama Tipe dulu
+    // Get Brand Name from ID
+    const brandObj = brands.value.find(b => b.id === selectedBrand.value);
+    const brandName = brandObj ? brandObj.name : "";
+
+    // Filter produk berdasarkan Brand Name dan Nama Tipe
     const baseMatches = products.value.filter(p => {
-        return p.brand_id === selectedBrand.value &&
-            p.name.toLowerCase().trim().includes(selectedTypeName.value.toLowerCase().trim());
+        // Match brand name (insensitive)
+        const dbBrand = (p.brand || "").toLowerCase().trim();
+        const selBrand = brandName.toLowerCase().trim();
+        const matchBrand = dbBrand === selBrand;
+
+        // Match Name
+        const matchName = p.name.toLowerCase().trim().includes(selectedTypeName.value.toLowerCase().trim());
+
+        return matchBrand && matchName;
     });
 
     if (baseMatches.length === 0) return null;
 
     // Cari yang RAM dan ROM nya cocok (setelah dibersihkan dari huruf)
-    const finalMatch = baseMatches.find(p => {
-        const cleanDBRam = String(p.ram || '').replace(/[^0-9]/g, '');
-        const cleanDBStorage = String(p.storage || '').replace(/[^0-9]/g, '');
-        const cleanSelRam = String(selectedRam.value || '').replace(/[^0-9]/g, '');
-        const cleanSelStorage = String(selectedStorage.value || '').replace(/[^0-9]/g, '');
-
-        const matchRam = !selectedRam.value || cleanDBRam === cleanSelRam;
-        const matchStorage = !selectedStorage.value || cleanDBStorage === cleanSelStorage;
-
-        return matchRam && matchStorage;
-    });
+    // Note: Product table does NOT have ram/storage columns, so this detail match will likely fail 
+    // unless p.ram/p.storage acts as a fallback or if we rely on baseMatches[0].
 
     // Jika tidak ketemu yang spesifik tapi Merk & Tipe sudah ada, ambil yang pertama sebagai fallback
-    return finalMatch ? finalMatch.id : baseMatches[0].id;
+    return baseMatches[0].id;
 });
 
 watch(autoSelectedProduct, (newId) => { selectedProduct.value = newId; });
@@ -268,7 +270,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
