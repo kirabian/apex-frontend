@@ -38,9 +38,25 @@ onMounted(() => {
     fetchBranches();
 });
 
-// ... (search logic remains same) ...
+const handleSearch = computed(() => {
+    if (!searchQuery.value) return branchesList.value;
+    const lower = searchQuery.value.toLowerCase();
+    return branchesList.value.filter(b =>
+        b.name.toLowerCase().includes(lower) ||
+        b.code.toLowerCase().includes(lower) ||
+        (b.address && b.address.toLowerCase().includes(lower))
+    );
+});
 
-// ... (modal open logic remains same) ...
+const openCreateModal = () => {
+    selectedBranch.value = null;
+    showModal.value = true;
+};
+
+const openEditModal = (branch) => {
+    selectedBranch.value = branch;
+    showModal.value = true;
+};
 
 const handleDelete = async (id) => {
     if (!confirm('Hapus gudang ini?')) return;
