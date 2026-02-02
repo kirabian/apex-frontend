@@ -26,6 +26,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/inventory', [\App\Http\Controllers\OnlineShopController::class, 'inventory']);
         Route::get('/analysis', [\App\Http\Controllers\OnlineShopController::class, 'analysis']);
     });
+
+    // Master Data
+    Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
+    Route::apiResource('distributors', \App\Http\Controllers\DistributorController::class);
 });
 
 Route::get('/health-check', function () {

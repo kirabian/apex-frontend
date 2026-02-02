@@ -116,6 +116,22 @@ export const branches = {
     delete: (id) => api.delete(`/branches/${id}`)
 }
 
+export const categories = {
+    list: (params) => api.get('/categories', { params }),
+    get: (id) => api.get(`/categories/${id}`),
+    create: (data) => api.post('/categories', data),
+    update: (id, data) => api.put(`/categories/${id}`, data),
+    delete: (id) => api.delete(`/categories/${id}`)
+}
+
+export const distributors = {
+    list: (params) => api.get('/distributors', { params }),
+    get: (id) => api.get(`/distributors/${id}`),
+    create: (data) => api.post('/distributors', data),
+    update: (id, data) => api.put(`/distributors/${id}`, data),
+    delete: (id) => api.delete(`/distributors/${id}`)
+}
+
 export const reports = {
     sales: (params) => api.get('/reports/sales', { params }),
     inventory: (params) => api.get('/reports/inventory', { params }),

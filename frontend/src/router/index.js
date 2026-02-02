@@ -111,14 +111,20 @@ const routes = [
 
             // Master Data Routes (Super Admin)
             {
-                path: 'locations',
-                name: 'Locations',
-                component: () => import('../views/master/Locations.vue'),
+                path: 'warehouses',
+                name: 'Warehouses',
+                component: () => import('../views/warehouses/Index.vue'),
                 meta: {
-                    title: 'Lokasi & Zona',
-                    menu: 'locations',
+                    title: 'Data Gudang',
+                    menu: 'warehouses',
                     permissions: ['master.view']
                 }
+            },
+            {
+                path: 'locations', // Keeping purely for backward compat if sidebar uses it, or redirect?
+                // Actually let's assume locations might be something else later (Zoning?), but for now user asked for Gudang.
+                // Let's just Add Warehouses and update sidebar. 
+                redirect: 'warehouses'
             },
             {
                 path: 'distributors',
@@ -127,26 +133,6 @@ const routes = [
                 meta: {
                     title: 'Distributor',
                     menu: 'distributors',
-                    permissions: ['master.view']
-                }
-            },
-            {
-                path: 'channels',
-                name: 'Channels',
-                component: () => import('../views/master/Channels.vue'),
-                meta: {
-                    title: 'Toko Online',
-                    menu: 'channels',
-                    permissions: ['master.view']
-                }
-            },
-            {
-                path: 'online-shops',
-                name: 'OnlineShops',
-                component: () => import('../views/online-shop/Index.vue'),
-                meta: {
-                    title: 'Toko Online',
-                    menu: 'online_shops',
                     permissions: ['master.view']
                 }
             },

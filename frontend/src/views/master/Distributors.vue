@@ -1,420 +1,142 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, onMounted, computed } from 'vue';
 import {
   Truck,
-  MapPin,
-  Phone,
-  Mail,
-  Plus,
   Search,
+  Plus,
   Edit,
   Trash2,
-  ExternalLink,
-  Save,
-  X,
-} from "lucide-vue-next";
+  Phone,
+  Mail,
+  MapPin,
+  User
+} from 'lucide-vue-next';
+import { distributors as api } from '../../api/axios';
+import { useToast } from '../../composables/useToast';
+import DistributorModal from './DistributorModal.vue';
 
-// Mock Data
-const distributors = ref([
-  {
-    id: 1,
-    name: "PT. Distribusi Teknologi Indonesia",
-    pic: "Budi Santoso",
-    phone: "081234567890",
-    email: "budi@distrotech.id",
-    address: "Kawasan Industri MM2100, Bekasi",
-    status: "active",
-    products_count: 154,
-  },
-  {
-    id: 2,
-    name: "CV. Maju Jaya Gadget",
-    pic: "Siti Aminah",
-    phone: "081298765432",
-    email: "sales@majujaya.com",
-    address: "Jl. Mangga Dua Raya No. 12, Jakarta",
-    status: "active",
-    products_count: 89,
-  },
-  {
-    id: 3,
-    name: "Global Electronics Import",
-    pic: "Michael Ong",
-    phone: "021-55566677",
-    email: "import@global-elec.com",
-    address: "Ruko Cordoba, PIK, Jakarta Utara",
-    status: "inactive",
-    products_count: 0,
-  },
-]);
-
-// Local State
-const searchQuery = ref("");
+const toast = useToast();
+const items = ref([]);
+const loading = ref(false);
+const searchQuery = ref('');
 const showModal = ref(false);
-const editingItem = ref(null);
+const selectedItem = ref(null);
 
-const form = ref({
-  name: "",
-  pic: "",
-  phone: "",
-  email: "",
-  address: "",
-  status: "active",
-  notes: "",
+const fetchData = async () => {
+  loading.value = true;
+  try {
+    const response = await api.list();
+    items.value = response.data.data;
+  } catch (error) {
+    toast.error("Gagal memuat data distributor");
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchData();
 });
 
-// Filtered Data
-const filteredDistributors = computed(() => {
-  if (!searchQuery.value) return distributors.value;
-  const query = searchQuery.value.toLowerCase();
-  return distributors.value.filter(
-    (d) =>
-      d.name.toLowerCase().includes(query) ||
-      d.pic.toLowerCase().includes(query) ||
-      d.email.toLowerCase().includes(query)
+const filteredItems = computed(() => {
+  if (!searchQuery.value) return items.value;
+  const lower = searchQuery.value.toLowerCase();
+  return items.value.filter(i =>
+    i.name.toLowerCase().includes(lower) ||
+    (i.code && i.code.toLowerCase().includes(lower)) ||
+    (i.contact_person && i.contact_person.toLowerCase().includes(lower))
   );
 });
 
-// Actions
-function openAddModal() {
-  editingItem.value = null;
-  form.value = {
-    name: "",
-    pic: "",
-    phone: "",
-    email: "",
-    address: "",
-    status: "active",
-    notes: "",
-  };
+const openCreateModal = () => {
+  selectedItem.value = null;
   showModal.value = true;
-}
+};
 
-function openEditModal(item) {
-  editingItem.value = item;
-  form.value = { ...item };
+const openEditModal = (item) => {
+  selectedItem.value = item;
   showModal.value = true;
-}
+};
 
-function closeModal() {
+const handleDelete = async (id) => {
+  if (!confirm('Hapus distributor ini?')) return;
+  try {
+    await api.delete(id);
+    toast.success('Distributor berhasil dihapus');
+    items.value = items.value.filter(i => i.id !== id);
+  } catch (error) {
+    toast.error('Gagal menghapus distributor');
+  }
+};
+
+const handleSaved = () => {
   showModal.value = false;
-  editingItem.value = null;
-}
-
-function saveDistributor() {
-  if (editingItem.value) {
-    const index = distributors.value.findIndex(
-      (d) => d.id === editingItem.value.id
-    );
-    if (index !== -1) {
-      distributors.value[index] = {
-        ...form.value,
-        id: editingItem.value.id,
-        products_count: distributors.value[index].products_count,
-      };
-    }
-  } else {
-    distributors.value.push({
-      ...form.value,
-      id: distributors.value.length + 1,
-      products_count: 0,
-    });
-  }
-  closeModal();
-}
-
-function deleteDistributor(id) {
-  if (confirm("Apakah Anda yakin ingin menghapus distributor ini?")) {
-    distributors.value = distributors.value.filter((d) => d.id !== id);
-  }
-}
+  fetchData();
+};
 </script>
 
 <template>
-  <div class="space-y-6 animate-in">
-    <!-- Header -->
-    <div class="flex justify-between items-end">
+  <div class="space-y-6 animate-in fade-in duration-500">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-white tracking-tight">
-          Distributor
+        <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+          <Truck class="text-primary-500" :size="28" />
+          Data Distributor
         </h1>
-        <p class="text-slate-500 mt-1">
-          Kelola data supplier dan partner distribusi
-        </p>
+        <p class="text-text-secondary mt-1">Kelola daftar supplier dan distributor barang</p>
       </div>
-      <button @click="openAddModal" class="btn btn-primary">
-        <Plus :size="16" />
-        Tambah Distributor
+      <button @click="openCreateModal" class="btn btn-primary shadow-lg shadow-primary-500/20">
+        <Plus :size="20" />
+        <span>Tambah Distributor</span>
       </button>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="card flex items-center gap-4">
-        <div
-          class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center"
-        >
-          <Truck :size="20" class="text-white" />
-        </div>
-        <div>
-          <p class="text-slate-500 text-sm">Total Distributor</p>
-          <p class="text-xl font-bold text-white">{{ distributors.length }}</p>
-        </div>
-      </div>
-      <div class="card flex items-center gap-4">
-        <div
-          class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center"
-        >
-          <Truck :size="20" class="text-white" />
-        </div>
-        <div>
-          <p class="text-slate-500 text-sm">Distributor Aktif</p>
-          <p class="text-xl font-bold text-white">
-            {{ distributors.filter((d) => d.status === "active").length }}
-          </p>
-        </div>
+    <div class="bg-surface-800 rounded-2xl border border-surface-700 p-4 sticky top-4 z-10 shadow-xl">
+      <div class="relative">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="20" />
+        <input v-model="searchQuery" type="text" placeholder="Cari distributor..." class="input pl-10 w-full" />
       </div>
     </div>
 
-    <!-- Content -->
-    <div class="card p-0">
-      <div class="p-4 border-b border-slate-700/50">
-        <div class="relative max-w-md">
-          <Search
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-            :size="18"
-          />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Cari nama distributor, PIC, atau email..."
-            class="input pl-10"
-          />
-        </div>
-      </div>
-
-      <div class="table-container">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Distributor</th>
-              <th>Kontak Person (PIC)</th>
-              <th>Kontak</th>
-              <th>Alamat</th>
-              <th>Total Produk</th>
-              <th>Status</th>
-              <th class="text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="items in filteredDistributors" :key="items.id">
-              <td>
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-slate-400 font-bold text-lg"
-                  >
-                    {{ items.name.charAt(0) }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-white">{{ items.name }}</p>
-                    <p class="text-xs text-slate-500 font-mono">
-                      ID: DST-{{ items.id.toString().padStart(3, "0") }}
-                    </p>
-                  </div>
-                </div>
-              </td>
-              <td class="text-slate-300 font-medium">{{ items.pic }}</td>
-              <td>
-                <div class="flex flex-col gap-1 text-sm text-slate-400">
-                  <span class="flex items-center gap-2"
-                    ><Phone :size="12" /> {{ items.phone }}</span
-                  >
-                  <span class="flex items-center gap-2"
-                    ><Mail :size="12" /> {{ items.email }}</span
-                  >
-                </div>
-              </td>
-              <td class="text-slate-400 max-w-[200px] truncate">
-                {{ items.address }}
-              </td>
-              <td class="text-center font-mono text-blue-400">
-                {{ items.products_count }}
-              </td>
-              <td>
-                <span
-                  class="badge"
-                  :class="
-                    items.status === 'active' ? 'badge-success' : 'badge-danger'
-                  "
-                >
-                  {{ items.status === "active" ? "Aktif" : "Nonaktif" }}
-                </span>
-              </td>
-              <td>
-                <div class="flex items-center justify-center gap-2">
-                  <button
-                    @click="openEditModal(items)"
-                    class="p-2 hover:bg-slate-700 rounded-lg transition-colors text-blue-400"
-                  >
-                    <Edit :size="16" />
-                  </button>
-                  <button
-                    @click="deleteDistributor(items.id)"
-                    class="p-2 hover:bg-slate-700 rounded-lg transition-colors text-red-400"
-                  >
-                    <Trash2 :size="16" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div v-if="loading" class="flex justify-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
     </div>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <div
-        v-if="showModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      >
-        <div
-          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          @click="closeModal"
-        ></div>
-        <div
-          class="relative bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl animate-in"
-        >
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold text-white">
-              {{ editingItem ? "Edit Distributor" : "Tambah Distributor Baru" }}
-            </h3>
-            <button @click="closeModal" class="text-slate-400 hover:text-white">
-              <X :size="20" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-for="item in filteredItems" :key="item.id"
+        class="group bg-surface-800 rounded-2xl border border-surface-700 p-5 hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h3 class="font-bold text-white text-lg">{{ item.name }}</h3>
+            <span v-if="item.code" class="text-xs font-mono text-primary-400 bg-primary-500/10 px-1.5 py-0.5 rounded">{{
+              item.code }}</span>
+          </div>
+          <div class="flex gap-1">
+            <button @click="openEditModal(item)"
+              class="p-2 hover:bg-surface-700 rounded-lg text-blue-400 transition-colors">
+              <Edit :size="18" />
+            </button>
+            <button @click="handleDelete(item.id)"
+              class="p-2 hover:bg-surface-700 rounded-lg text-red-400 transition-colors">
+              <Trash2 :size="18" />
             </button>
           </div>
+        </div>
 
-          <form @submit.prevent="saveDistributor" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1"
-                >Nama Perusahaan</label
-              >
-              <input
-                v-model="form.name"
-                type="text"
-                class="input"
-                placeholder="PT. Makmur Jaya"
-                required
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1"
-                >PIC (Person In Charge)</label
-              >
-              <input
-                v-model="form.pic"
-                type="text"
-                class="input"
-                placeholder="Nama Contact Person"
-                required
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-1"
-                  >Email</label
-                >
-                <input
-                  v-model="form.email"
-                  type="email"
-                  class="input"
-                  placeholder="email@example.com"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-1"
-                  >No. Telepon</label
-                >
-                <input
-                  v-model="form.phone"
-                  type="tel"
-                  class="input"
-                  placeholder="021-xxxxxx"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1"
-                >Alamat Lengkap</label
-              >
-              <textarea
-                v-model="form.address"
-                class="input h-20 resize-none"
-                placeholder="Alamat kantor distributor..."
-              ></textarea>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-1"
-                >Catatan</label
-              >
-              <textarea
-                v-model="form.notes"
-                class="input h-16 resize-none"
-                placeholder="Catatan tambahan..."
-              ></textarea>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <input
-                v-model="form.status"
-                type="checkbox"
-                id="status_active"
-                :true-value="'active'"
-                :false-value="'inactive'"
-                class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500"
-              />
-              <label for="status_active" class="text-sm text-slate-300"
-                >Status Aktif</label
-              >
-            </div>
-
-            <div class="pt-4 flex gap-3">
-              <button
-                type="button"
-                @click="closeModal"
-                class="btn btn-secondary flex-1"
-              >
-                Batal
-              </button>
-              <button type="submit" class="btn btn-primary flex-1">
-                <Save :size="16" />
-                Simpan
-              </button>
-            </div>
-          </form>
+        <div class="space-y-2 text-sm text-text-secondary">
+          <div v-if="item.contact_person" class="flex items-center gap-2">
+            <User :size="14" /> {{ item.contact_person }}
+          </div>
+          <div v-if="item.phone" class="flex items-center gap-2">
+            <Phone :size="14" /> {{ item.phone }}
+          </div>
+          <div v-if="item.address" class="flex items-start gap-2">
+            <MapPin :size="14" class="mt-0.5 shrink-0" /> <span class="line-clamp-2">{{ item.address }}</span>
+          </div>
         </div>
       </div>
-    </Teleport>
+    </div>
+
+    <DistributorModal :show="showModal" :item="selectedItem" @close="showModal = false" @saved="handleSaved" />
   </div>
 </template>
-
-<style scoped>
-.animate-in {
-  animation: fadeIn 0.3s ease-out;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

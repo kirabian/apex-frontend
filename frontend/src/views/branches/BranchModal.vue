@@ -6,7 +6,8 @@ import { useToast } from '../../composables/useToast';
 
 const props = defineProps({
     show: Boolean,
-    branch: Object
+    branch: Object,
+    type: { type: String, default: 'physical' }
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -64,10 +65,10 @@ const save = async () => {
 
     isLoading.value = true;
     try {
-        // Tambahkan type: 'physical' agar tidak masuk ke Toko Online
+        // Gunakan props.type
         const payload = {
             ...form.value,
-            type: 'physical'
+            type: props.type
         };
 
         if (isEditing.value) {
@@ -97,7 +98,7 @@ const save = async () => {
             <div class="px-6 py-4 border-b border-surface-700 flex justify-between items-center bg-surface-900/50">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
                     <Building2 class="text-primary-500" :size="20" />
-                    {{ isEditing ? 'Edit Cabang' : 'Tambah Cabang Baru' }}
+                    {{ isEditing ? 'Edit' : 'Tambah' }} {{ type === 'warehouse' ? 'Gudang' : 'Cabang' }}
                 </h3>
                 <button @click="emit('close')"
                     class="p-1 rounded-lg text-text-secondary hover:text-white hover:bg-surface-700 transition-colors">

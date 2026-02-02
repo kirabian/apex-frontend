@@ -23,7 +23,8 @@ import {
     ScanBarcode,
     LineChart,
     ChevronRight,
-    LogOut
+    LogOut,
+    Warehouse
 } from "lucide-vue-next";
 
 const props = defineProps({
@@ -61,7 +62,7 @@ const menuItems = [
     { id: "audit", path: "/audit", label: "Audit", icon: ClipboardCheck },
     { id: "reports", path: "/reports", label: "Laporan", icon: BarChart3 },
     // Master Data
-    { id: "locations", path: "/locations", label: "Lokasi & Zona", icon: MapPin },
+    { id: "warehouses", path: "/warehouses", label: "Data Gudang", icon: Warehouse },
     {
         id: "distributors",
         path: "/distributors",
