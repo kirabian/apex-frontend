@@ -11,7 +11,7 @@ import {
     CheckCircle,
     XCircle
 } from 'lucide-vue-next';
-import api from '../../services/api';
+import { onlineShop as api } from '../../api/axios';
 import ShopModal from './ShopModal.vue';
 import { useToast } from 'vue-toastification';
 
