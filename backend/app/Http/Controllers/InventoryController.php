@@ -18,7 +18,7 @@ class InventoryController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'distributor_id' => 'required|exists:distributors,id',
+            'distributor_id' => 'nullable|exists:distributors,id',
             'type' => 'required|in:hp,non-hp', // Matches product type
 
             // Placement (Ideally auto-detected from user, but allowed if explicit)
@@ -31,7 +31,7 @@ class InventoryController extends Controller
             // For HP
             'imeis' => 'required_if:type,hp|array',
             'imeis.*.imei' => 'required_if:type,hp|string|distinct', // Check unique in logic too
-            'imeis.*.color' => 'nullable|string',
+            // 'imeis.*.color' => 'nullable|string',
             'imeis.*.ram' => 'nullable|string',
             'imeis.*.storage' => 'nullable|string',
             'imeis.*.condition' => 'required_if:type,hp|in:new,second',
@@ -43,6 +43,18 @@ class InventoryController extends Controller
         DB::beginTransaction();
 
         try {
+            $distributorId = $request->distributor_id;
+            if (!$distributorId && $request->new_distributor_name) {
+                $newDist = \App\Models\Distributor::create([
+                    'name' => $request->new_distributor_name,
+                    'is_active' => true
+                ]);
+                $distributorId = $newDist->id;
+            }
+
+            if (!$distributorId) {
+                throw new \Exception("Distributor harus dipilih atau diisi manual.");
+            }
             $product = Product::findOrFail($request->product_id);
 
             // 1. Handle Non-HP (Quantity Based)
@@ -93,7 +105,7 @@ class InventoryController extends Controller
                         'placement_id' => $request->placement_id,
                         'cost_price' => $item['cost_price'],
                         'selling_price' => $item['selling_price'],
-                        'distributor_id' => $request->distributor_id
+                        'distributor_id' => $distributorId, // GUNAKAN VARIABEL INI
                     ]);
                 }
 
