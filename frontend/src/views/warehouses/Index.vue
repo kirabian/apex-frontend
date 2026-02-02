@@ -163,6 +163,17 @@ const handleSaved = () => {
 </template>
 
 <style scoped>
+/* Tambahkan referensi ke file CSS utama kamu */
+@reference "../../assets/index.css";
+
+.custom-scrollbar::-webkit-scrollbar {
+    background: theme('colors.surface.900');
+    /* Contoh penggunaan */
+    /* ... kode lainnya ... */
+}
+</style>
+
+<style scoped>
 .input {
     @apply bg-surface-900 border border-surface-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder:text-surface-600;
 }
