@@ -1,7 +1,20 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
+// ... imports
+
+const router = useRouter(); // Initialize router
+const inventoryStore = useInventoryStore();
+
+// ... existing code ...
+
+// In template:
+<button class="btn btn-primary" @click="router.push({ name: 'StockIn' })" >
+  <Plus:size="16" />
+    Tambah Stok Masuk
+        </button >
 import {
   Search,
   Package,
@@ -109,7 +122,7 @@ function getStockStatus(product) {
           <ArrowDownUp :size="16" />
           Transfer Stok
         </button>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" @click="router.push({ name: 'StockIn' })">
           <Plus :size="16" />
           Tambah Stok Masuk
         </button>
@@ -159,8 +172,8 @@ function getStockStatus(product) {
             { id: 'out', label: 'Habis' },
           ]" :key="filter.id" @click="showStockFilter = filter.id"
             class="px-4 py-2 text-sm font-medium rounded-lg transition-colors" :class="showStockFilter === filter.id
-                ? 'bg-blue-600 text-white'
-                : 'text-text-secondary hover:text-text-primary'
+              ? 'bg-blue-600 text-white'
+              : 'text-text-secondary hover:text-text-primary'
               ">
             {{ filter.label }}
           </button>
@@ -223,8 +236,8 @@ function getStockStatus(product) {
               </td>
               <td class="text-center">
                 <span class="font-bold" :class="product.stock <= product.minStock
-                    ? 'text-amber-400'
-                    : 'text-text-primary'
+                  ? 'text-amber-400'
+                  : 'text-text-primary'
                   ">
                   {{ product.stock }}
                 </span>
