@@ -203,13 +203,34 @@ async function submitStockIn() {
     if (!canSubmit.value) return;
     isSubmitting.value = true;
     try {
-        // Logika paksa ambil ID produk jika spesifikasi tidak match sempurna
         let productId = selectedProduct.value;
         if (!productId && selectedTypeName.value) {
-            const fallback = products.value.find(p =>
+            // Coba cari dari cache (products.value) dulu
+            let fallback = products.value.find(p =>
                 p.name.toLowerCase().includes(selectedTypeName.value.toLowerCase())
             );
+
+            // Jika tidak ketemu di cache (karena limit 20), cari ke API
+            if (!fallback) {
+                try {
+                    const resp = await inventoryApi.getProductsLookup({
+                        type: 'hp',
+                        name: selectedTypeName.value
+                    });
+                    // Ambil yang paling mirip
+                    if (resp.data.length > 0) fallback = resp.data[0];
+                } catch (err) {
+                    console.error("API Lookup failed inside submit", err);
+                }
+            }
+
             productId = fallback ? fallback.id : null;
+        }
+
+        if (!productId) {
+            toast.error("Produk tidak ditemukan di database. Pastikan nama Tipe sesuai.");
+            isSubmitting.value = false;
+            return;
         }
 
         const payload = {
@@ -319,7 +340,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
