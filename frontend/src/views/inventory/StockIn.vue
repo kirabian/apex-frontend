@@ -107,8 +107,6 @@ watch([selectedBrand, selectedTypeName], async () => {
         const brandObj = brands.value.find(b => b.id === selectedBrand.value);
         const brandName = brandObj ? brandObj.name : "";
 
-        // Cari ke API dengan filter nama spesifik
-        // Note: Backend sudah support ?name=...
         const response = await inventoryApi.getProductsLookup({
             type: 'hp',
             name: selectedTypeName.value
@@ -116,22 +114,26 @@ watch([selectedBrand, selectedTypeName], async () => {
 
         const matches = response.data;
 
-        // Cari match yang pas Brand nya juga
-        const exactMatch = matches.find(p => {
+        // 1. Coba Match Paling Spesifik (Brand Sama + Nama Sama Persis)
+        let found = matches.find(p => {
             const dbBrand = (p.brand || "").toLowerCase().trim();
             const selBrand = brandName.toLowerCase().trim();
-            return dbBrand === selBrand &&
-                p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim();
+            const dbName = p.name.toLowerCase().trim();
+            const selName = selectedTypeName.value.toLowerCase().trim();
+            return dbBrand === selBrand && dbName === selName;
         });
 
-        if (exactMatch) {
-            selectedProduct.value = exactMatch.id;
-        } else if (matches.length > 0) {
-            // Fallback: ambil match pertama jika ada (misal brand beda dikit atau null)
-            selectedProduct.value = matches[0].id;
-        } else {
-            selectedProduct.value = null;
+        // 2. Jika tidak ketemu, Coba Match Nama Saja (Abaikan Brand)
+        if (!found) {
+            found = matches.find(p => p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim());
         }
+
+        // 3. Jika masih tidak ketemu, tapi ada hasil search (Fuzzy Match dari API), pakai yg pertama
+        if (!found && matches.length > 0) {
+            found = matches[0];
+        }
+
+        selectedProduct.value = found ? found.id : null;
 
     } catch (e) {
         console.error("Gagal lookup product", e);
@@ -282,7 +284,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
