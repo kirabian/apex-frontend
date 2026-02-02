@@ -161,3 +161,19 @@ export const onlineShop = {
     inventory: (params) => api.get('/online-shop/inventory', { params }),
     analysis: () => api.get('/online-shop/analysis')
 }
+
+export const brands = {
+    list: (params) => api.get('/brands', { params }),
+    get: (id) => api.get(`/brands/${id}`),
+    create: (data) => api.post('/brands', data),
+    update: (id, data) => api.put(`/brands/${id}`, data),
+    delete: (id) => api.delete(`/brands/${id}`)
+}
+
+export const productTypes = {
+    list: (params) => api.get('/product-types', { params }),
+    get: (id) => api.get(`/product-types/${id}`),
+    create: (data) => api.post('/product-types', data),
+    update: (id, data) => api.put(`/product-types/${id}`, data),
+    delete: (id) => api.delete(`/product-types/${id}`)
+}
