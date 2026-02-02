@@ -376,7 +376,7 @@ onMounted(() => { fetchInitialData(); });
                         <label class="label">RAM</label>
                         <select v-model="selectedRam" :disabled="!selectedTypeName" class="input disabled:opacity-50">
                             <option value="">-- Semua RAM --</option>
-                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }} GB</option>
+                            <option v-for="ram in availableSpecs.rams" :key="ram" :value="ram">{{ ram }}</option>
                         </select>
                     </div>
                     <div>
@@ -384,7 +384,7 @@ onMounted(() => { fetchInitialData(); });
                         <select v-model="selectedStorage" :disabled="!selectedTypeName"
                             class="input disabled:opacity-50">
                             <option value="">-- Semua ROM --</option>
-                            <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }} GB</option>
+                            <option v-for="st in availableSpecs.storages" :key="st" :value="st">{{ st }}</option>
                         </select>
                     </div>
                 </div>
@@ -441,7 +441,7 @@ onMounted(() => { fetchInitialData(); });
                 <button v-if="currentStep === 4" @click="submitStockIn" :disabled="!canSubmit || isSubmitting"
                     class="btn btn-primary px-8 shadow-lg shadow-primary-500/20">
                     <Loader2 v-if="isSubmitting" class="animate-spin mr-2" /> {{ isSubmitting ? 'Menyimpan...' :
-                    'Selesai & Simpan' }}
+                        'Selesai & Simpan' }}
                 </button>
             </div>
         </div>
