@@ -25,9 +25,9 @@ const editingShop = ref(null);
 const fetchShops = async () => {
     loading.value = true;
     try {
-        // Sekarang api.get() akan berfungsi karena 'api' adalah instance Axios
-        const response = await api.get('/branches', { params: { type: 'online' } });
-        shops.value = response.data.data.filter(s => s.type === 'online');
+        const response = await api.get('/online-shops');
+        // Filter is handled by backend or if needed locally, but API should return online shops
+        shops.value = response.data.data;
     } catch (error) {
         console.error("Failed to fetch shops", error);
         toast.error("Gagal memuat data toko online");
@@ -39,8 +39,7 @@ const fetchShops = async () => {
 const handleDelete = async (id) => {
     if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return;
     try {
-        // Sekarang api.delete() juga akan berfungsi
-        await api.delete(`/branches/${id}`);
+        await api.delete(`/online-shops/${id}`);
         toast.success('Toko berhasil dihapus');
         fetchShops();
     } catch (error) {

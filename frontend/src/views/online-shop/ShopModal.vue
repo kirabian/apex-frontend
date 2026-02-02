@@ -67,10 +67,10 @@ const save = async () => {
         };
 
         if (isEditing.value) {
-            await api.put(`/branches/${props.shop.id}`, payload);
+            await api.put(`/online-shops/${props.shop.id}`, payload);
             toast.success('Toko berhasil diperbarui');
         } else {
-            await api.post('/branches', payload);
+            await api.post('/online-shops', payload);
             toast.success('Toko berhasil ditambahkan');
         }
         emit('saved');
