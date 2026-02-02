@@ -23,9 +23,12 @@ import {
     ScanBarcode,
     LineChart,
     ChevronRight,
+    ChevronDown,
     LogOut,
-    Warehouse
+    Warehouse,
+    Database
 } from "lucide-vue-next";
+import { ref } from 'vue';
 
 const props = defineProps({
     isMobileMenuOpen: Boolean,
@@ -37,6 +40,13 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
+
+// Navigation state
+const expandedMenus = ref({});
+
+const toggleMenu = (id) => {
+    expandedMenus.value[id] = !expandedMenus.value[id];
+};
 
 // Menu configuration
 const menuItems = [
@@ -78,6 +88,11 @@ const menuItems = [
     { id: "settings", path: "/settings", label: "Pengaturan", icon: Settings },
 ];
 
+// User info
+const userName = computed(() => authStore.user?.name || "Guest");
+const userRole = computed(() => getRoleLabel(authStore.userRole));
+const userBranch = computed(() => authStore.user?.branch?.name || "-");
+
 // Filter menu based on user role
 const visibleMenuItems = computed(() => {
     const userRole = authStore.userRole;
@@ -90,11 +105,6 @@ const visibleMenuItems = computed(() => {
     return menuItems.filter((item) => allowedMenus.includes(item.id));
 });
 
-// User info
-const userName = computed(() => authStore.user?.name || "Guest");
-const userRole = computed(() => getRoleLabel(authStore.userRole));
-const userBranch = computed(() => authStore.user?.branch?.name || "-");
-
 // Logout handler
 async function handleLogout() {
     await authStore.logout();
@@ -105,6 +115,10 @@ async function handleLogout() {
 function isActiveRoute(path) {
     if (path === "/") return route.path === "/";
     return route.path.startsWith(path);
+}
+
+function isGroupActive(items) {
+    return items.some(item => isActiveRoute(item.path));
 }
 </script>
 
@@ -146,19 +160,51 @@ function isActiveRoute(path) {
                 Menu Utama
             </p>
 
-            <router-link v-for="item in visibleMenuItems" :key="item.id" :to="item.path"
-                class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group border"
-                :class="isActiveRoute(item.path)
-                    ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
-                    : 'text-text-secondary border-transparent hover:bg-surface-700 hover:text-text-primary'
-                    ">
-                <component :is="item.icon" :size="18" class="transition-colors" :class="isActiveRoute(item.path)
-                    ? 'text-primary-600 dark:text-primary-400'
-                    : 'text-text-secondary group-hover:text-primary-500'
-                    " />
-                <span>{{ item.label }}</span>
-                <ChevronRight :size="14" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-            </router-link>
+            <template v-for="item in visibleMenuItems" :key="item.id">
+                <!-- Dropdown Menu -->
+                <div v-if="item.items" class="space-y-1">
+                    <button @click="toggleMenu(item.id)"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group border border-transparent hover:bg-surface-700 hover:text-text-primary"
+                        :class="[
+                            isGroupActive(item.items) ? 'text-primary-500' : 'text-text-secondary'
+                        ]">
+                        <component :is="item.icon" :size="18" />
+                        <span>{{ item.label }}</span>
+                        <ChevronDown :size="16" class="ml-auto transition-transform duration-200"
+                            :class="{ 'rotate-180': expandedMenus[item.id] || isGroupActive(item.items) }" />
+                    </button>
+
+                    <!-- Submenu Items -->
+                    <div v-show="expandedMenus[item.id] || isGroupActive(item.items)"
+                        class="pl-4 space-y-1 animate-in slide-in-from-top-2">
+                        <router-link v-for="subitem in item.items" :key="subitem.id" :to="subitem.path"
+                            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent"
+                            :class="isActiveRoute(subitem.path)
+                                ? 'bg-primary-500/10 text-primary-600 border-primary-500/20'
+                                : 'text-text-secondary hover:text-text-primary hover:bg-surface-700/50'
+                                ">
+                            <div class="w-1.5 h-1.5 rounded-full"
+                                :class="isActiveRoute(subitem.path) ? 'bg-primary-500' : 'bg-surface-600'"></div>
+                            <span>{{ subitem.label }}</span>
+                        </router-link>
+                    </div>
+                </div>
+
+                <!-- Regular Link -->
+                <router-link v-else :to="item.path"
+                    class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group border"
+                    :class="isActiveRoute(item.path)
+                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        : 'text-text-secondary border-transparent hover:bg-surface-700 hover:text-text-primary'
+                        ">
+                    <component :is="item.icon" :size="18" class="transition-colors" :class="isActiveRoute(item.path)
+                        ? 'text-primary-600 dark:text-primary-400'
+                        : 'text-text-secondary group-hover:text-primary-500'
+                        " />
+                    <span>{{ item.label }}</span>
+                    <ChevronRight :size="14" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                </router-link>
+            </template>
         </nav>
 
         <!-- User Section -->
