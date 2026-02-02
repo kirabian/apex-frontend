@@ -17,11 +17,7 @@ class InventoryController extends Controller
     // List Inventory (Granular / Unit based)
     public function index(Request $request)
     {
-        // Default to showing HP units (ProductDetail)
-        // If we want to support Non-HP here, we'd need a polymorphic collection or separate endpoint.
-        // Given 'beda beda imei' requirement, we focus on ProductDetail.
-
-        $query = ProductDetail::with(['product', 'distributor']);
+        $query = ProductDetail::with(['product', 'distributor', 'user']);
 
         if ($request->search) {
             $search = $request->search;
@@ -142,7 +138,8 @@ class InventoryController extends Controller
                         'placement_id' => $request->placement_id,
                         'cost_price' => $item['cost_price'],
                         'selling_price' => $item['selling_price'],
-                        'distributor_id' => $distributorId, // GUNAKAN VARIABEL INI
+                        'distributor_id' => $distributorId,
+                        'user_id' => $user->id,
                     ]);
                 }
 

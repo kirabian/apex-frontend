@@ -185,6 +185,7 @@ function getStockStatus(product) {
               <th>Produk</th>
               <th>Detail (IMEI)</th>
               <th>Lokasi</th>
+              <th>Admin</th>
               <th>Distributor</th>
               <th>Harga Jual</th>
               <th>Status</th>
@@ -230,6 +231,9 @@ function getStockStatus(product) {
               <td class="text-sm text-text-secondary">
                 <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
                 <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+              </td>
+              <td class="text-sm text-text-secondary">
+                {{ item.user?.username || item.user?.name || '-' }}
               </td>
               <td class="text-sm text-text-secondary">
                 {{ item.distributor?.name || '-' }}
