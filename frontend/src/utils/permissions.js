@@ -106,7 +106,9 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.PRODUCTS_EDIT,
         PERMISSIONS.PRODUCTS_DELETE,
         PERMISSIONS.PRODUCTS_SET_PRICE,
-        PERMISSIONS.INVENTORY_VIEW
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.INVENTORY_MANAGE, // Added for Stock In
+        'master.view' // Added for Brands, Types, Categories
     ],
 
     [ROLES.AUDIT]: [
@@ -180,7 +182,7 @@ export const ROLE_PERMISSIONS = {
 export const ROLE_MENUS = {
     [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'pos', 'inventory', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'warehouses', 'distributors', 'channels', 'categories', 'online_shops', 'brands', 'types', 'branches'],
     [ROLES.ANALIST]: ['dashboard', 'reports'],
-    [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory'],
+    [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory', 'brands', 'types', 'categories'],
     [ROLES.AUDIT]: ['dashboard', 'audit', 'transactions'],
     [ROLES.SECURITY]: ['dashboard', 'transactions'],
     [ROLES.LEADER]: ['dashboard', 'transactions', 'reports'],
