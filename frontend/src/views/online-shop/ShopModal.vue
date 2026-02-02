@@ -1,8 +1,8 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { X, Save, Key, Globe, Store, Link as LinkIcon } from 'lucide-vue-next';
-import api from '../../services/api';
-import { useToast } from 'vue-toastification';
+import { onlineShop as api } from '../../api/axios';
+import { useToast } from '../../composables/useToast';
 
 const props = defineProps({
     show: Boolean,
