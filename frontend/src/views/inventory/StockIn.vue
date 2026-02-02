@@ -102,25 +102,33 @@ const availableSpecs = computed(() => {
     };
 });
 
-// FIX LOGIKA PENCARIAN PRODUK: Membersihkan satuan "GB" agar matching dengan database
+// FIX LOGIKA PENCARIAN PRODUK: Lebih fleksibel agar tombol Selesai bisa aktif
 const autoSelectedProduct = computed(() => {
     if (!selectedBrand.value || !selectedTypeName.value) return null;
 
-    const found = products.value.find(p => {
+    // 1. Cari produk yang Merk dan Namanya pas
+    const matches = products.value.filter(p => {
         const matchBrand = p.brand_id === selectedBrand.value;
         const matchName = p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim();
+        return matchBrand && matchName;
+    });
 
-        // Membersihkan string "8GB GB" menjadi "8" untuk dicocokkan ke database
+    if (matches.length === 0) return null;
+
+    // 2. Filter berdasarkan RAM/ROM jika staff sudah memilih (bukan empty string)
+    const found = matches.find(p => {
+        // Membersihkan string "8GB GB" menjadi "8"
         const cleanSelectedRam = selectedRam.value ? String(selectedRam.value).replace(/[^0-9]/g, '') : null;
         const cleanSelectedStorage = selectedStorage.value ? String(selectedStorage.value).replace(/[^0-9]/g, '') : null;
 
         const matchRam = !selectedRam.value || String(p.ram) === cleanSelectedRam;
         const matchStorage = !selectedStorage.value || String(p.storage) === cleanSelectedStorage;
 
-        return matchBrand && matchName && matchRam && matchStorage;
+        return matchRam && matchStorage;
     });
 
-    return found ? found.id : null;
+    // 3. Jika spek belum dipilih, ambil item pertama dari tipe tersebut agar tombol tetap bisa aktif
+    return found ? found.id : (matches.length > 0 && !selectedRam.value && !selectedStorage.value ? matches[0].id : null);
 });
 
 // Watchers
@@ -144,7 +152,7 @@ const canNext = computed(() => {
     return false;
 });
 
-// FIX TOMBOL SELESAI & SIMPAN: Memastikan tombol aktif jika produk ditemukan
+// FIX TOMBOL SELESAI & SIMPAN
 const canSubmit = computed(() => {
     if (!selectedProduct.value) return false;
 
@@ -256,7 +264,7 @@ onMounted(() => { fetchInitialData(); });
 </script>
 
 <template>
-    <div class="space-y-6 animate-in fade-in max-w-4xl mx-auto pb-20">
+    <div class="space-y-6 animate-in fade-in max-w-4xl mx-auto pb-20 font-sans">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2">
@@ -314,16 +322,18 @@ onMounted(() => { fetchInitialData(); });
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <button @click="itemType = 'hp'"
                         class="p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-5 hover:scale-[1.02]"
-                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
+                        :class="itemType === 'hp' ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Smartphone :size="56"
                             :class="itemType === 'hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-xl font-bold">Handphone / IMEI</span>
+                        <span class="text-xl font-bold"
+                            :class="itemType === 'hp' ? 'text-white' : 'text-text-secondary'">Handphone / IMEI</span>
                     </button>
                     <button @click="itemType = 'non-hp'"
                         class="p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-5 hover:scale-[1.02]"
-                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
+                        :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10 shadow-lg shadow-primary-500/10' : 'border-surface-700 bg-surface-900'">
                         <Box :size="56" :class="itemType === 'non-hp' ? 'text-primary-500' : 'text-text-secondary'" />
-                        <span class="text-xl font-bold">Produk Biasa</span>
+                        <span class="text-xl font-bold"
+                            :class="itemType === 'non-hp' ? 'text-white' : 'text-text-secondary'">Produk Biasa</span>
                     </button>
                 </div>
             </div>
@@ -380,7 +390,7 @@ onMounted(() => { fetchInitialData(); });
                         <div class="flex flex-col"><span
                                 class="text-[10px] text-text-secondary uppercase font-bold">Dist</span><span
                                 class="font-bold text-text-primary text-sm truncate uppercase">{{
-                                    selectedDistributorName }}</span></div>
+                                selectedDistributorName }}</span></div>
                     </div>
                 </div>
 
@@ -432,8 +442,8 @@ onMounted(() => { fetchInitialData(); });
                             class="absolute -top-2 -right-2 h-8 w-8 bg-surface-700 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10">
                             <Trash2 :size="14" />
                         </button>
-                        <h4 class="text-[10px] font-black text-surface-500 mb-4 uppercase tracking-widest">Unit ke-{{
-                            index + 1 }}</h4>
+                        <h4 class="text-[10px] font-black text-surface-500 mb-4 uppercase tracking-widest text-center">
+                            Unit ke-{{ index + 1 }}</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                             <div class="space-y-1.5"><label
                                     class="text-[10px] font-bold text-text-secondary uppercase">IMEI</label><input
@@ -447,7 +457,7 @@ onMounted(() => { fetchInitialData(); });
                                 </select></div>
                             <div class="space-y-1.5"><label
                                     class="text-[10px] font-bold text-emerald-500 uppercase">Modal ({{
-                                        formatRupiah(row.cost_price) }})</label><input v-model="row.cost_price"
+                                    formatRupiah(row.cost_price) }})</label><input v-model="row.cost_price"
                                     type="number" class="input bg-surface-900" /></div>
                             <div class="space-y-1.5"><label class="text-[10px] font-bold text-blue-500 uppercase">Jual
                                     ({{ formatRupiah(row.selling_price) }})</label><input v-model="row.selling_price"
@@ -491,7 +501,7 @@ onMounted(() => { fetchInitialData(); });
                 <button v-if="currentStep === 4" @click="submitStockIn" :disabled="!canSubmit || isSubmitting"
                     class="btn btn-primary px-10 h-14 rounded-2xl flex-1 md:flex-none uppercase text-xs tracking-widest font-black shadow-xl shadow-emerald-600/20 disabled:grayscale">
                     <Loader2 v-if="isSubmitting" class="animate-spin mr-2" /> {{ isSubmitting ? 'Menyimpan...' :
-                        'Selesai & Simpan' }}
+                    'Selesai & Simpan' }}
                 </button>
             </div>
         </div>
