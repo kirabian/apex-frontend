@@ -53,10 +53,17 @@ export const useAuthStore = defineStore('auth', () => {
         // Check if permissions exist, if not, fill from local config
         // Also ensure we allow Super Admin bypass by giving '*' if needed, 
         // though typically router handles that.
-        let permissions = userData.permissions || [];
+        // Always load permissions from local config to ensure they are up to date with code changes
+        // This overrides backend permissions if they differ, effectively making frontend source of truth for now.
+        if (roleName) {
+            const localPermissions = getPermissionsForRole(roleName);
+            // If we want to merge: permissions = [...new Set([...permissions, ...localPermissions])];
+            // But for now, let's just use the local config as it's the most reliable source in this dev phase.
+            permissions = localPermissions;
+        }
 
         if (permissions.length === 0 && roleName) {
-            console.warn('AuthStore: Permissions missing from API, falling back to local config for role:', roleName);
+            console.warn('AuthStore: Permissions missing, falling back to local config for role:', roleName);
             permissions = getPermissionsForRole(roleName);
         }
 
