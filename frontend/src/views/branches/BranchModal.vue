@@ -6,8 +6,7 @@ import { useToast } from '../../composables/useToast';
 
 const props = defineProps({
     show: Boolean,
-    branch: Object,
-    type: { type: String, default: 'physical' }
+    branch: Object
 });
 
 const emit = defineEmits(['close', 'saved']);
@@ -65,10 +64,8 @@ const save = async () => {
 
     isLoading.value = true;
     try {
-        // Gunakan props.type
         const payload = {
-            ...form.value,
-            type: props.type
+            ...form.value
         };
 
         if (isEditing.value) {

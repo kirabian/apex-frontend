@@ -108,12 +108,29 @@ export const users = {
 }
 
 // Tambahkan ini di src/api/axios.js
+// Branch management (Fisik only)
 export const branches = {
     list: (params) => api.get('/branches', { params }),
     get: (id) => api.get(`/branches/${id}`),
     create: (data) => api.post('/branches', data),
     update: (id, data) => api.put(`/branches/${id}`, data),
     delete: (id) => api.delete(`/branches/${id}`)
+}
+
+export const warehouses = {
+    list: (params) => api.get('/warehouses', { params }),
+    get: (id) => api.get(`/warehouses/${id}`),
+    create: (data) => api.post('/warehouses', data),
+    update: (id, data) => api.put(`/warehouses/${id}`, data),
+    delete: (id) => api.delete(`/warehouses/${id}`)
+}
+
+export const onlineShops = {
+    list: (params) => api.get('/online-shops', { params }),
+    get: (id) => api.get(`/online-shops/${id}`),
+    create: (data) => api.post('/online-shops', data),
+    update: (id, data) => api.put(`/online-shops/${id}`, data),
+    delete: (id) => api.delete(`/online-shops/${id}`)
 }
 
 export const categories = {

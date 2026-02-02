@@ -16,18 +16,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('users', UserController::class);
 
     // Tambahkan ini di api.php
-    // Branch Management (includes Online Shop)
-    Route::apiResource('branches', \App\Http\Controllers\BranchController::class);
-
-    // Online Shop
-    Route::prefix('online-shop')->group(function () {
-        Route::post('/scan', [\App\Http\Controllers\OnlineShopController::class, 'scan']);
-        Route::post('/order', [\App\Http\Controllers\OnlineShopController::class, 'updateOrder']);
-        Route::get('/inventory', [\App\Http\Controllers\OnlineShopController::class, 'inventory']);
-        Route::get('/analysis', [\App\Http\Controllers\OnlineShopController::class, 'analysis']);
-    });
-
     // Master Data
+    Route::apiResource('branches', \App\Http\Controllers\BranchController::class);
+    Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
+    Route::apiResource('online-shops', \App\Http\Controllers\OnlineShopController::class);
     Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
     Route::apiResource('distributors', \App\Http\Controllers\DistributorController::class);
 });
