@@ -237,22 +237,48 @@ function selectUserPlacement(user) {
 }
 
 async function submitStockIn() {
+    if (!canSubmit.value) return;
     isSubmitting.value = true;
     try {
+        // Logika paksa ambil ID produk jika spesifikasi tidak match sempurna
+        let productId = selectedProduct.value;
+        if (!productId && selectedTypeName.value) {
+            const fallback = products.value.find(p =>
+                p.name.toLowerCase().includes(selectedTypeName.value.toLowerCase())
+            );
+            productId = fallback ? fallback.id : null;
+        }
+
         const payload = {
-            product_id: selectedProduct.value,
+            product_id: productId,
             distributor_id: isManualDistributor.value ? null : selectedDistributor.value,
             new_distributor_name: isManualDistributor.value ? newDistributorName.value : null,
-            type: itemType.value, placement_type: placementType.value, placement_id: placementId.value,
+            type: itemType.value,
+            placement_type: placementType.value,
+            placement_id: placementId.value,
         };
-        if (itemType.value === 'hp') payload.imeis = imeiRows.value;
-        else payload.quantity = nonHpForm.value.quantity;
+
+        if (itemType.value === 'hp') {
+            payload.imeis = imeiRows.value;
+        } else {
+            payload.quantity = nonHpForm.value.quantity;
+        }
 
         await inventoryApi.stockIn(payload);
-        toast.success("Stok Berhasil!");
+        toast.success("Stok berhasil ditambahkan!");
+
+        // Reset form ke awal
         currentStep.value = 1;
-    } catch (e) { toast.error("Gagal simpan"); }
-    finally { isSubmitting.value = false; }
+        selectedBrand.value = null;
+        selectedTypeName.value = "";
+        isManualDistributor.value = false;
+        newDistributorName.value = "";
+    } catch (error) {
+        console.error(error);
+        toast.error(error.response?.data?.message || "Gagal input stok");
+    } finally {
+        isSubmitting.value = false;
+    }
 }
 
 onMounted(fetchInitialData);
@@ -330,7 +356,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
