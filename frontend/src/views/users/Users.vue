@@ -557,7 +557,7 @@ function getPlacementName(user) {
             </div>
 
             <!-- Dynamic Placement Selection -->
-            <div v-if="form.role" class="animate-in fade-in slide-in-from-top-2">
+            <div v-if="form.role && placementType !== 'none'" class="animate-in fade-in slide-in-from-top-2">
               <label class="label">{{ placementLabel }}</label>
 
               <!-- Warehouse Select -->
