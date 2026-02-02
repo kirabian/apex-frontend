@@ -96,7 +96,8 @@ export const inventory = {
     update: (id, data) => api.put(`/inventory/${id}`, data),
     transfer: (data) => api.post('/inventory/transfer', data),
     stockIn: (data) => api.post('/inventory/stock-in', data),
-    stockOut: (data) => api.post('/inventory/stock-out', data)
+    stockOut: (data) => api.post('/inventory/stock-out', data),
+    getProductsLookup: (params) => api.get('/inventory/products-lookup', { params })
 }
 
 export const users = {

@@ -59,6 +59,16 @@ const routes = [
                 }
             },
             {
+                path: 'inventory/stock-in',
+                name: 'StockIn',
+                component: () => import('../views/inventory/StockIn.vue'),
+                meta: {
+                    title: 'Input Barang Masuk',
+                    menu: 'inventory', // Highlight Inventory menu
+                    permissions: ['inventory.manage']
+                }
+            },
+            {
                 path: 'products',
                 name: 'Products',
                 component: Products,

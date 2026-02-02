@@ -14,6 +14,8 @@ class Product extends Model
         'name',
         'sku',
         'barcode',
+        'type', // hp, non-hp
+        'has_imei', // boolean
         'price',
         'min_stock',
         'description',
@@ -24,12 +26,19 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
         'is_active' => 'boolean',
+        'has_imei' => 'boolean',
+        'price' => 'decimal:2',
     ];
 
-    public function inventoryLogs()
+    // Relations
+    public function details()
     {
-        return $this->hasMany(InventoryLog::class);
+        return $this->hasMany(ProductDetail::class);
+    }
+
+    public function inventories()
+    {
+        return $this->hasMany(Inventory::class);
     }
 }

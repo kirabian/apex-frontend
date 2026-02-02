@@ -4,52 +4,39 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\OnlineShopController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DistributorController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\InventoryController;
 
-Route::post('/login', [AuthController::class, 'login'])->name('login');
+// ... (previous routes)
 
+// Public routes
+Route::post('/login', [AuthController::class, 'login']);
+
+// Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/user', [AuthController::class, 'user']);
 
-    // User Management
+    // ... users, branches, etc ...
     Route::apiResource('users', UserController::class);
+    Route::apiResource('branches', BranchController::class);
+    Route::apiResource('warehouses', WarehouseController::class);
+    Route::apiResource('online-shops', OnlineShopController::class);
 
-    // Tambahkan ini di api.php
-    // Master Data
-    Route::apiResource('branches', \App\Http\Controllers\BranchController::class);
-    Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
-    Route::apiResource('online-shops', \App\Http\Controllers\OnlineShopController::class);
-    Route::apiResource('categories', \App\Http\Controllers\CategoryController::class);
-    Route::apiResource('distributors', \App\Http\Controllers\DistributorController::class);
-    Route::apiResource('brands', \App\Http\Controllers\BrandController::class);
-    Route::apiResource('product-types', \App\Http\Controllers\ProductTypeController::class);
-});
+    Route::apiResource('products', ProductController::class);
+    Route::apiResource('categories', CategoryController::class);
+    Route::apiResource('distributors', DistributorController::class);
+    Route::apiResource('brands', BrandController::class);
+    Route::apiResource('product-types', ProductTypeController::class);
 
-Route::get('/health-check', function () {
-    $activeUsers = \App\Models\User::with('branch')
-        ->whereNotNull('last_seen')
-        ->orderBy('last_seen', 'desc')
-        ->take(10)
-        ->get()
-        ->map(function ($user) {
-            return [
-                'name' => $user->name,
-                'username' => $user->username,
-                'branch' => $user->branch ? $user->branch->name : 'PStore Pusat',
-                // Carbon diffForHumans buat status "1 minute ago" dsb
-                'last_seen' => $user->last_seen->diffForHumans(),
-                'tz' => 'Asia/Jakarta (WIB)'
-            ];
-        });
-
-    return response()->json([
-        'status' => 'online',
-        'database' => 'connected',
-        'server_time' => now()->format('H:i:s'),
-        'server_date' => now()->format('d M Y'),
-        'memory_usage' => round(memory_get_usage() / 1024 / 1024, 2) . ' MB',
-        'active_personnel' => $activeUsers,
-        'uptime' => '99.9%'
-    ]);
+    // Inventory
+    Route::post('/inventory/stock-in', [InventoryController::class, 'stockIn']);
+    Route::get('/inventory/products-lookup', [InventoryController::class, 'getProducts']);
 });
