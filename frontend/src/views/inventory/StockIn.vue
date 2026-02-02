@@ -166,44 +166,7 @@ const canSubmit = computed(() => {
 });
 
 // CARI DAN GANTI FUNGSI submitStockIn AGAR SELALU KIRIM ID MESKIPUN MAPPING
-async function submitStockIn() {
-    if (!canSubmit.value) return;
-    isSubmitting.value = true;
-    try {
-        // Jika autoSelectedProduct null tapi Tipe Model ada, 
-        // kita paksa ambil ID produk pertama yang merk & tipenya cocok
-        let productId = selectedProduct.value;
-        if (!productId && selectedTypeName.value) {
-            const fallback = products.value.find(p =>
-                p.name.toLowerCase().includes(selectedTypeName.value.toLowerCase())
-            );
-            productId = fallback ? fallback.id : null;
-        }
 
-        const payload = {
-            product_id: productId, // Gunakan ID hasil paksa tadi
-            distributor_id: isManualDistributor.value ? null : selectedDistributor.value,
-            new_distributor_name: isManualDistributor.value ? newDistributorName.value : null,
-            type: itemType.value,
-            placement_type: placementType.value,
-            placement_id: placementId.value,
-        };
-
-        if (itemType.value === 'hp') {
-            payload.imeis = imeiRows.value;
-        } else {
-            payload.quantity = nonHpForm.value.quantity;
-        }
-
-        await inventoryApi.stockIn(payload);
-        toast.success("Stok berhasil ditambahkan!");
-        currentStep.value = 1;
-    } catch (error) {
-        toast.error(error.response?.data?.message || "Gagal input stok");
-    } finally {
-        isSubmitting.value = false;
-    }
-}
 
 function nextStep() {
     if (canNext.value) currentStep.value++;
@@ -356,7 +319,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
