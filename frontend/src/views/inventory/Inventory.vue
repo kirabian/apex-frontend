@@ -3,18 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
-// ... imports
-
-const router = useRouter(); // Initialize router
-const inventoryStore = useInventoryStore();
-
-// ... existing code ...
-
-// In template:
-<button class="btn btn-primary" @click="router.push({ name: 'StockIn' })" >
-  <Plus:size="16" />
-    Tambah Stok Masuk
-        </button >
+const router = useRouter();
 import {
   Search,
   Package,
