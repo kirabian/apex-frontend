@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useToast } from "../../composables/useToast";
-import { distributors as distributorsApi, inventory as inventoryApi } from "../../api/axios";
+import { distributors as distributorsApi, inventory as inventoryApi, users as usersApi } from "../../api/axios";
 import { useAuthStore } from "../../store/auth";
 import {
     Package,
@@ -27,6 +27,9 @@ const isLoading = ref(false);
 const isSubmitting = ref(false);
 const distributors = ref([]);
 const currentStep = ref(1);
+
+const targetUsers = ref([]);
+const placementLabel = ref("");
 
 // Step 1: Placement / Account
 const placementType = ref("branch"); // 'branch', 'warehouse', 'online_shop'
@@ -108,22 +111,52 @@ async function fetchInitialData() {
         const distResponse = await distributorsApi.list();
         distributors.value = distResponse.data.data;
 
-        // Detect User Role and set Placement
-        if (authStore.user?.branch_id) {
-            placementType.value = 'branch';
-            placementId.value = authStore.user.branch_id;
-        } else {
-            // Fallback for Admin / Warehouse who might not have branch_id on user directly
-            // For this UI demo, let's just default to ID 1 or current user logic
-            placementType.value = 'warehouse';
-            placementId.value = 1; // Default
-        }
+        // Fetch Users for Account Selection
+        const usersResponse = await usersApi.list();
+        const allUsers = usersResponse.data.data || usersResponse.data;
+
+        // Filter: Show users that have 'toko_online' role or similar useful roles
+        const { user: loggedInUser } = authStore;
+        targetUsers.value = allUsers.filter(u => {
+            const hasOnlineRole = u.roles && u.roles.some(r => r.name === 'toko_online');
+            // Also include self
+            const isSelf = u.id === loggedInUser?.id;
+            return hasOnlineRole || isSelf || u.online_shop_id;
+        });
+
     } catch (error) {
         console.error(error);
         toast.error("Gagal memuat data awal");
     } finally {
         isLoading.value = false;
     }
+}
+
+function selectUserPlacement(user) {
+    if (user.online_shop_id) {
+        placementType.value = 'online_shop';
+        placementId.value = user.online_shop_id;
+        placementLabel.value = `Online: ${user.online_shop?.name || user.username}`;
+    } else if (user.warehouse_id) {
+        placementType.value = 'warehouse';
+        placementId.value = user.warehouse_id;
+        placementLabel.value = `Gudang: ${user.warehouse?.name || user.username}`;
+    } else if (user.branch_id) {
+        placementType.value = 'branch';
+        placementId.value = user.branch_id;
+        placementLabel.value = `Cabang: ${user.branch?.name || user.username}`;
+    } else {
+        // Fallback logic
+        if (user.roles?.some(r => r.name === 'toko_online')) {
+            placementType.value = 'online_shop';
+            placementId.value = user.online_shop_id || 1;
+            placementLabel.value = `Online: ${user.username}`;
+        } else {
+            toast.error("Akun ini tidak memiliki lokasi inventory yang valid.");
+            return;
+        }
+    }
+    nextStep();
 }
 
 // Watch item type changes to reload products when entering step 4 (or earlier)
@@ -303,7 +336,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
