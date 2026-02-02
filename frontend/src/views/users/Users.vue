@@ -107,7 +107,13 @@ async function fetchData() {
     ]);
 
     users.value = usersRes.data.data || [];
-    branches.value = branchesRes.data.data || [];
+    // Clean up branches list (exclude online/warehouse if backend returns them)
+    // Assuming backend older data might still have type field
+    const allBranches = branchesRes.data.data || [];
+    branches.value = allBranches.filter(b =>
+      !['online', 'warehouse'].includes(b.type)
+    );
+
     warehouses.value = warehousesRes.data.data || [];
     onlineShops.value = onlineShopsRes.data.data || [];
     distributors.value = distributorsRes.data.data || [];
@@ -139,10 +145,13 @@ function formatLastSeen(dateString, timezone) {
 // Determine Placement Type
 const placementType = computed(() => {
   if (!form.value.role) return 'branch'; // Default
-  if (form.value.role === ROLES.GUDANG) return 'warehouse';
-  if (form.value.role === ROLES.DISTRIBUTION) return 'distributor';
-  if ([ROLES.TOKO_ONLINE, ROLES.LEADER_SHOPEE].includes(form.value.role)) return 'online_shop';
-  return 'branch'; // Default for Sales, Cashier, Leader, etc.
+  const role = form.value.role;
+
+  if (role === 'gudang') return 'warehouse';
+  if (role === 'distribution') return 'distributor';
+  if (['toko_online', 'leader_shopee'].includes(role)) return 'online_shop';
+
+  return 'branch'; // Default
 });
 
 // Label for Placement
