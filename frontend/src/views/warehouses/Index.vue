@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import {
-    Warehouse, // Changed Icon from Building2  
+    Warehouse,
     Search,
     Plus,
     MapPin,
@@ -12,10 +12,7 @@ import {
     XCircle
 } from 'lucide-vue-next';
 import { branches as api } from '../../api/axios';
-import WarehouseModal from '../branches/BranchModal.vue'; // Reuse generic modal but pass type='warehouse' logic implicitly? No, BranchModal sets type='physical'.
-// We need to modify BranchModal to accept type or make a new WarehouseModal.
-// Actually, let's just make a new wrapper or modify BranchModal to define type via prop?
-// Modifying BranchModal is cleaner.
+import WarehouseModal from '../branches/BranchModal.vue';
 import { useToast } from '../../composables/useToast';
 
 const toast = useToast();
@@ -98,7 +95,8 @@ const handleSaved = () => {
         <div class="bg-surface-800 rounded-2xl border border-surface-700 p-4 sticky top-4 z-10 shadow-xl">
             <div class="relative">
                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="20" />
-                <input v-model="searchQuery" type="text" placeholder="Cari gudang..." class="input pl-10 w-full" />
+                <input v-model="searchQuery" type="text" placeholder="Cari gudang..."
+                    class="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-2 pl-10 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder:text-surface-600" />
             </div>
         </div>
 
@@ -153,28 +151,21 @@ const handleSaved = () => {
             </div>
         </div>
 
-        <!-- We reuse BranchModal but we need to inject type='warehouse'. 
-             However BranchModal currently hardcodes 'physical'. 
-             We should modify BranchModal first to allow Type prop. 
-        -->
         <WarehouseModal :show="showModal" :branch="selectedBranch" type="warehouse" @close="showModal = false"
             @saved="handleSaved" />
     </div>
 </template>
 
 <style scoped>
-/* Tambahkan referensi ke file CSS utama kamu */
+/* Gabungkan semua style di satu blok dan gunakan @reference */
 @reference "../../assets/index.css";
 
 .custom-scrollbar::-webkit-scrollbar {
-    background: theme('colors.surface.900');
-    /* Contoh penggunaan */
-    /* ... kode lainnya ... */
+    width: 6px;
 }
-</style>
 
-<style scoped>
-.input {
-    @apply bg-surface-900 border border-surface-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder:text-surface-600;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: theme('colors.surface.700');
+    border-radius: 9999px;
 }
 </style>
