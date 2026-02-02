@@ -36,33 +36,35 @@ export const useInventoryStore = defineStore('inventory', () => {
     ]
 
     // Getters
+    // Getters
     const filteredProducts = computed(() => {
         let result = [...products.value]
 
         // Filter by search
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase()
-            result = result.filter(p =>
-                p.name.toLowerCase().includes(query) ||
-                p.sku.toLowerCase().includes(query) ||
-                p.brand.toLowerCase().includes(query)
+            result = result.filter(item =>
+                item.imei?.toLowerCase().includes(query) ||
+                item.product?.name?.toLowerCase().includes(query) ||
+                item.product?.sku?.toLowerCase().includes(query) ||
+                item.product?.brand?.toLowerCase().includes(query)
             )
         }
 
         // Filter by category
         if (selectedCategory.value) {
-            result = result.filter(p => p.category === selectedCategory.value)
+            result = result.filter(item => item.product?.category === selectedCategory.value)
         }
 
         // Sort
         result.sort((a, b) => {
             let comparison = 0
             if (sortBy.value === 'name') {
-                comparison = a.name.localeCompare(b.name)
+                const nameA = a.product?.name || '';
+                const nameB = b.product?.name || '';
+                comparison = nameA.localeCompare(nameB)
             } else if (sortBy.value === 'price') {
-                comparison = a.price - b.price
-            } else if (sortBy.value === 'stock') {
-                comparison = a.stock - b.stock
+                comparison = (a.selling_price || 0) - (b.selling_price || 0)
             }
             return sortOrder.value === 'asc' ? comparison : -comparison
         })
@@ -70,18 +72,13 @@ export const useInventoryStore = defineStore('inventory', () => {
         return result
     })
 
-    const lowStockProducts = computed(() =>
-        products.value.filter(p => p.stock <= p.minStock)
-    )
-
-    const outOfStockProducts = computed(() =>
-        products.value.filter(p => p.stock === 0)
-    )
+    const lowStockProducts = computed(() => []) // Not applicable for granular items
+    const outOfStockProducts = computed(() => []) // Not applicable
 
     const totalProducts = computed(() => products.value.length)
 
     const totalValue = computed(() =>
-        products.value.reduce((total, p) => total + (p.price * p.stock), 0)
+        products.value.reduce((total, item) => total + parseFloat(item.selling_price || 0), 0)
     )
 
     // Actions

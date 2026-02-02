@@ -14,33 +14,40 @@ use Illuminate\Support\Facades\Auth;
 class InventoryController extends Controller
 {
     // List Inventory
+    // List Inventory (Granular / Unit based)
     public function index(Request $request)
     {
-        $query = Product::with([
-            'details' => function ($q) {
-                $q->where('status', 'available');
-            },
-            'inventories'
-        ]);
+        // Default to showing HP units (ProductDetail)
+        // If we want to support Non-HP here, we'd need a polymorphic collection or separate endpoint.
+        // Given 'beda beda imei' requirement, we focus on ProductDetail.
+
+        $query = ProductDetail::with(['product', 'distributor']);
 
         if ($request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                ->orWhere('sku', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('imei', 'like', "%{$search}%")
+                    ->orWhereHas('product', function ($sq) use ($search) {
+                        $sq->where('name', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%");
+                    });
+            });
         }
 
-        $products = $query->latest()->paginate(20);
+        // Filter by Status (Default available)
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        } else {
+            $query->where('status', 'available');
+        }
 
-        // Append calculated stock
-        $products->getCollection()->transform(function ($product) {
-            if ($product->type === 'hp') {
-                $product->stock = $product->details->count();
-            } else {
-                $product->stock = $product->inventories->sum('quantity');
-            }
-            return $product;
-        });
+        $items = $query->latest()->paginate(20);
 
-        return response()->json($products);
+        // Transform if needed (to normalize for frontend)
+        // Ensure placement info is loaded if possible, but placement is polymorphic type/id.
+        // We can load it dynamically or just send raw type/id and handle in frontend map.
+
+        return response()->json($items);
     }
 
     // Stock In (Input Barang)

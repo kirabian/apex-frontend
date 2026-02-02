@@ -19,6 +19,7 @@ import {
   TrendingUp,
   TrendingDown,
   Box,
+  Smartphone
 } from "lucide-vue-next";
 
 const inventoryStore = useInventoryStore();
@@ -26,37 +27,35 @@ const inventoryStore = useInventoryStore();
 // Local state
 const searchQuery = ref("");
 const selectedCategory = ref("");
-const showStockFilter = ref("all"); // all, low, out
+const showStockFilter = ref("all");
 
 onMounted(() => {
   inventoryStore.fetchProducts();
 });
 
-// Filtered products
+// Filtered items (Granular)
 const filteredProducts = computed(() => {
-  let products = inventoryStore.products;
+  let items = inventoryStore.products; // These are now ProductDetail objects
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    products = products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.brand.toLowerCase().includes(query)
+    items = items.filter(
+      (item) =>
+        item.imei?.toLowerCase().includes(query) ||
+        item.product?.name?.toLowerCase().includes(query) ||
+        item.product?.sku?.toLowerCase().includes(query) ||
+        item.product?.brand?.toLowerCase().includes(query)
     );
   }
 
   if (selectedCategory.value) {
-    products = products.filter((p) => p.category === selectedCategory.value);
+    items = items.filter((item) => item.product?.category === selectedCategory.value);
   }
 
-  if (showStockFilter.value === "low") {
-    products = products.filter((p) => p.stock > 0 && p.stock <= p.minStock);
-  } else if (showStockFilter.value === "out") {
-    products = products.filter((p) => p.stock === 0);
-  }
+  // Stock filter logic removed as we list individual units now
+  // if (showStockFilter.value === "low") ...
 
-  return products;
+  return items;
 });
 
 // Stats
@@ -184,58 +183,64 @@ function getStockStatus(product) {
             <tr>
               <th>SKU</th>
               <th>Produk</th>
-              <th>Kategori</th>
-              <th>Harga</th>
-              <th class="text-center">Stok</th>
+              <th>Detail (IMEI)</th>
+              <th>Lokasi</th>
+              <th>Distributor</th>
+              <th>Harga Jual</th>
               <th>Status</th>
               <th class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="inventoryStore.isLoading">
-              <td colspan="7" class="text-center py-12">
+              <td colspan="8" class="text-center py-12">
                 <RefreshCw :size="24" class="animate-spin mx-auto text-blue-400 mb-2" />
                 <p class="text-text-secondary">Memuat data...</p>
               </td>
             </tr>
             <tr v-else-if="filteredProducts.length === 0">
-              <td colspan="7" class="text-center py-12">
+              <td colspan="8" class="text-center py-12">
                 <Box :size="48" class="mx-auto text-text-secondary mb-2" />
-                <p class="text-text-secondary">Tidak ada produk ditemukan</p>
+                <p class="text-text-secondary">Tidak ada data ditemukan</p>
               </td>
             </tr>
-            <tr v-else v-for="product in filteredProducts" :key="product.id">
+            <tr v-else v-for="item in filteredProducts" :key="item.id">
               <td class="font-mono text-sm text-text-secondary">
-                {{ product.sku }}
+                {{ item.product?.sku || '-' }}
               </td>
               <td>
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 bg-surface-700 rounded-lg flex items-center justify-center">
-                    <Package :size="16" class="text-text-secondary" />
+                    <Smartphone :size="16" class="text-text-secondary" />
                   </div>
                   <div>
-                    <p class="font-medium text-text-primary">{{ product.name }}</p>
-                    <p class="text-xs text-text-secondary">{{ product.brand }}</p>
+                    <p class="font-medium text-text-primary">{{ item.product?.name }}</p>
+                    <p class="text-xs text-text-secondary">{{ item.product?.brand }}</p>
                   </div>
                 </div>
               </td>
-              <td class="text-text-secondary">{{ product.category }}</td>
-              <td class="text-text-primary font-medium">
-                {{ formatCurrency(product.price) }}
+              <td>
+                <div class="flex flex-col">
+                  <span class="font-mono text-xs bg-surface-700 px-2 py-1 rounded w-fit">{{ item.imei }}</span>
+                  <span class="text-[10px] text-text-secondary mt-1" v-if="item.ram || item.storage">
+                    {{ item.ram }} / {{ item.storage }}
+                  </span>
+                </div>
               </td>
-              <td class="text-center">
-                <span class="font-bold" :class="product.stock <= product.minStock
-                  ? 'text-amber-400'
-                  : 'text-text-primary'
-                  ">
-                  {{ product.stock }}
-                </span>
-                <span class="text-text-secondary text-sm">
-                  / {{ product.minStock }}</span>
+              <td class="text-sm text-text-secondary">
+                <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
+                <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+              </td>
+              <td class="text-sm text-text-secondary">
+                {{ item.distributor?.name || '-' }}
+              </td>
+              <td class="text-text-primary font-medium">
+                {{ formatCurrency(item.selling_price) }}
               </td>
               <td>
-                <span class="badge" :class="getStockStatus(product).class">
-                  {{ getStockStatus(product).label }}
+                <span class="badge"
+                  :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
+                  {{ item.status }}
                 </span>
               </td>
               <td>
