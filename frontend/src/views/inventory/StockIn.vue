@@ -27,7 +27,10 @@ const authStore = useAuthStore();
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const distributors = ref([]);
+// Tambahkan ini di bawah currentStep
 const currentStep = ref(1);
+const isManualDistributor = ref(false); // Buat kontrol tombol toggle
+const newDistributorName = ref("");      // Buat nampung inputan nama manual
 
 const targetUsers = ref([]);
 const placementLabel = ref("");
@@ -174,7 +177,10 @@ async function submitStockIn() {
     try {
         const payload = {
             product_id: selectedProduct.value,
-            distributor_id: selectedDistributor.value,
+            // LOGIKA DINAMIS: Kirim ID kalau ada, atau kirim Nama kalau manual
+            distributor_id: isManualDistributor.value ? null : selectedDistributor.value,
+            new_distributor_name: isManualDistributor.value ? newDistributorName.value : null,
+
             type: itemType.value,
             placement_type: placementType.value,
             placement_id: placementId.value,
@@ -192,9 +198,9 @@ async function submitStockIn() {
         // Reset or Redirect?
         // Let's reset to Step 1
         currentStep.value = 1;
-        imeiRows.value = [{ imei: "", condition: "new", cost_price: 0, selling_price: 0 }];
-        nonHpForm.value.quantity = 1;
-        selectedProduct.value = null;
+        isManualDistributor.value = false;
+        newDistributorName.value = "";
+        selectedDistributor.value = "";
 
     } catch (error) {
         console.error(error);
