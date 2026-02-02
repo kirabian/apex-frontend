@@ -142,22 +142,23 @@ function formatLastSeen(dateString, timezone) {
 
 // Compute available branches based on selected role
 const availableBranches = computed(() => {
+  // Jika role belum dipilih, tampilkan semua (fallback)
   if (!form.value.role) return branches.value;
 
   const onlineRoles = ['toko_online', 'leader_shopee'];
-  // Check if selected role is an online role
   const isOnlineRole = onlineRoles.includes(form.value.role);
 
   if (isOnlineRole) {
-    // Only show online shops
+    // Filter hanya cabang yang bertipe 'online'
     return branches.value.filter(b => b.type === 'online');
   } else {
-    // Show physical branches (or all physical)
-    // Adjust logic if "Leader" -> "Physical Leader" should only see physical?
-    // User said: "leader pun sama tapi leader kan ada leader yang cabang fisik... bikin juga deh pilihan gitu"
-    // This implies for normal roles, show physical branches.
+    // Filter hanya cabang fisik (bukan online)
     return branches.value.filter(b => b.type !== 'online');
   }
+});
+watch(() => form.value.role, (newRole) => {
+  // Kosongkan pilihan cabang setiap kali role berubah
+  form.value.branch_id = "";
 });
 
 // Filtered users
@@ -682,11 +683,15 @@ async function permanentDeleteUser(id) {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Cabang / Toko</label>
+              <label class="block text-sm font-medium text-slate-400 mb-2">
+                {{ ['toko_online', 'leader_shopee'].includes(form.value.role) ? 'Pilih Toko Online' : 'Pilih Cabang
+                Fisik'
+                }}
+              </label>
               <select v-model="form.branch_id" class="input">
-                <option value="">Pilih Cabang (Optional)</option>
+                <option value="">Pilih...</option>
                 <option v-for="branch in availableBranches" :key="branch.id" :value="branch.id">
-                  {{ branch.name }} {{ branch.type === 'online' ? '(Online)' : '' }}
+                  {{ branch.name }}
                 </option>
               </select>
             </div>
