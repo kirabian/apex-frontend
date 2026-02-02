@@ -147,6 +147,26 @@ const routes = [
                 }
             },
             {
+                path: 'brands',
+                name: 'Brands',
+                component: () => import('../views/master/brands/Index.vue'),
+                meta: {
+                    title: 'Data Merek',
+                    menu: 'brands',
+                    permissions: ['master.view']
+                }
+            },
+            {
+                path: 'types',
+                name: 'ProductTypes',
+                component: () => import('../views/master/types/Index.vue'),
+                meta: {
+                    title: 'Tipe Produk',
+                    menu: 'types',
+                    permissions: ['master.view']
+                }
+            },
+            {
                 path: 'categories',
                 name: 'Categories',
                 component: () => import('../views/master/Categories.vue'),
