@@ -55,6 +55,8 @@ export const useAuthStore = defineStore('auth', () => {
         // though typically router handles that.
         // Always load permissions from local config to ensure they are up to date with code changes
         // This overrides backend permissions if they differ, effectively making frontend source of truth for now.
+        let permissions = userData.permissions || [];
+
         if (roleName) {
             const localPermissions = getPermissionsForRole(roleName);
             // If we want to merge: permissions = [...new Set([...permissions, ...localPermissions])];
