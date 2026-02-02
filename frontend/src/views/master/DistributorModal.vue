@@ -130,6 +130,8 @@ const save = async () => {
 </template>
 
 <style scoped>
+@reference "../../style.css";
+
 .label {
     @apply block text-sm font-medium text-text-secondary mb-1.5;
 }
