@@ -203,15 +203,45 @@ onMounted(() => {
 
             <!-- Step 1: Account Selection -->
             <div v-if="currentStep === 1" class="space-y-6 animate-in slide-in-from-right">
-                <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Akun / Lokasi Inventory</h2>
-                <div class="bg-surface-900/50 p-6 rounded-xl border border-surface-700">
-                    <label class="label">Lokasi Penyimpanan</label>
-                    <div class="flex items-center gap-3 p-4 bg-surface-800 rounded-lg border border-surface-600">
-                        <Building class="text-primary-500" />
-                        <div>
-                            <p class="font-bold text-text-primary">{{ placementName || 'Memuat...' }}</p>
-                            <p class="text-xs text-text-secondary">Lokasi Default Akun Anda</p>
+                <h2 class="text-xl font-bold text-text-primary mb-4">Pilih Akun / User Target</h2>
+
+                <div v-if="isLoading" class="flex justify-center py-8">
+                    <Loader2 class="animate-spin text-primary-500" :size="32" />
+                </div>
+
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
+                        class="p-4 rounded-xl border border-surface-700 bg-surface-800 cursor-pointer hover:border-primary-500 hover:bg-surface-800/80 transition-all group relative overflow-hidden">
+
+                        <!-- Active Indicator -->
+                        <div v-if="placementLabel && placementLabel.includes(user.username)"
+                            class="absolute top-2 right-2 text-primary-500">
+                            <CheckCircle2 :size="20" />
                         </div>
+
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                                {{ user.name.charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-text-primary group-hover:text-primary-400 transition-colors">
+                                    {{ user.name }}</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span
+                                        class="text-xs px-2 py-0.5 rounded-full bg-surface-700 text-text-secondary border border-surface-600">
+                                        {{ user.role || (user.roles && user.roles[0]?.name) || 'User' }}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-text-secondary mt-1 truncate max-w-[150px]">
+                                    {{ user.username }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="targetUsers.length === 0" class="col-span-full text-center py-8 text-text-secondary">
+                        Tidak ada akun Toko Online / User yang ditemukan.
                     </div>
                 </div>
             </div>
@@ -273,7 +303,7 @@ onMounted(() => {
                         <Box :size="14" class="text-text-secondary" />
                         <span class="text-text-secondary">Tipe:</span>
                         <span class="font-bold text-text-primary">{{ itemType === 'hp' ? 'Handphone (IMEI)' : 'Non-HP'
-                            }}</span>
+                        }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-3 border-l border-surface-700/50">
                         <Truck :size="14" class="text-text-secondary" />
