@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useToast } from "../../composables/useToast";
-import { distributors as distributorsApi, inventory as inventoryApi, users as usersApi } from "../../api/axios";
+import { distributors as distributorsApi, inventory as inventoryApi, users as usersApi, brands as brandsApi, productTypes as productTypesApi } from "../../api/axios";
 import { useAuthStore } from "../../store/auth";
 import {
     Package,
@@ -178,12 +178,73 @@ function selectUserPlacement(user) {
     nextStep();
 }
 
-// Watch item type changes to reload products when entering step 4 (or earlier)
-watch(itemType, async () => {
-    const prodResponse = await inventoryApi.getProductsLookup({ type: itemType.value });
-    products.value = prodResponse.data;
-    selectedProduct.value = null;
+// Step 4: Product Hierarchical Selection
+const brands = ref([]);
+const allowedTypes = ref([]);
+const filteredTypes = computed(() => {
+    if (!selectedBrand.value) return [];
+    return allowedTypes.value.filter(t => t.brand_id === selectedBrand.value);
 });
+// Unique Type Names to avoid duplicates if multiple types share name
+const uniqueTypeNames = computed(() => {
+    const names = new Set(filteredTypes.value.map(t => t.name));
+    return Array.from(names);
+});
+
+// Selection State
+const selectedBrand = ref(null);
+const selectedTypeName = ref("");
+const selectedRam = ref("");
+const selectedStorage = ref("");
+
+// Available Specs based on Type Name
+const availableSpecs = computed(() => {
+    if (!selectedTypeName.value) return { rams: [], storages: [] };
+    // Find all types with this name -> extract rams and storages
+    const matching = allowedTypes.value.filter(t => t.name === selectedTypeName.value);
+    const rams = new Set(matching.map(t => t.ram).filter(Boolean));
+    const storages = new Set(matching.map(t => t.storage).filter(Boolean));
+    return {
+        rams: Array.from(rams),
+        storages: Array.from(storages)
+    };
+});
+
+// Watchers to reset downstream
+watch(selectedBrand, () => { selectedTypeName.value = ""; selectedRam.value = ""; selectedStorage.value = ""; });
+watch(selectedTypeName, () => { selectedRam.value = ""; selectedStorage.value = ""; });
+
+async function fetchInitialData() {
+    isLoading.value = true;
+    try {
+        const [distResp, userResp, brandsResp, typesResp, prodResp] = await Promise.all([
+            distributorsApi.list(),
+            usersApi.list(),
+            brandsApi.list(),
+            productTypesApi.list(),
+            inventoryApi.getProductsLookup({ type: 'hp' }) // Pre-fetch HP products to map ID
+        ]);
+
+        distributors.value = distResp.data.data;
+        brands.value = brandsResp.data.data || brandsResp.data;
+        allowedTypes.value = typesResp.data.data || typesResp.data;
+        products.value = prodResp.data; // Keep this to map name -> product_id
+
+        const allUsers = userResp.data.data || userResp.data;
+        const { user: loggedInUser } = authStore;
+        targetUsers.value = allUsers.filter(u => {
+            const hasOnlineRole = u.roles && u.roles.some(r => r.name === 'toko_online');
+            const isSelf = u.id === loggedInUser?.id;
+            return hasOnlineRole || isSelf || u.online_shop_id;
+        });
+
+    } catch (error) {
+        console.error(error);
+        toast.error("Gagal memuat data awal");
+    } finally {
+        isLoading.value = false;
+    }
+}
 
 async function submitStockIn() {
     if (!canSubmit.value) return;
