@@ -140,6 +140,26 @@ function formatLastSeen(dateString, timezone) {
   return `${date.toLocaleDateString("id-ID", options)} ${tzLabel}`;
 }
 
+// Compute available branches based on selected role
+const availableBranches = computed(() => {
+  if (!form.value.role) return branches.value;
+
+  const onlineRoles = ['toko_online', 'leader_shopee'];
+  // Check if selected role is an online role
+  const isOnlineRole = onlineRoles.includes(form.value.role);
+
+  if (isOnlineRole) {
+    // Only show online shops
+    return branches.value.filter(b => b.type === 'online');
+  } else {
+    // Show physical branches (or all physical)
+    // Adjust logic if "Leader" -> "Physical Leader" should only see physical?
+    // User said: "leader pun sama tapi leader kan ada leader yang cabang fisik... bikin juga deh pilihan gitu"
+    // This implies for normal roles, show physical branches.
+    return branches.value.filter(b => b.type !== 'online');
+  }
+});
+
 // Filtered users
 const filteredUsers = computed(() => {
   let result = users.value;
@@ -641,57 +661,59 @@ async function permanentDeleteUser(id) {
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
-                <select v-model="form.role" class="input" required>
-                  <option value="">Pilih Role</option>
-                  <option v-for="role in rolesList" :key="role.value" :value="role.value">
-                    {{ role.label }}
-                  </option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
-                <select v-model="form.timezone" class="input" required>
-                  <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
-                    {{ tz.label }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Cabang Utama</label>
-              <select v-model="form.branch_id" class="input">
-                <option value="">Pilih Cabang (Optional)</option>
-                <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-                  {{ branch.name }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Address -->
-            <div>
-              <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
-              <textarea v-model="form.address" class="input min-h-[80px]"
-                placeholder="Alamat lengkap user..."></textarea>
-            </div>
-
-            <div class="flex justify-end gap-3 mt-6">
-              <button type="button" @click="closeModal"
-                class="px-4 py-2 text-slate-400 hover:text-white transition-colors" :disabled="isSaving">
-                Batal
-              </button>
-              <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
-                <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
-                <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
-              </button>
-            </div>
-          </form>
         </div>
       </div>
-    </Teleport>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-2">Role</label>
+          <select v-model="form.role" class="input" required>
+            <option value="">Pilih Role</option>
+            <option v-for="role in rolesList" :key="role.value" :value="role.value">
+              {{ role.label }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-2">Zona Waktu</label>
+          <select v-model="form.timezone" class="input" required>
+            <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
+              {{ tz.label }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-400 mb-2">Cabang / Toko</label>
+        <select v-model="form.branch_id" class="input">
+          <option value="">Pilih Cabang (Optional)</option>
+          <option v-for="branch in availableBranches" :key="branch.id" :value="branch.id">
+            {{ branch.name }} {{ branch.type === 'online' ? '(Online)' : '' }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Address -->
+      <div>
+        <label class="block text-sm font-medium text-slate-400 mb-2">Alamat (Optional)</label>
+        <textarea v-model="form.address" class="input min-h-[80px]" placeholder="Alamat lengkap user..."></textarea>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" @click="closeModal" class="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+          :disabled="isSaving">
+          Batal
+        </button>
+        <button type="submit" class="btn btn-primary flex items-center gap-2" :disabled="isSaving">
+          <Loader2 v-if="isSaving" class="animate-spin" :size="18" />
+          <span>{{ isSaving ? 'Menyimpan...' : 'Simpan User' }}</span>
+        </button>
+      </div>
+      </form>
+  </div>
+  </div>
+  </Teleport>
   </div>
 </template>
 
