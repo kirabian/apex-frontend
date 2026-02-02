@@ -25,7 +25,17 @@ return new class extends Migration {
             // But 'type' is enum. 
         });
 
-        DB::statement("ALTER TABLE branches MODIFY COLUMN type VARCHAR(255) NOT NULL DEFAULT 'physical'");
+        // PostgreSQL syntax
+        // Create a temporary check constraint to allow casting if needed, but for simple ENUM to VARCHAR it should work implicit or with explicit cast.
+        // However, since we are changing structure, let's use the standard SQL standard way if possible or PG specific.
+        // PG: ALTER TABLE branches ALTER COLUMN type TYPE VARCHAR(255);
+        // Also need to drop the default if it conflicts, but usually it's fine.
+        // If it was an ENUM, sometimes we need 'USING type::varchar' or similar.
+
+        // First we drop the check constraint if it was an enum constraint (Laravel often creates checks for Enums in PG)
+        // But since we can't easily know the constraint name, let's just try the ALTER TYPE.
+        DB::statement("ALTER TABLE branches ALTER COLUMN type TYPE VARCHAR(255) USING type::varchar");
+        DB::statement("ALTER TABLE branches ALTER COLUMN type SET DEFAULT 'physical'");
     }
 
     /**
