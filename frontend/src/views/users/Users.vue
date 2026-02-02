@@ -684,9 +684,7 @@ async function permanentDeleteUser(id) {
 
             <div>
               <label class="block text-sm font-medium text-slate-400 mb-2">
-                {{ ['toko_online', 'leader_shopee'].includes(form.value.role) ? 'Pilih Toko Online' : 'Pilih Cabang
-                Fisik'
-                }}
+                {{ ['toko_online', 'leader_shopee'].includes(form.role) ? 'Pilih Toko Online' : 'Pilih Cabang Fisik' }}
               </label>
               <select v-model="form.branch_id" class="input">
                 <option value="">Pilih...</option>
