@@ -102,7 +102,16 @@ class StockOutController extends Controller
 
             foreach ($productDetails as $detail) {
                 $stockOut->items()->attach($detail->id);
-                $detail->update(['status' => $newStatus]);
+
+                $updateData = ['status' => $newStatus];
+
+                // If pindah_cabang, move location immediately
+                if ($request->category === 'pindah_cabang') {
+                    $updateData['placement_type'] = 'branch';
+                    $updateData['placement_id'] = $request->destination_branch_id;
+                }
+
+                $detail->update($updateData);
             }
 
             DB::commit();
