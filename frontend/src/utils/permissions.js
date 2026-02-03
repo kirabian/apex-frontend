@@ -107,7 +107,8 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.PRODUCTS_DELETE,
         PERMISSIONS.PRODUCTS_SET_PRICE,
         PERMISSIONS.INVENTORY_VIEW,
-        PERMISSIONS.INVENTORY_MANAGE, // Added for Stock In
+        PERMISSIONS.INVENTORY_MANAGE,
+        PERMISSIONS.INVENTORY_STOCK_IN, // Added for Stock In/Out access
         'master.view' // Added for Brands, Types, Categories
     ],
 
