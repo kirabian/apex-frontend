@@ -15,9 +15,29 @@ class InventoryController extends Controller
 {
     // List Inventory
     // List Inventory (Granular / Unit based)
+    // Filtered by branch - only super_admin can see all
     public function index(Request $request)
     {
+        $user = Auth::user();
         $query = ProductDetail::with(['product', 'distributor', 'user']);
+
+        // ============================================
+        // BRANCH FILTER: Only super_admin sees ALL
+        // Other roles only see their branch's inventory
+        // ============================================
+        if ($user->role !== 'super_admin') {
+            if ($user->branch_id) {
+                // Filter by user's branch (placement_type = 'branch' and placement_id = user's branch)
+                $query->where(function ($q) use ($user) {
+                    $q->where('placement_type', 'branch')
+                        ->where('placement_id', $user->branch_id);
+                });
+            } else {
+                // User has no branch - show nothing (or could show unassigned items)
+                $query->whereRaw('1 = 0'); // Returns no results
+            }
+        }
+        // super_admin: no filter, sees everything
 
         if ($request->search) {
             $search = $request->search;
@@ -37,11 +57,13 @@ class InventoryController extends Controller
             $query->where('status', 'available');
         }
 
-        $items = $query->latest()->paginate(20);
+        // Optional: filter by placement for super_admin viewing specific branch
+        if ($request->has('branch_id') && $user->role === 'super_admin') {
+            $query->where('placement_type', 'branch')
+                ->where('placement_id', $request->branch_id);
+        }
 
-        // Transform if needed (to normalize for frontend)
-        // Ensure placement info is loaded if possible, but placement is polymorphic type/id.
-        // We can load it dynamically or just send raw type/id and handle in frontend map.
+        $items = $query->latest()->paginate(20);
 
         return response()->json($items);
     }
