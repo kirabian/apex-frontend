@@ -27,7 +27,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ... users, branches, etc ...
     Route::apiResource('users', UserController::class);
+    Route::apiResource('users', UserController::class);
+    Route::post('/branches/{branch}/toggle-return', [BranchController::class, 'toggleReturn']);
     Route::apiResource('branches', BranchController::class);
+    Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('warehouses', WarehouseController::class);
     Route::apiResource('online-shops', OnlineShopController::class);
 

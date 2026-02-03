@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
+import api from "../../api/axios";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
 const router = useRouter();
 import {
@@ -86,6 +87,50 @@ const stats = computed(() => [
   },
 ]);
 
+import { branches as branchesApi } from "../../api/axios";
+import { useAuthStore } from "../../store/auth";
+import { useToast } from "../../composables/useToast";
+
+const toast = useToast();
+const authStore = useAuthStore();
+const currentBranch = ref(null);
+const isTogglingReturn = ref(false);
+
+async function fetchCurrentBranch() {
+  if (authStore.userBranch?.id) {
+    try {
+      const response = await branchesApi.show(authStore.userBranch.id);
+      currentBranch.value = response.data.data || response.data;
+    } catch (e) {
+      console.error("Gagal load info branch", e);
+    }
+  }
+}
+
+async function toggleReturn() {
+  if (!currentBranch.value || isTogglingReturn.value) return;
+
+  isTogglingReturn.value = true;
+  try {
+    const response = await api.post(`/branches/${currentBranch.value.id}/toggle-return`);
+    currentBranch.value = response.data.data;
+    const status = currentBranch.value.can_accept_returns ? 'ON' : 'OFF';
+    toast.success(`Terima Retur berhasil diubah ke ${status}`);
+  } catch (e) {
+    toast.error("Gagal mengubah status retur");
+  } finally {
+    isTogglingReturn.value = false;
+  }
+}
+
+onMounted(() => {
+  inventoryStore.fetchProducts();
+  fetchCurrentBranch();
+});
+
+// Stats
+// ... (existing code)
+
 const categories = computed(() => inventoryStore.categories);
 
 function getStockStatus(product) {
@@ -105,7 +150,20 @@ function getStockStatus(product) {
         <h1 class="text-2xl font-bold text-text-primary tracking-tight">Inventory</h1>
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex gap-3 items-center">
+        <!-- Return Toggle (Only for users with branch) -->
+        <div v-if="currentBranch"
+          class="flex items-center gap-2 bg-surface-800 p-2 rounded-xl border border-surface-700 mr-2">
+          <span class="text-sm font-medium text-text-secondary pl-2">Terima Retur</span>
+          <button @click="toggleReturn"
+            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-900"
+            :class="currentBranch.can_accept_returns ? 'bg-emerald-500' : 'bg-surface-600'"
+            :disabled="isTogglingReturn">
+            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+              :class="currentBranch.can_accept_returns ? 'translate-x-6' : 'translate-x-1'" />
+          </button>
+        </div>
+
         <button class="btn btn-secondary" @click="router.push({ name: 'StockOut' })">
           <ArrowDownUp :size="16" />
           Keluar Stok

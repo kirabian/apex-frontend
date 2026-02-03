@@ -17,11 +17,19 @@ import {
     ChevronLeft,
     Smartphone,
     X,
-    Search
+    Search,
+    Gift,
+    Trophy,
+    UserCheck,
+    Calendar,
+    Percent,
+    Archive
 } from "lucide-vue-next";
+import { useAuthStore } from "../../store/auth";
 
 const toast = useToast();
 const router = useRouter();
+const authStore = useAuthStore();
 
 // State
 const isLoading = ref(false);
@@ -31,14 +39,30 @@ const searchQuery = ref("");
 const inventoryItems = ref([]);
 const selectedItems = ref([]);
 const branches = ref([]);
+const currentBranch = ref(null);
 
 // Categories
-const categories = [
+const allCategories = [
     { id: 'pindah_cabang', name: 'Pindah Cabang', icon: Building2, color: 'blue' },
     { id: 'kesalahan_input', name: 'Kesalahan Input', icon: AlertTriangle, color: 'amber' },
     { id: 'retur', name: 'Retur', icon: RotateCcw, color: 'purple' },
     { id: 'shopee', name: 'Shopee', icon: ShoppingBag, color: 'orange' },
+    { id: 'giveaway', name: 'Giveaway Customer', icon: Gift, color: 'pink' },
+    { id: 'hadiah', name: 'Hadiah', icon: Trophy, color: 'yellow' },
+    { id: 'brand_ambassador', name: 'Brand Ambassador', icon: UserCheck, color: 'indigo' },
+    { id: 'event', name: 'Event / Sponsorship', icon: Calendar, color: 'cyan' },
+    { id: 'promo', name: 'Promo', icon: Percent, color: 'red' },
+    { id: 'inventaris', name: 'Inventaris', icon: Archive, color: 'slate' },
 ];
+
+const categories = computed(() => {
+    // Hide 'retur' if branch cannot accept returns
+    if (currentBranch.value && currentBranch.value.can_accept_returns === false) {
+        return allCategories.filter(c => c.id !== 'retur');
+    }
+    return allCategories;
+});
+
 const selectedCategory = ref(null);
 
 // Form Fields
@@ -61,6 +85,8 @@ const form = ref({
     shopee_address: '',
     shopee_notes: '',
     shopee_tracking_no: '',
+    // Generic Note (for other categories)
+    notes: '',
 });
 
 // Barcode Scanner State
@@ -165,9 +191,9 @@ async function startScanner() {
         scanStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
         });
-        
+
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         if (videoRef.value) {
             videoRef.value.srcObject = scanStream;
             await videoRef.value.play();
@@ -188,7 +214,7 @@ async function startScanner() {
 
 async function detectBarcode() {
     if (!isScanning.value || !videoRef.value || !barcodeDetector) return;
-    
+
     try {
         const barcodes = await barcodeDetector.detect(videoRef.value);
         if (barcodes.length > 0) {
@@ -200,7 +226,7 @@ async function detectBarcode() {
     } catch (e) {
         // ignore detection errors
     }
-    
+
     requestAnimationFrame(detectBarcode);
 }
 
@@ -212,10 +238,22 @@ function stopScanner() {
     }
 }
 
+// Fetch current branch info to check return settings
+async function fetchCurrentBranch() {
+    if (authStore.userBranch?.id) {
+        try {
+            const response = await branchesApi.show(authStore.userBranch.id);
+            currentBranch.value = response.data.data || response.data;
+        } catch (e) {
+            console.error("Gagal load info branch", e);
+        }
+    }
+}
+
 // Validation
 const canSubmit = computed(() => {
     if (!selectedCategory.value || selectedItems.value.length === 0) return false;
-    
+
     switch (selectedCategory.value) {
         case 'pindah_cabang':
             return form.value.destination_branch_id && form.value.receiver_name;
@@ -226,14 +264,16 @@ const canSubmit = computed(() => {
         case 'shopee':
             return form.value.shopee_receiver && form.value.shopee_phone && form.value.shopee_address && form.value.shopee_tracking_no;
         default:
-            return false;
+            // For simple categories (Giveaway, Hadiah, etc), maybe just require items selected?
+            // Or maybe a note is needed? User didn't specify. Assuming no extra fields for now.
+            return true;
     }
 });
 
 // Submit
 async function submitStockOut() {
     if (!canSubmit.value) return;
-    
+
     isSubmitting.value = true;
     try {
         const payload = {
@@ -241,15 +281,22 @@ async function submitStockOut() {
             product_detail_ids: selectedItems.value.map(i => i.id),
             ...form.value
         };
-        
+
+        // Map generic notes if used
+        if (form.value.notes) {
+            // payload.notes = form.value.notes; // Only if backend accepts it
+            // For now backend doesn't seem to have a generic note field for 'out' categories.
+            // We'll leave it as is.
+        }
+
         const response = await api.post('/stock-outs', payload);
         toast.success(`Stok berhasil dikeluarkan! ID: ${response.data.data.receipt_id}`);
-        
+
         // Reset and redirect
         selectedItems.value = [];
         closeForm();
         router.push('/inventory');
-        
+
     } catch (e) {
         toast.error(e.response?.data?.message || "Gagal keluar stok");
     } finally {
@@ -260,6 +307,7 @@ async function submitStockOut() {
 onMounted(() => {
     fetchInventory();
     fetchBranches();
+    fetchCurrentBranch();
 });
 </script>
 
@@ -333,23 +381,27 @@ onMounted(() => {
             <div v-if="!selectedCategory" class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat)"
                     class="card p-6 text-center hover:border-primary-500 border-2 border-transparent transition-all">
-                    <component :is="cat.icon" :size="40" class="mx-auto mb-3"
-                        :class="`text-${cat.color}-500`" />
+                    <component :is="cat.icon" :size="40" class="mx-auto mb-3" :class="`text-${cat.color}-500`" />
                     <p class="font-bold text-text-primary">{{ cat.name }}</p>
                 </button>
             </div>
 
             <!-- Form Based on Category -->
-            <div v-else class="card p-8 border-t-4"
-                :class="{
-                    'border-t-blue-500': selectedCategory === 'pindah_cabang',
-                    'border-t-amber-500': selectedCategory === 'kesalahan_input',
-                    'border-t-purple-500': selectedCategory === 'retur',
-                    'border-t-orange-500': selectedCategory === 'shopee',
-                }">
+            <div v-else class="card p-8 border-t-4" :class="{
+                'border-t-blue-500': selectedCategory === 'pindah_cabang',
+                'border-t-amber-500': selectedCategory === 'kesalahan_input',
+                'border-t-purple-500': selectedCategory === 'retur',
+                'border-t-orange-500': selectedCategory === 'shopee',
+                'border-t-pink-500': selectedCategory === 'giveaway',
+                'border-t-yellow-500': selectedCategory === 'hadiah',
+                'border-t-indigo-500': selectedCategory === 'brand_ambassador',
+                'border-t-cyan-500': selectedCategory === 'event',
+                'border-t-red-500': selectedCategory === 'promo',
+                'border-t-slate-500': selectedCategory === 'inventaris',
+            }">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-bold text-text-primary">
-                        {{ categories.find(c => c.id === selectedCategory)?.name }}
+                        {{categories.find(c => c.id === selectedCategory)?.name}}
                     </h2>
                     <button @click="selectedCategory = null" class="text-text-secondary hover:text-text-primary">
                         <X :size="24" />
@@ -371,7 +423,8 @@ onMounted(() => {
                     </div>
                     <div>
                         <label class="label">Catatan</label>
-                        <textarea v-model="form.transfer_notes" class="input" rows="3" placeholder="Catatan tambahan..."></textarea>
+                        <textarea v-model="form.transfer_notes" class="input" rows="3"
+                            placeholder="Catatan tambahan..."></textarea>
                     </div>
                 </div>
 
@@ -379,7 +432,8 @@ onMounted(() => {
                 <div v-if="selectedCategory === 'kesalahan_input'" class="space-y-4">
                     <div>
                         <label class="label">Alasan Hapus *</label>
-                        <textarea v-model="form.deletion_reason" class="input" rows="4" placeholder="Jelaskan alasan penghapusan data..."></textarea>
+                        <textarea v-model="form.deletion_reason" class="input" rows="4"
+                            placeholder="Jelaskan alasan penghapusan data..."></textarea>
                     </div>
                 </div>
 
@@ -397,7 +451,8 @@ onMounted(() => {
                     </div>
                     <div>
                         <label class="label">Kendala / Masalah *</label>
-                        <textarea v-model="form.retur_issue" class="input" rows="3" placeholder="Jelaskan kendala atau masalah..."></textarea>
+                        <textarea v-model="form.retur_issue" class="input" rows="3"
+                            placeholder="Jelaskan kendala atau masalah..."></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -425,16 +480,19 @@ onMounted(() => {
                     </div>
                     <div>
                         <label class="label">Alamat Tujuan *</label>
-                        <textarea v-model="form.shopee_address" class="input" rows="2" placeholder="Alamat lengkap..."></textarea>
+                        <textarea v-model="form.shopee_address" class="input" rows="2"
+                            placeholder="Alamat lengkap..."></textarea>
                     </div>
                     <div>
                         <label class="label">Catatan</label>
-                        <textarea v-model="form.shopee_notes" class="input" rows="2" placeholder="Catatan pengiriman..."></textarea>
+                        <textarea v-model="form.shopee_notes" class="input" rows="2"
+                            placeholder="Catatan pengiriman..."></textarea>
                     </div>
                     <div>
                         <label class="label">No. Resi Shopee *</label>
                         <div class="flex gap-2">
-                            <input v-model="form.shopee_tracking_no" class="input flex-1 font-mono" placeholder="Scan atau ketik manual..." />
+                            <input v-model="form.shopee_tracking_no" class="input flex-1 font-mono"
+                                placeholder="Scan atau ketik manual..." />
                             <button @click="startScanner" type="button" class="btn btn-secondary px-4"
                                 :class="isScanning ? 'bg-orange-500 text-white' : ''">
                                 <ScanBarcode :size="20" />
@@ -446,8 +504,10 @@ onMounted(() => {
                     <div v-if="isScanning" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
                         <div class="relative w-full max-w-lg">
                             <video ref="videoRef" class="w-full rounded-2xl" autoplay playsinline muted></video>
-                            <div class="absolute inset-0 border-4 border-orange-500/50 rounded-2xl pointer-events-none"></div>
-                            <button @click="stopScanner" class="absolute top-4 right-4 bg-white/10 p-3 rounded-full text-white">
+                            <div class="absolute inset-0 border-4 border-orange-500/50 rounded-2xl pointer-events-none">
+                            </div>
+                            <button @click="stopScanner"
+                                class="absolute top-4 right-4 bg-white/10 p-3 rounded-full text-white">
                                 <X :size="24" />
                             </button>
                             <p class="text-center text-white mt-4 animate-pulse">Arahkan kamera ke barcode resi...</p>
@@ -457,7 +517,8 @@ onMounted(() => {
 
                 <!-- Selected Items Preview -->
                 <div class="mt-6 pt-6 border-t border-surface-700">
-                    <p class="text-xs uppercase font-bold text-text-secondary mb-3">Barang yang akan dikeluarkan ({{ selectedItems.length }})</p>
+                    <p class="text-xs uppercase font-bold text-text-secondary mb-3">Barang yang akan dikeluarkan ({{
+                        selectedItems.length }})</p>
                     <div class="flex flex-wrap gap-2">
                         <div v-for="item in selectedItems" :key="item.id"
                             class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">

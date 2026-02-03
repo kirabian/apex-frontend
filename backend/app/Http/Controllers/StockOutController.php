@@ -33,7 +33,21 @@ class StockOutController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'category' => ['required', Rule::in(['pindah_cabang', 'kesalahan_input', 'retur', 'shopee'])],
+            'category' => [
+                'required',
+                Rule::in([
+                    'pindah_cabang',
+                    'kesalahan_input',
+                    'retur',
+                    'shopee',
+                    'giveaway',
+                    'hadiah',
+                    'brand_ambassador',
+                    'event',
+                    'promo',
+                    'inventaris'
+                ])
+            ],
             'product_detail_ids' => 'required|array|min:1',
             'product_detail_ids.*' => 'exists:product_details,id',
 

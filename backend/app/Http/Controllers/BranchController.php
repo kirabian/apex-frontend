@@ -79,4 +79,17 @@ class BranchController extends Controller
         $branch->delete();
         return response()->json(['success' => true]);
     }
+
+    public function toggleReturn(Branch $branch)
+    {
+        $branch->update([
+            'can_accept_returns' => !$branch->can_accept_returns
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $branch,
+            'message' => 'Status terima retur berhasil diubah'
+        ]);
+    }
 }
