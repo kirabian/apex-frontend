@@ -160,10 +160,7 @@ function openStockOutForm() {
     showForm.value = true;
 }
 
-// Select category
-function selectCategory(cat) {
-    selectedCategory.value = cat.id;
-}
+
 
 // Reset form
 function resetForm() {
