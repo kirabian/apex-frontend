@@ -145,7 +145,9 @@ export const ROLE_PERMISSIONS = {
         PERMISSIONS.POS_ACCESS,
         PERMISSIONS.TRANSACTIONS_CREATE,
         PERMISSIONS.TRANSACTIONS_VIEW,
-        PERMISSIONS.INVENTORY_VIEW
+        PERMISSIONS.INVENTORY_VIEW,
+        PERMISSIONS.INVENTORY_STOCK_IN, // Allow access to stock in/out pages
+        PERMISSIONS.INVENTORY_MANAGE // Allow confirming transfers
     ],
 
     [ROLES.INVENTORY]: [
@@ -192,7 +194,7 @@ export const ROLE_MENUS = {
     [ROLES.SECURITY]: ['dashboard', 'transactions', 'track'],
     [ROLES.LEADER]: ['dashboard', 'transactions', 'reports', 'track'],
     [ROLES.DISTRIBUTION]: ['dashboard', 'inventory', 'incoming_transfers', 'reports', 'track'],
-    [ROLES.SALES]: ['dashboard', 'pos', 'transactions', 'inventory', 'track'],
+    [ROLES.SALES]: ['dashboard', 'pos', 'transactions', 'inventory', 'incoming_transfers', 'track'],
     [ROLES.INVENTORY]: ['dashboard', 'inventory', 'incoming_transfers', 'track'],
     [ROLES.GUDANG]: ['dashboard', 'inventory', 'incoming_transfers', 'track'],
     [ROLES.INVENTORY_KASIR]: ['dashboard', 'pos', 'inventory', 'incoming_transfers', 'transactions', 'track'],
