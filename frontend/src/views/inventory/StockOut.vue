@@ -56,14 +56,22 @@ const allCategories = [
 ];
 
 const categories = computed(() => {
-    // Hide 'retur' if branch cannot accept returns
-    if (currentBranch.value && currentBranch.value.can_accept_returns === false) {
-        return allCategories.filter(c => c.id !== 'retur');
-    }
+    // Always show all categories, handled by click event
     return allCategories;
 });
 
-const selectedCategory = ref(null);
+const showReturnBlockedAlert = ref(false);
+
+function selectCategory(category) {
+    if (category.id === 'retur') {
+        if (currentBranch.value && currentBranch.value.can_accept_returns === false) {
+            showReturnBlockedAlert.value = true;
+            return;
+        }
+    }
+    selectedCategory.value = category.id;
+    // Reset form fields specifically if needed or leave as is
+}
 
 // Form Fields
 const form = ref({
