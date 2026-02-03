@@ -138,6 +138,12 @@ class StockOutController extends Controller
                     $updateData['placement_id'] = $request->destination_branch_id;
                 }
 
+                // If retur, move item to the warehouse
+                if ($request->category === 'retur' && $request->return_destination_id) {
+                    $updateData['placement_type'] = 'warehouse';
+                    $updateData['placement_id'] = $request->return_destination_id;
+                }
+
                 $detail->update($updateData);
             }
 

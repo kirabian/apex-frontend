@@ -99,6 +99,16 @@ const routes = [
                 }
             },
             {
+                path: 'retur-items',
+                name: 'ReturItems',
+                component: () => import('../views/inventory/ReturItems.vue'),
+                meta: {
+                    title: 'Retur Masuk',
+                    menu: 'retur_items',
+                    permissions: ['inventory.view', 'inventory.manage']
+                }
+            },
+            {
                 path: 'products',
                 name: 'Products',
                 component: Products,

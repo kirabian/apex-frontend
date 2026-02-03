@@ -85,6 +85,9 @@ const menuItems = [
     // Lacak Barang
     { id: "track", path: "/track", label: "Lacak Barang", icon: Search },
 
+    // Retur Masuk (Gudang)
+    { id: "retur_items", path: "/retur-items", label: "Retur Masuk", icon: ArrowDownRight },
+
     { id: "settings", path: "/settings", label: "Pengaturan", icon: Settings },
 ];
 

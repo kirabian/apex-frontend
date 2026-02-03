@@ -59,6 +59,11 @@ class InventoryController extends Controller
             $query->where('status', 'available');
         }
 
+        // Filter by placement type (branch/warehouse/online_shop)
+        if ($request->has('placement_type')) {
+            $query->where('placement_type', $request->placement_type);
+        }
+
         $items = $query->latest()->paginate(20);
 
         // Transform results to include placement name
@@ -212,5 +217,22 @@ class InventoryController extends Controller
             $query->where('name', 'like', '%' . $request->name . '%');
         }
         return response()->json($query->select('id', 'name', 'type', 'sku', 'brand')->limit(20)->get());
+    }
+
+    // Update item status (e.g., accept return: returned -> available)
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:available,sold,returned,deleted,out'
+        ]);
+
+        $item = ProductDetail::findOrFail($id);
+        $item->update(['status' => $request->status]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status berhasil diubah',
+            'data' => $item
+        ]);
     }
 }
