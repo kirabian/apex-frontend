@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useToast } from "../../composables/useToast";
-import { inventory as inventoryApi, branches as branchesApi } from "../../api/axios";
+import { inventory as inventoryApi, branches as branchesApi, warehouses as warehousesApi } from "../../api/axios";
 import api from "../../api/axios";
 import {
     Package,
@@ -23,7 +23,9 @@ import {
     UserCheck,
     Calendar,
     Percent,
-    Archive
+    Archive,
+    Upload,
+    Warehouse
 } from "lucide-vue-next";
 import { useAuthStore } from "../../store/auth";
 
@@ -39,6 +41,7 @@ const searchQuery = ref("");
 const inventoryItems = ref([]);
 const selectedItems = ref([]);
 const branches = ref([]);
+const warehouses = ref([]);
 const currentBranch = ref(null);
 
 // Categories
@@ -90,6 +93,8 @@ const form = ref({
     retur_issue: '',
     customer_name: '',
     customer_phone: '',
+    return_destination_id: null, // Warehouse ID
+    proof_image: null, // Will be handled by separate ref for preview
     // Shopee
     shopee_receiver: '',
     shopee_phone: '',
@@ -119,13 +124,40 @@ async function fetchInventory() {
     }
 }
 
-// Fetch branches
+// Fetch branches and warehouses
 async function fetchBranches() {
     try {
         const response = await branchesApi.list();
         branches.value = response.data.data || response.data;
     } catch (e) {
         console.error("Gagal memuat cabang", e);
+    }
+}
+
+async function fetchWarehouses() {
+    try {
+        const response = await warehousesApi.list();
+        warehouses.value = response.data.data || response.data;
+    } catch (e) {
+        console.error("Gagal memuat gudang", e);
+    }
+}
+
+// File Upload State
+const proofImageFile = ref(null);
+const proofImagePreview = ref(null);
+
+function handleFileChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+        // Validate size 10MB
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error("Ukuran file maksimal 10MB");
+            event.target.value = '';
+            return;
+        }
+        proofImageFile.value = file;
+        proofImagePreview.value = URL.createObjectURL(file);
     }
 }
 
@@ -179,6 +211,9 @@ async function openStockOutForm() {
     }
 
     showForm.value = true;
+
+    // Fetch dependencies based on category (lazy load if needed)
+    fetchWarehouses();
 }
 
 
@@ -471,24 +506,44 @@ onMounted(() => {
                             <input v-model="form.retur_officer" class="input" placeholder="Nama petugas retur" />
                         </div>
                         <div>
+                            <label class="label">Pilih Gudang *</label>
+                            <select v-model="form.return_destination_id" class="input">
+                                <option :value="null">-- Pilih Gudang Retur --</option>
+                                <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="label">Foto Bukti / Kondisi (Max 10MB) *</label>
+                        <input type="file" accept="image/*" @change="handleFileChange"
+                            class="w-full text-sm text-text-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-surface-700 file:text-primary-400 hover:file:bg-surface-600 transition-all cursor-pointer border border-surface-700 rounded-xl bg-surface-800" />
+                        <div v-if="proofImagePreview" class="mt-3">
+                            <img :src="proofImagePreview"
+                                class="h-32 rounded-xl object-cover border border-surface-600" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
                             <label class="label">Segel</label>
                             <input v-model="form.retur_seal" class="input" placeholder="Nomor segel (opsional)" />
                         </div>
+                        <div>
+                            <label class="label">Nama Customer *</label>
+                            <input v-model="form.customer_name" class="input" placeholder="Nama customer" />
+                        </div>
                     </div>
+
                     <div>
                         <label class="label">Kendala / Masalah *</label>
                         <textarea v-model="form.retur_issue" class="input" rows="3"
                             placeholder="Jelaskan kendala atau masalah..."></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="label">Nama Customer *</label>
-                            <input v-model="form.customer_name" class="input" placeholder="Nama customer" />
-                        </div>
-                        <div>
-                            <label class="label">No. WA Customer *</label>
-                            <input v-model="form.customer_phone" class="input" placeholder="08xxxxxxxxxx" />
-                        </div>
+
+                    <div>
+                        <label class="label">No. WA Customer *</label>
+                        <input v-model="form.customer_phone" class="input" placeholder="08xxxxxxxxxx" />
                     </div>
                 </div>
 

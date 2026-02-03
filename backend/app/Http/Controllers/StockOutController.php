@@ -65,6 +65,8 @@ class StockOutController extends Controller
             'retur_issue' => 'required_if:category,retur|nullable|string',
             'customer_name' => 'required_if:category,retur|nullable|string|max:255',
             'customer_phone' => 'required_if:category,retur|nullable|string|max:50',
+            'return_destination_id' => 'required_if:category,retur|nullable|exists:warehouses,id',
+            'proof_image' => 'required_if:category,retur|nullable|image|max:10240', // Max 10MB
 
             // Shopee
             'shopee_receiver' => 'required_if:category,shopee|nullable|string|max:255',
@@ -86,6 +88,12 @@ class StockOutController extends Controller
                 throw new \Exception('Beberapa barang sudah tidak tersedia atau sudah keluar stok.');
             }
 
+            // Handle File Upload
+            $proofImagePath = null;
+            if ($request->hasFile('proof_image')) {
+                $proofImagePath = $request->file('proof_image')->store('stock-outs/proofs', 'public');
+            }
+
             // Create stock out record
             $stockOut = StockOut::create([
                 'receipt_id' => StockOut::generateReceiptId(),
@@ -98,6 +106,25 @@ class StockOutController extends Controller
                 // Kesalahan Input
                 'deletion_reason' => $request->deletion_reason,
                 // Retur
+                'retur_officer' => $request->retur_officer,
+                'retur_seal' => $request->retur_seal,
+                'retur_issue' => $request->retur_issue,
+                'customer_name' => $request->customer_name,
+                'customer_phone' => $request->customer_phone,
+                'return_destination_id' => $request->return_destination_id,
+                'proof_image' => $proofImagePath,
+                
+                // Shopee
+                'shopee_receiver' => $request->shopee_receiver,
+                // ... rest of fields mapped below or handled by mass assignment if safely configured, 
+                // but let's be explicit to avoid issues
+                'shopee_phone' => $request->shopee_phone,
+                'shopee_address' => $request->shopee_address,
+                'shopee_notes' => $request->shopee_notes,
+                'shopee_tracking_no' => $request->shopee_tracking_no,
+                
+                'notes' => $request->notes, // Generic notes
+            ]);
                 'retur_officer' => $request->retur_officer,
                 'retur_seal' => $request->retur_seal,
                 'retur_issue' => $request->retur_issue,
