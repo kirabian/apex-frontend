@@ -75,7 +75,7 @@ const routes = [
                 meta: {
                     title: 'Pengeluaran Stok',
                     menu: 'inventory',
-                    permissions: ['inventory.manage', 'inventory.stock_out']
+                    permissions: ['inventory.manage', 'inventory.stock_in', 'inventory.stock_out']
                 }
             },
             {

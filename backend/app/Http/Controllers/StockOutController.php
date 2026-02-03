@@ -138,12 +138,45 @@ class StockOutController extends Controller
             return response()->json(['message' => 'Query minimal 3 karakter'], 422);
         }
 
+        $results = [];
+
+        // ==========================================
+        // PART 1: Search STOCK IN (Product Details)
+        // ==========================================
+        $productDetails = ProductDetail::with(['product', 'distributor', 'user'])
+            ->where('imei', 'like', "%{$query}%")
+            ->get();
+
+        foreach ($productDetails as $detail) {
+            $results[] = [
+                'type' => 'stock_in',
+                'id' => 'IN-' . $detail->id,
+                'imei' => $detail->imei,
+                'product_name' => $detail->product?->name,
+                'product_brand' => $detail->product?->brand,
+                'ram' => $detail->ram,
+                'storage' => $detail->storage,
+                'condition' => $detail->condition,
+                'status' => $detail->status,
+                'placement_type' => $detail->placement_type,
+                'placement_id' => $detail->placement_id,
+                'distributor' => $detail->distributor?->name,
+                'input_by' => $detail->user?->name ?? $detail->user?->username,
+                'cost_price' => $detail->cost_price,
+                'selling_price' => $detail->selling_price,
+                'created_at' => $detail->created_at,
+            ];
+        }
+
+        // ==========================================
+        // PART 2: Search STOCK OUT
+        // ==========================================
         // Search by Receipt ID
         $byReceipt = StockOut::with(['items.product', 'user', 'destinationBranch'])
             ->where('receipt_id', 'like', "%{$query}%")
             ->get();
 
-        // Search by IMEI
+        // Search by IMEI in stock out items
         $byImei = StockOut::with(['items.product', 'user', 'destinationBranch'])
             ->whereHas('items', function ($q) use ($query) {
                 $q->where('imei', 'like', "%{$query}%");
@@ -155,12 +188,35 @@ class StockOutController extends Controller
             ->where('shopee_tracking_no', 'like', "%{$query}%")
             ->get();
 
-        $results = $byReceipt->merge($byImei)->merge($byShopee)->unique('id');
+        $stockOuts = $byReceipt->merge($byImei)->merge($byShopee)->unique('id');
+
+        foreach ($stockOuts as $out) {
+            $results[] = [
+                'type' => 'stock_out',
+                'id' => $out->receipt_id,
+                'category' => $out->category,
+                'items' => $out->items->map(fn($i) => [
+                    'imei' => $i->imei,
+                    'product_name' => $i->product?->name,
+                ]),
+                'destination_branch' => $out->destinationBranch?->name,
+                'receiver_name' => $out->receiver_name,
+                'customer_name' => $out->customer_name,
+                'shopee_receiver' => $out->shopee_receiver,
+                'shopee_tracking_no' => $out->shopee_tracking_no,
+                'deletion_reason' => $out->deletion_reason,
+                'processed_by' => $out->user?->name ?? $out->user?->username,
+                'created_at' => $out->created_at,
+            ];
+        }
+
+        // Sort by created_at desc
+        usort($results, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
 
         return response()->json([
             'query' => $query,
-            'count' => $results->count(),
-            'data' => $results->values()
+            'count' => count($results),
+            'data' => $results
         ]);
     }
 

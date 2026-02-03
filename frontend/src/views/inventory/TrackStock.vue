@@ -13,7 +13,11 @@ import {
     Calendar,
     User,
     Smartphone,
-    ChevronRight
+    ArrowDownRight,
+    ArrowUpRight,
+    MapPin,
+    DollarSign,
+    Box
 } from "lucide-vue-next";
 
 const toast = useToast();
@@ -24,19 +28,12 @@ const isLoading = ref(false);
 const results = ref([]);
 const hasSearched = ref(false);
 
-// Category icons
+// Category styling for stock out
 const categoryIcons = {
     pindah_cabang: Building2,
     kesalahan_input: AlertTriangle,
     retur: RotateCcw,
     shopee: ShoppingBag,
-};
-
-const categoryColors = {
-    pindah_cabang: 'blue',
-    kesalahan_input: 'amber',
-    retur: 'purple',
-    shopee: 'orange',
 };
 
 const categoryLabels = {
@@ -79,6 +76,16 @@ function formatDate(dateString) {
         minute: '2-digit'
     });
 }
+
+// Format currency
+function formatCurrency(value) {
+    if (!value) return '-';
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(value);
+}
 </script>
 
 <template>
@@ -97,7 +104,8 @@ function formatDate(dateString) {
             <form @submit.prevent="search" class="flex gap-3">
                 <div class="relative flex-1">
                     <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" :size="20" />
-                    <input v-model="query" type="text" placeholder="Ketik IMEI, ID Resi (O03FEB-K9Z), atau No. Resi Shopee..."
+                    <input v-model="query" type="text"
+                        placeholder="Ketik IMEI, ID Resi (O03FEB-K9Z), atau No. Resi Shopee..."
                         class="input pl-12 h-14 text-lg" />
                 </div>
                 <button type="submit" :disabled="isLoading || query.length < 3"
@@ -123,114 +131,184 @@ function formatDate(dateString) {
             <div v-else class="space-y-4">
                 <p class="text-text-secondary text-sm">Ditemukan {{ results.length }} hasil</p>
 
-                <div v-for="result in results" :key="result.id"
-                    class="card p-6 border-l-4 hover:bg-surface-700/30 transition-all"
-                    :class="{
-                        'border-l-blue-500': result.category === 'pindah_cabang',
-                        'border-l-amber-500': result.category === 'kesalahan_input',
-                        'border-l-purple-500': result.category === 'retur',
-                        'border-l-orange-500': result.category === 'shopee',
-                    }">
-                    <!-- Header -->
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl flex items-center justify-center"
-                                :class="{
+                <!-- STOCK IN Result -->
+                <template v-for="result in results" :key="result.id">
+                    <div v-if="result.type === 'stock_in'"
+                        class="card p-6 border-l-4 border-l-green-500 hover:bg-surface-700/30 transition-all">
+                        <!-- Header -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500/20 text-green-500">
+                                    <ArrowUpRight :size="24" />
+                                </div>
+                                <div>
+                                    <p class="font-bold text-text-primary flex items-center gap-2">
+                                        <span
+                                            class="text-green-500 text-xs font-bold bg-green-500/20 px-2 py-0.5 rounded">MASUK</span>
+                                        {{ result.product_name }}
+                                    </p>
+                                    <p class="text-sm text-text-secondary font-mono">{{ result.imei }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 text-text-secondary text-sm">
+                                <Calendar :size="14" />
+                                {{ formatDate(result.created_at) }}
+                            </div>
+                        </div>
+
+                        <!-- Details Grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                                <p class="text-text-secondary text-xs flex items-center gap-1">
+                                    <Smartphone :size="12" /> Kondisi
+                                </p>
+                                <p class="text-text-primary capitalize">{{ result.condition || '-' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs flex items-center gap-1">
+                                    <Box :size="12" /> Status
+                                </p>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold capitalize" :class="{
+                                    'bg-green-500/20 text-green-500': result.status === 'available',
+                                    'bg-amber-500/20 text-amber-500': result.status === 'sold',
+                                    'bg-blue-500/20 text-blue-500': result.status === 'transfer',
+                                    'bg-red-500/20 text-red-500': result.status === 'deleted'
+                                }">
+                                    {{ result.status }}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs flex items-center gap-1">
+                                    <MapPin :size="12" /> Lokasi
+                                </p>
+                                <p class="text-text-primary">{{ result.placement_type }}#{{ result.placement_id }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs flex items-center gap-1">
+                                    <DollarSign :size="12" /> Harga Jual
+                                </p>
+                                <p class="text-text-primary font-bold">{{ formatCurrency(result.selling_price) }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">Distributor</p>
+                                <p class="text-text-primary">{{ result.distributor || '-' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs flex items-center gap-1">
+                                    <User :size="12" /> Diinput oleh
+                                </p>
+                                <p class="text-text-primary">{{ result.input_by || '-' }}</p>
+                            </div>
+                            <div v-if="result.ram || result.storage">
+                                <p class="text-text-secondary text-xs">RAM / Storage</p>
+                                <p class="text-text-primary">{{ result.ram || '-' }}GB / {{ result.storage || '-' }}GB
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STOCK OUT Result -->
+                    <div v-else-if="result.type === 'stock_out'"
+                        class="card p-6 border-l-4 hover:bg-surface-700/30 transition-all" :class="{
+                            'border-l-blue-500': result.category === 'pindah_cabang',
+                            'border-l-amber-500': result.category === 'kesalahan_input',
+                            'border-l-purple-500': result.category === 'retur',
+                            'border-l-orange-500': result.category === 'shopee',
+                        }">
+                        <!-- Header -->
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="{
                                     'bg-blue-500/20 text-blue-500': result.category === 'pindah_cabang',
                                     'bg-amber-500/20 text-amber-500': result.category === 'kesalahan_input',
                                     'bg-purple-500/20 text-purple-500': result.category === 'retur',
                                     'bg-orange-500/20 text-orange-500': result.category === 'shopee',
                                 }">
-                                <component :is="categoryIcons[result.category]" :size="24" />
+                                    <component :is="categoryIcons[result.category]" :size="24" />
+                                </div>
+                                <div>
+                                    <p class="font-bold text-text-primary flex items-center gap-2">
+                                        <span
+                                            class="text-red-400 text-xs font-bold bg-red-500/20 px-2 py-0.5 rounded">KELUAR</span>
+                                        {{ result.id }}
+                                    </p>
+                                    <p class="text-sm text-text-secondary">{{ categoryLabels[result.category] }}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p class="font-bold text-text-primary">{{ result.receipt_id }}</p>
-                                <p class="text-sm text-text-secondary">{{ categoryLabels[result.category] }}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 text-text-secondary text-sm">
-                            <Calendar :size="14" />
-                            {{ formatDate(result.created_at) }}
-                        </div>
-                    </div>
-
-                    <!-- Items -->
-                    <div class="mb-4">
-                        <p class="text-xs uppercase font-bold text-text-secondary mb-2">Barang ({{ result.items?.length || 0 }})</p>
-                        <div class="flex flex-wrap gap-2">
-                            <div v-for="item in result.items" :key="item.id"
-                                class="bg-surface-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
-                                <Smartphone :size="14" />
-                                <span>{{ item.product?.name }}</span>
-                                <span class="font-mono text-xs text-text-secondary">{{ item.imei }}</span>
+                            <div class="flex items-center gap-2 text-text-secondary text-sm">
+                                <Calendar :size="14" />
+                                {{ formatDate(result.created_at) }}
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Details based on category -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                        <!-- Pindah Cabang -->
-                        <template v-if="result.category === 'pindah_cabang'">
-                            <div>
-                                <p class="text-text-secondary text-xs">Cabang Tujuan</p>
-                                <p class="text-text-primary">{{ result.destination_branch?.name || '-' }}</p>
+                        <!-- Items -->
+                        <div class="mb-4" v-if="result.items?.length">
+                            <p class="text-xs uppercase font-bold text-text-secondary mb-2">Barang ({{
+                                result.items.length }})</p>
+                            <div class="flex flex-wrap gap-2">
+                                <div v-for="(item, idx) in result.items" :key="idx"
+                                    class="bg-surface-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                                    <Smartphone :size="14" />
+                                    <span>{{ item.product_name }}</span>
+                                    <span class="font-mono text-xs text-text-secondary">{{ item.imei }}</span>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-text-secondary text-xs">Penerima</p>
-                                <p class="text-text-primary">{{ result.receiver_name || '-' }}</p>
-                            </div>
-                        </template>
+                        </div>
 
-                        <!-- Retur -->
-                        <template v-if="result.category === 'retur'">
-                            <div>
-                                <p class="text-text-secondary text-xs">Customer</p>
-                                <p class="text-text-primary">{{ result.customer_name }}</p>
-                            </div>
-                            <div>
-                                <p class="text-text-secondary text-xs">No. WA</p>
-                                <p class="text-text-primary">{{ result.customer_phone }}</p>
-                            </div>
-                            <div>
-                                <p class="text-text-secondary text-xs">Kendala</p>
-                                <p class="text-text-primary truncate">{{ result.retur_issue }}</p>
-                            </div>
-                        </template>
+                        <!-- Details based on category -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                            <!-- Pindah Cabang -->
+                            <template v-if="result.category === 'pindah_cabang'">
+                                <div>
+                                    <p class="text-text-secondary text-xs">Cabang Tujuan</p>
+                                    <p class="text-text-primary">{{ result.destination_branch || '-' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-text-secondary text-xs">Penerima</p>
+                                    <p class="text-text-primary">{{ result.receiver_name || '-' }}</p>
+                                </div>
+                            </template>
 
-                        <!-- Shopee -->
-                        <template v-if="result.category === 'shopee'">
-                            <div>
-                                <p class="text-text-secondary text-xs">Penerima</p>
-                                <p class="text-text-primary">{{ result.shopee_receiver }}</p>
-                            </div>
-                            <div>
-                                <p class="text-text-secondary text-xs">No. Resi Shopee</p>
-                                <p class="text-text-primary font-mono">{{ result.shopee_tracking_no }}</p>
-                            </div>
-                            <div>
-                                <p class="text-text-secondary text-xs">Alamat</p>
-                                <p class="text-text-primary truncate">{{ result.shopee_address }}</p>
-                            </div>
-                        </template>
+                            <!-- Retur -->
+                            <template v-if="result.category === 'retur'">
+                                <div>
+                                    <p class="text-text-secondary text-xs">Customer</p>
+                                    <p class="text-text-primary">{{ result.customer_name }}</p>
+                                </div>
+                            </template>
 
-                        <!-- Kesalahan Input -->
-                        <template v-if="result.category === 'kesalahan_input'">
-                            <div class="col-span-full">
-                                <p class="text-text-secondary text-xs">Alasan</p>
-                                <p class="text-text-primary">{{ result.deletion_reason }}</p>
-                            </div>
-                        </template>
+                            <!-- Shopee -->
+                            <template v-if="result.category === 'shopee'">
+                                <div>
+                                    <p class="text-text-secondary text-xs">Penerima</p>
+                                    <p class="text-text-primary">{{ result.shopee_receiver }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-text-secondary text-xs">No. Resi Shopee</p>
+                                    <p class="text-text-primary font-mono">{{ result.shopee_tracking_no }}</p>
+                                </div>
+                            </template>
 
-                        <!-- Admin -->
-                        <div>
-                            <p class="text-text-secondary text-xs">Diproses oleh</p>
-                            <p class="text-text-primary flex items-center gap-1">
-                                <User :size="12" />
-                                {{ result.user?.name || result.user?.username || '-' }}
-                            </p>
+                            <!-- Kesalahan Input -->
+                            <template v-if="result.category === 'kesalahan_input'">
+                                <div class="col-span-full">
+                                    <p class="text-text-secondary text-xs">Alasan</p>
+                                    <p class="text-text-primary">{{ result.deletion_reason }}</p>
+                                </div>
+                            </template>
+
+                            <!-- Admin -->
+                            <div>
+                                <p class="text-text-secondary text-xs">Diproses oleh</p>
+                                <p class="text-text-primary flex items-center gap-1">
+                                    <User :size="12" />
+                                    {{ result.processed_by || '-' }}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </template>
             </div>
         </div>
     </div>
