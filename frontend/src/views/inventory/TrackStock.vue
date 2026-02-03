@@ -1,0 +1,257 @@
+<script setup>
+import { ref } from "vue";
+import api from "../../api/axios";
+import { useToast } from "../../composables/useToast";
+import {
+    Search,
+    Package,
+    Loader2,
+    Building2,
+    AlertTriangle,
+    RotateCcw,
+    ShoppingBag,
+    Calendar,
+    User,
+    Smartphone,
+    ChevronRight
+} from "lucide-vue-next";
+
+const toast = useToast();
+
+// State
+const query = ref("");
+const isLoading = ref(false);
+const results = ref([]);
+const hasSearched = ref(false);
+
+// Category icons
+const categoryIcons = {
+    pindah_cabang: Building2,
+    kesalahan_input: AlertTriangle,
+    retur: RotateCcw,
+    shopee: ShoppingBag,
+};
+
+const categoryColors = {
+    pindah_cabang: 'blue',
+    kesalahan_input: 'amber',
+    retur: 'purple',
+    shopee: 'orange',
+};
+
+const categoryLabels = {
+    pindah_cabang: 'Pindah Cabang',
+    kesalahan_input: 'Kesalahan Input',
+    retur: 'Retur',
+    shopee: 'Shopee',
+};
+
+// Search function
+async function search() {
+    if (query.value.length < 3) {
+        toast.error("Minimal 3 karakter untuk mencari");
+        return;
+    }
+
+    isLoading.value = true;
+    hasSearched.value = true;
+
+    try {
+        const response = await api.get('/track', { params: { q: query.value } });
+        results.value = response.data.data || [];
+    } catch (e) {
+        toast.error(e.response?.data?.message || "Gagal mencari");
+        results.value = [];
+    } finally {
+        isLoading.value = false;
+    }
+}
+
+// Format date
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+</script>
+
+<template>
+    <div class="space-y-6 animate-in fade-in max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="text-center py-8">
+            <div class="w-20 h-20 mx-auto bg-primary-500/20 rounded-3xl flex items-center justify-center mb-4">
+                <Search :size="36" class="text-primary-500" />
+            </div>
+            <h1 class="text-3xl font-bold text-text-primary">Lacak Barang</h1>
+            <p class="text-text-secondary mt-2">Cari berdasarkan IMEI, ID Resi, atau No. Resi Shopee</p>
+        </div>
+
+        <!-- Search Box -->
+        <div class="card p-4">
+            <form @submit.prevent="search" class="flex gap-3">
+                <div class="relative flex-1">
+                    <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" :size="20" />
+                    <input v-model="query" type="text" placeholder="Ketik IMEI, ID Resi (O03FEB-K9Z), atau No. Resi Shopee..."
+                        class="input pl-12 h-14 text-lg" />
+                </div>
+                <button type="submit" :disabled="isLoading || query.length < 3"
+                    class="btn btn-primary px-8 h-14 rounded-2xl font-bold disabled:opacity-30">
+                    <Loader2 v-if="isLoading" :size="20" class="animate-spin" />
+                    <span v-else>Cari</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Results -->
+        <div v-if="hasSearched" class="space-y-4">
+            <div v-if="isLoading" class="text-center py-12 text-text-secondary">
+                <Loader2 :size="32" class="animate-spin mx-auto mb-2" />
+                Mencari...
+            </div>
+
+            <div v-else-if="results.length === 0" class="text-center py-12 text-text-secondary">
+                <Package :size="48" class="mx-auto mb-2 opacity-50" />
+                <p>Tidak ditemukan hasil untuk "{{ query }}"</p>
+            </div>
+
+            <div v-else class="space-y-4">
+                <p class="text-text-secondary text-sm">Ditemukan {{ results.length }} hasil</p>
+
+                <div v-for="result in results" :key="result.id"
+                    class="card p-6 border-l-4 hover:bg-surface-700/30 transition-all"
+                    :class="{
+                        'border-l-blue-500': result.category === 'pindah_cabang',
+                        'border-l-amber-500': result.category === 'kesalahan_input',
+                        'border-l-purple-500': result.category === 'retur',
+                        'border-l-orange-500': result.category === 'shopee',
+                    }">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center"
+                                :class="{
+                                    'bg-blue-500/20 text-blue-500': result.category === 'pindah_cabang',
+                                    'bg-amber-500/20 text-amber-500': result.category === 'kesalahan_input',
+                                    'bg-purple-500/20 text-purple-500': result.category === 'retur',
+                                    'bg-orange-500/20 text-orange-500': result.category === 'shopee',
+                                }">
+                                <component :is="categoryIcons[result.category]" :size="24" />
+                            </div>
+                            <div>
+                                <p class="font-bold text-text-primary">{{ result.receipt_id }}</p>
+                                <p class="text-sm text-text-secondary">{{ categoryLabels[result.category] }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-text-secondary text-sm">
+                            <Calendar :size="14" />
+                            {{ formatDate(result.created_at) }}
+                        </div>
+                    </div>
+
+                    <!-- Items -->
+                    <div class="mb-4">
+                        <p class="text-xs uppercase font-bold text-text-secondary mb-2">Barang ({{ result.items?.length || 0 }})</p>
+                        <div class="flex flex-wrap gap-2">
+                            <div v-for="item in result.items" :key="item.id"
+                                class="bg-surface-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+                                <Smartphone :size="14" />
+                                <span>{{ item.product?.name }}</span>
+                                <span class="font-mono text-xs text-text-secondary">{{ item.imei }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details based on category -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <!-- Pindah Cabang -->
+                        <template v-if="result.category === 'pindah_cabang'">
+                            <div>
+                                <p class="text-text-secondary text-xs">Cabang Tujuan</p>
+                                <p class="text-text-primary">{{ result.destination_branch?.name || '-' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">Penerima</p>
+                                <p class="text-text-primary">{{ result.receiver_name || '-' }}</p>
+                            </div>
+                        </template>
+
+                        <!-- Retur -->
+                        <template v-if="result.category === 'retur'">
+                            <div>
+                                <p class="text-text-secondary text-xs">Customer</p>
+                                <p class="text-text-primary">{{ result.customer_name }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">No. WA</p>
+                                <p class="text-text-primary">{{ result.customer_phone }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">Kendala</p>
+                                <p class="text-text-primary truncate">{{ result.retur_issue }}</p>
+                            </div>
+                        </template>
+
+                        <!-- Shopee -->
+                        <template v-if="result.category === 'shopee'">
+                            <div>
+                                <p class="text-text-secondary text-xs">Penerima</p>
+                                <p class="text-text-primary">{{ result.shopee_receiver }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">No. Resi Shopee</p>
+                                <p class="text-text-primary font-mono">{{ result.shopee_tracking_no }}</p>
+                            </div>
+                            <div>
+                                <p class="text-text-secondary text-xs">Alamat</p>
+                                <p class="text-text-primary truncate">{{ result.shopee_address }}</p>
+                            </div>
+                        </template>
+
+                        <!-- Kesalahan Input -->
+                        <template v-if="result.category === 'kesalahan_input'">
+                            <div class="col-span-full">
+                                <p class="text-text-secondary text-xs">Alasan</p>
+                                <p class="text-text-primary">{{ result.deletion_reason }}</p>
+                            </div>
+                        </template>
+
+                        <!-- Admin -->
+                        <div>
+                            <p class="text-text-secondary text-xs">Diproses oleh</p>
+                            <p class="text-text-primary flex items-center gap-1">
+                                <User :size="12" />
+                                {{ result.user?.name || result.user?.username || '-' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style scoped>
+@reference "../../style.css";
+
+.input {
+    @apply w-full border border-surface-700 rounded-xl px-4 py-3 bg-surface-800 text-text-primary focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all placeholder:text-surface-500;
+}
+
+.btn {
+    @apply font-bold transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center rounded-xl;
+}
+
+.btn-primary {
+    @apply bg-primary-600 hover:bg-primary-500 text-white;
+}
+
+.card {
+    @apply bg-surface-800 rounded-2xl p-6 border border-surface-700;
+}
+</style>

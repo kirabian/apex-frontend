@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+
+class StockOut extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'receipt_id',
+        'category',
+        // Pindah Cabang
+        'destination_branch_id',
+        'receiver_name',
+        'transfer_notes',
+        // Kesalahan Input
+        'deletion_reason',
+        // Retur
+        'retur_officer',
+        'retur_seal',
+        'retur_issue',
+        'customer_name',
+        'customer_phone',
+        // Shopee
+        'shopee_receiver',
+        'shopee_phone',
+        'shopee_address',
+        'shopee_notes',
+        'shopee_tracking_no',
+        // Meta
+        'user_id',
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    // Relationships
+    public function items()
+    {
+        return $this->belongsToMany(ProductDetail::class, 'stock_out_items')
+            ->withTimestamps();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function destinationBranch()
+    {
+        return $this->belongsTo(Branch::class, 'destination_branch_id');
+    }
+
+    // Generate short receipt ID: O03FEB-K9Z
+    public static function generateReceiptId(): string
+    {
+        do {
+            $id = 'O' . strtoupper(date('dM')) . '-' . strtoupper(Str::random(3));
+        } while (self::where('receipt_id', $id)->exists());
+
+        return $id;
+    }
+
+    // Scopes
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('receipt_id', 'like', "%{$search}%")
+                ->orWhere('receiver_name', 'like', "%{$search}%")
+                ->orWhere('customer_name', 'like', "%{$search}%")
+                ->orWhere('shopee_receiver', 'like', "%{$search}%")
+                ->orWhere('shopee_tracking_no', 'like', "%{$search}%");
+        });
+    }
+}

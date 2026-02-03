@@ -26,7 +26,8 @@ import {
     ChevronDown,
     LogOut,
     Warehouse,
-    Database
+    Database,
+    Search
 } from "lucide-vue-next";
 import { ref } from 'vue';
 
@@ -79,6 +80,9 @@ const menuItems = [
     { id: "types", path: "/types", label: "Tipe Produk", icon: Tags },
     { id: "categories", path: "/categories", label: "Kategori", icon: Box },
     { id: "distributors", path: "/distributors", label: "Distributor", icon: Truck },
+
+    // Lacak Barang
+    { id: "track", path: "/track", label: "Lacak Barang", icon: Search },
 
     { id: "settings", path: "/settings", label: "Pengaturan", icon: Settings },
 ];

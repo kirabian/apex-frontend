@@ -69,6 +69,26 @@ const routes = [
                 }
             },
             {
+                path: 'inventory/stock-out',
+                name: 'StockOut',
+                component: () => import('../views/inventory/StockOut.vue'),
+                meta: {
+                    title: 'Pengeluaran Stok',
+                    menu: 'inventory',
+                    permissions: ['inventory.manage', 'inventory.stock_out']
+                }
+            },
+            {
+                path: 'track',
+                name: 'TrackStock',
+                component: () => import('../views/inventory/TrackStock.vue'),
+                meta: {
+                    title: 'Lacak Barang',
+                    menu: 'track',
+                    permissions: ['inventory.view']
+                }
+            },
+            {
                 path: 'products',
                 name: 'Products',
                 component: Products,

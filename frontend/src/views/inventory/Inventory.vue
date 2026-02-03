@@ -106,9 +106,9 @@ function getStockStatus(product) {
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
       <div class="flex gap-3">
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" @click="router.push({ name: 'StockOut' })">
           <ArrowDownUp :size="16" />
-          Transfer Stok
+          Keluar Stok
         </button>
         <button class="btn btn-primary" @click="router.push({ name: 'StockIn' })">
           <Plus :size="16" />

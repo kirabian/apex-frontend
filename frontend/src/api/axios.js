@@ -100,6 +100,13 @@ export const inventory = {
     getProductsLookup: (params) => api.get('/inventory/products-lookup', { params })
 }
 
+export const stockOut = {
+    list: (params) => api.get('/stock-outs', { params }),
+    create: (data) => api.post('/stock-outs', data),
+    get: (id) => api.get(`/stock-outs/${id}`),
+    track: (query) => api.get('/track', { params: { q: query } })
+}
+
 export const users = {
     list: (params) => api.get('/users', { params }),
     get: (id) => api.get(`/users/${id}`),
