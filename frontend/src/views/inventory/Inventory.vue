@@ -133,6 +133,8 @@ onMounted(() => {
 
 const categories = computed(() => inventoryStore.categories);
 
+const branches = ref([]);
+
 // Permission check for toggling return
 const canToggleReturn = computed(() => {
   // Allow: ONLY SUPER_ADMIN
@@ -140,12 +142,32 @@ const canToggleReturn = computed(() => {
   return authStore.hasRole(allowedRoles);
 });
 
-function getStockStatus(product) {
-  if (product.stock === 0)
-    return { label: "Habis", class: "bg-red-500/20 text-red-400" };
-  if (product.stock <= product.minStock)
-    return { label: "Menipis", class: "bg-amber-500/20 text-amber-400" };
-  return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
+async function fetchBranches() {
+  if (canToggleReturn.value) {
+    try {
+      const response = await branchesApi.list();
+      branches.value = response.data.data || response.data;
+
+      // If no current branch, default to first one to show something
+      if (!currentBranch.value && branches.value.length > 0) {
+        currentBranch.value = branches.value[0];
+      }
+    } catch (e) {
+      console.error("Gagal load branches", e);
+    }
+  }
+}
+
+onMounted(() => {
+  inventoryStore.fetchProducts();
+  fetchCurrentBranch();
+  fetchBranches(); // Load branches if super admin
+});
+if (product.stock === 0)
+  return { label: "Habis", class: "bg-red-500/20 text-red-400" };
+if (product.stock <= product.minStock)
+  return { label: "Menipis", class: "bg-amber-500/20 text-amber-400" };
+return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
 }
 </script>
 
