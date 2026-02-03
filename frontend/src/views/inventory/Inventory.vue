@@ -229,8 +229,16 @@ function getStockStatus(product) {
                 </div>
               </td>
               <td class="text-sm text-text-secondary">
-                <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
-                <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                <div v-if="item.placement_name" class="font-medium text-text-primary">
+                  {{ item.placement_name }}
+                  <span class="text-[10px] text-text-secondary block capitalize">{{ item.placement_type?.replace('_', '
+                    ')
+                    }}</span>
+                </div>
+                <div v-else>
+                  <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
+                  <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                </div>
               </td>
               <td class="text-sm text-text-secondary">
                 {{ item.user?.username || item.user?.name || '-' }}

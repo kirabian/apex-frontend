@@ -61,6 +61,13 @@ class InventoryController extends Controller
 
         $items = $query->latest()->paginate(20);
 
+        // Transform results to include placement name
+        // This resolves "branch #6" to "PSTORE BIG JAKARTA"
+        $items->getCollection()->transform(function ($item) {
+            $item->placement_name = $item->placement ? $item->placement->name : null;
+            return $item;
+        });
+
         return response()->json($items);
     }
 
