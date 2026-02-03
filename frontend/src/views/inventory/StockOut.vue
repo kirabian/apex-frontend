@@ -60,6 +60,7 @@ const categories = computed(() => {
     return allCategories;
 });
 
+const selectedCategory = ref(null);
 const showReturnBlockedAlert = ref(false);
 
 function selectCategory(category) {
@@ -247,7 +248,7 @@ function stopScanner() {
 async function fetchCurrentBranch() {
     if (authStore.userBranch?.id) {
         try {
-            const response = await branchesApi.show(authStore.userBranch.id);
+            const response = await branchesApi.get(authStore.userBranch.id);
             currentBranch.value = response.data.data || response.data;
         } catch (e) {
             console.error("Gagal load info branch", e);
