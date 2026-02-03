@@ -224,7 +224,7 @@ class StockOutController extends Controller
     private function getStatusByCategory(string $category): string
     {
         return match ($category) {
-            'pindah_cabang' => 'transfer',
+            'pindah_cabang' => 'in_transit', // Changed: waiting for confirmation at destination
             'kesalahan_input' => 'deleted',
             'retur' => 'returned',
             'shopee' => 'sold',

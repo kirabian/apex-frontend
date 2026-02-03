@@ -47,4 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/stock-outs', [\App\Http\Controllers\StockOutController::class, 'store']);
     Route::get('/stock-outs/{id}', [\App\Http\Controllers\StockOutController::class, 'show']);
     Route::get('/track', [\App\Http\Controllers\StockOutController::class, 'track']);
+
+    // Transfer confirmation (Pindah Cabang)
+    Route::get('/transfers/pending', [\App\Http\Controllers\TransferController::class, 'pending']);
+    Route::post('/transfers/{id}/confirm', [\App\Http\Controllers\TransferController::class, 'confirm']);
+    Route::get('/transfers/history', [\App\Http\Controllers\TransferController::class, 'history']);
 });

@@ -33,11 +33,15 @@ class StockOut extends Model
         'shopee_tracking_no',
         // Meta
         'user_id',
+        // Confirmation
+        'confirmed_at',
+        'confirmed_by',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'confirmed_at' => 'datetime',
     ];
 
     // Relationships
@@ -56,6 +60,14 @@ class StockOut extends Model
     {
         return $this->belongsTo(Branch::class, 'destination_branch_id');
     }
+
+    public function confirmedBy()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    // Note: sourceBranch would be the user's branch at the time of creation
+    // We'll get it through the user relationship
 
     // Generate short receipt ID: O03FEB-K9Z
     public static function generateReceiptId(): string
@@ -82,5 +94,15 @@ class StockOut extends Model
                 ->orWhere('shopee_receiver', 'like', "%{$search}%")
                 ->orWhere('shopee_tracking_no', 'like', "%{$search}%");
         });
+    }
+
+    public function scopePending($query)
+    {
+        return $query->whereNull('confirmed_at');
+    }
+
+    public function scopeConfirmed($query)
+    {
+        return $query->whereNotNull('confirmed_at');
     }
 }

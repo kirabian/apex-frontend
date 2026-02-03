@@ -89,6 +89,16 @@ const routes = [
                 }
             },
             {
+                path: 'inventory/incoming-transfers',
+                name: 'IncomingTransfers',
+                component: () => import('../views/inventory/IncomingTransfers.vue'),
+                meta: {
+                    title: 'Barang Masuk Transfer',
+                    menu: 'inventory',
+                    permissions: ['inventory.manage', 'inventory.stock_in']
+                }
+            },
+            {
                 path: 'products',
                 name: 'Products',
                 component: Products,
