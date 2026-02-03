@@ -133,6 +133,13 @@ onMounted(() => {
 
 const categories = computed(() => inventoryStore.categories);
 
+// Permission check for toggling return
+const canToggleReturn = computed(() => {
+  // Allow: ONLY SUPER_ADMIN
+  const allowedRoles = ['super_admin'];
+  return authStore.hasRole(allowedRoles);
+});
+
 function getStockStatus(product) {
   if (product.stock === 0)
     return { label: "Habis", class: "bg-red-500/20 text-red-400" };
@@ -151,8 +158,8 @@ function getStockStatus(product) {
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
       <div class="flex gap-3 items-center">
-        <!-- Return Toggle (Only for users with branch) -->
-        <div v-if="currentBranch"
+        <!-- Return Toggle (Only for users with branch AND appropriate role) -->
+        <div v-if="currentBranch && canToggleReturn"
           class="flex items-center gap-2 bg-surface-800 p-2 rounded-xl border border-surface-700 mr-2">
           <span class="text-sm font-medium text-text-secondary pl-2">Terima Retur</span>
           <button @click="toggleReturn"
