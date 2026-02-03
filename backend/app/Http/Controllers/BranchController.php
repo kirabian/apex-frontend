@@ -82,14 +82,22 @@ class BranchController extends Controller
 
     public function toggleReturn(Branch $branch)
     {
+        $newValue = !$branch->can_accept_returns;
+
         $branch->update([
-            'can_accept_returns' => !$branch->can_accept_returns
+            'can_accept_returns' => $newValue
         ]);
+
+        // If Super Admin, apply purely universal (all branches follow the toggle)
+        $user = request()->user();
+        if ($user && $user->hasRole('super_admin')) {
+            Branch::query()->update(['can_accept_returns' => $newValue]);
+        }
 
         return response()->json([
             'success' => true,
             'data' => $branch,
-            'message' => 'Status terima retur berhasil diubah'
+            'message' => 'Status terima retur berhasil diubah' . ($user->hasRole('super_admin') ? ' untuk semua cabang' : '')
         ]);
     }
 }

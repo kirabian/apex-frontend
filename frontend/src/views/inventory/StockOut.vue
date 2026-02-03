@@ -68,11 +68,16 @@ const showReturnBlockedAlert = ref(false);
 
 function selectCategory(category) {
     if (category.id === 'retur') {
-        // Check if explicitly disabled (false or 0)
-        // We use ! to catch both false boolean and 0 integer
-        if (currentBranch.value && !currentBranch.value.can_accept_returns) {
-            showReturnBlockedAlert.value = true;
-            return;
+        // Check warehouses for return policy.
+        // If "Universal" limit applies, we check if *any* warehouse accepts returns, or specifically the first one 
+        // as a proxy for the "Global Switch".
+        // Assuming fetchWarehouses() called on mount or we check here.
+        if (warehouses.value.length > 0) {
+            // For safety, assume if the first warehouse (Representative) is OFF, then ALL are OFF.
+            if (!warehouses.value[0].can_accept_returns) {
+                showReturnBlockedAlert.value = true;
+                return;
+            }
         }
     }
     selectedCategory.value = category.id;
@@ -259,7 +264,6 @@ async function startScanner() {
             videoRef.value.srcObject = scanStream;
             await videoRef.value.play();
         }
-
         if ('BarcodeDetector' in window) {
             barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'] });
             detectBarcode();

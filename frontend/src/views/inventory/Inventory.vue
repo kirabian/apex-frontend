@@ -194,16 +194,18 @@ function getStockStatus(product) {
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
       <div class="flex gap-3 items-center">
-        <!-- Return Toggle (Only for users with branch AND appropriate role) -->
-        <div v-if="currentBranch && canToggleReturn"
+        <!-- Return Toggle (Using Warehouse Status) -->
+        <div v-if="currentWarehouse && canToggleReturn"
           class="flex items-center gap-2 bg-surface-800 p-2 rounded-xl border border-surface-700 mr-2">
           <span class="text-sm font-medium text-text-secondary pl-2">Terima Retur</span>
-          <button @click="toggleReturn"
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-900"
-            :class="currentBranch.can_accept_returns ? 'bg-emerald-500' : 'bg-surface-600'"
-            :disabled="isTogglingReturn">
-            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-              :class="currentBranch.can_accept_returns ? 'translate-x-6' : 'translate-x-1'" />
+          <button @click="toggleReturn" :disabled="isTogglingReturn" :class="[
+            currentWarehouse.can_accept_returns ? 'bg-emerald-500' : 'bg-surface-600',
+            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none'
+          ]">
+            <span aria-hidden="true" :class="[
+              currentWarehouse.can_accept_returns ? 'translate-x-5' : 'translate-x-0',
+              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out'
+            ]"></span>
           </button>
         </div>
 

@@ -31,7 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/branches/{branch}/toggle-return', [BranchController::class, 'toggleReturn']);
     Route::apiResource('branches', BranchController::class);
     Route::apiResource('warehouses', WarehouseController::class);
-    Route::apiResource('warehouses', WarehouseController::class);
+    Route::post('/warehouses/{warehouse}/toggle-return', [WarehouseController::class, 'toggleReturn']);
     Route::apiResource('online-shops', OnlineShopController::class);
 
     Route::apiResource('products', ProductController::class);

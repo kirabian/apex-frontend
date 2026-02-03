@@ -12,9 +12,11 @@ class Warehouse extends Model
         'address',
         'timezone',
         'is_active',
+        'can_accept_returns',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'can_accept_returns' => 'boolean',
     ];
 }

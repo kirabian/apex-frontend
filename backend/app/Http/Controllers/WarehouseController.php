@@ -67,4 +67,25 @@ class WarehouseController extends Controller
         $warehouse->delete();
         return response()->json(['success' => true]);
     }
+
+    public function toggleReturn(Warehouse $warehouse)
+    {
+        $newValue = !$warehouse->can_accept_returns;
+
+        $warehouse->update([
+            'can_accept_returns' => $newValue
+        ]);
+
+        // If Super Admin, apply universal (all warehouses follow the toggle)
+        $user = request()->user();
+        if ($user && $user->hasRole('super_admin')) {
+            Warehouse::query()->update(['can_accept_returns' => $newValue]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $warehouse,
+            'message' => 'Status terima retur gudang berhasil diubah' . ($user->hasRole('super_admin') ? ' untuk semua gudang' : '')
+        ]);
+    }
 }
