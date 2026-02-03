@@ -65,7 +65,9 @@ const showReturnBlockedAlert = ref(false);
 
 function selectCategory(category) {
     if (category.id === 'retur') {
-        if (currentBranch.value && currentBranch.value.can_accept_returns === false) {
+        // Check if explicitly disabled (false or 0)
+        // We use ! to catch both false boolean and 0 integer
+        if (currentBranch.value && !currentBranch.value.can_accept_returns) {
             showReturnBlockedAlert.value = true;
             return;
         }
