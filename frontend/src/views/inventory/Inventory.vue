@@ -107,29 +107,39 @@ async function fetchCurrentBranch() {
   }
 }
 
+const currentWarehouse = ref(null);
+
+async function fetchCurrentWarehouse() {
+  if (canToggleReturn.value) {
+    try {
+      const response = await api.get('/warehouses');
+      const warehouses = response.data.data || response.data;
+      if (Array.isArray(warehouses) && warehouses.length > 0) {
+        currentWarehouse.value = warehouses[0];
+      }
+    } catch (e) {
+      console.error("Gagal load info warehouse", e);
+    }
+  }
+}
+
 async function toggleReturn() {
-  if (!currentBranch.value || isTogglingReturn.value) return;
+  if (!currentWarehouse.value || isTogglingReturn.value) return;
 
   isTogglingReturn.value = true;
   try {
-    const response = await api.post(`/branches/${currentBranch.value.id}/toggle-return`);
+    const response = await api.post(`/warehouses/${currentWarehouse.value.id}/toggle-return`);
 
-    // Update the property on the current branch object ensuring reactivity
-    const updatedBranch = response.data.data;
-    if (currentBranch.value.id === updatedBranch.id) {
-      currentBranch.value.can_accept_returns = updatedBranch.can_accept_returns;
+    // Update locally
+    const updated = response.data.data;
+    if (currentWarehouse.value.id === updated.id) {
+      currentWarehouse.value.can_accept_returns = updated.can_accept_returns;
     }
 
-    // Also update in the list to keep consistency
-    const branchInList = branches.value.find(b => b.id === updatedBranch.id);
-    if (branchInList) {
-      branchInList.can_accept_returns = updatedBranch.can_accept_returns;
-    }
-
-    const status = updatedBranch.can_accept_returns ? 'ON' : 'OFF';
-    toast.success(`Terima Retur berhasil diubah ke ${status}`);
+    const status = updated.can_accept_returns ? 'ON' : 'OFF';
+    toast.success(`Terima Retur (Gudang) berhasil diubah ke ${status}`);
   } catch (e) {
-    toast.error("Gagal mengubah status retur");
+    toast.error("Gagal mengubah status retur gudang");
   } finally {
     isTogglingReturn.value = false;
   }
@@ -154,26 +164,12 @@ const canToggleReturn = computed(() => {
   return authStore.hasRole(allowedRoles);
 });
 
-async function fetchBranches() {
-  if (canToggleReturn.value) {
-    try {
-      const response = await branchesApi.list();
-      branches.value = response.data.data || response.data;
 
-      // If no current branch, default to first one to show something
-      if (!currentBranch.value && branches.value.length > 0) {
-        currentBranch.value = branches.value[0];
-      }
-    } catch (e) {
-      console.error("Gagal load branches", e);
-    }
-  }
-}
 
 onMounted(() => {
   inventoryStore.fetchProducts();
   fetchCurrentBranch();
-  fetchBranches(); // Load branches if super admin
+  fetchCurrentWarehouse(); // Load warehouse for toggle
 });
 
 function getStockStatus(product) {
