@@ -163,11 +163,13 @@ onMounted(() => {
   fetchCurrentBranch();
   fetchBranches(); // Load branches if super admin
 });
-if (product.stock === 0)
-  return { label: "Habis", class: "bg-red-500/20 text-red-400" };
-if (product.stock <= product.minStock)
-  return { label: "Menipis", class: "bg-amber-500/20 text-amber-400" };
-return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
+
+function getStockStatus(product) {
+  if (product.stock === 0)
+    return { label: "Habis", class: "bg-red-500/20 text-red-400" };
+  if (product.stock <= product.minStock)
+    return { label: "Menipis", class: "bg-amber-500/20 text-amber-400" };
+  return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
 }
 </script>
 
