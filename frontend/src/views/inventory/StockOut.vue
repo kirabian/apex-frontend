@@ -155,11 +155,29 @@ function isSelected(item) {
 }
 
 // Open form
-function openStockOutForm() {
+async function openStockOutForm() {
     if (selectedItems.value.length === 0) {
         toast.error("Pilih minimal 1 barang");
         return;
     }
+
+    // Attempt to determine branch context from selected items
+    // Assuming all selected items belong to the same branch for a single transaction
+    // If mixed, we might default to the first one or error out. For now, take the first.
+    const firstItem = selectedItems.value[0];
+    if (firstItem && firstItem.placement_id) {
+        // If we don't have a currentBranch set (e.g. Super Admin), or it's different
+        if (!currentBranch.value || currentBranch.value.id !== firstItem.placement_id) {
+            try {
+                // Fetch the branch of the item
+                const response = await branchesApi.get(firstItem.placement_id);
+                currentBranch.value = response.data.data || response.data;
+            } catch (e) {
+                console.error("Failed to load item context branch", e);
+            }
+        }
+    }
+
     showForm.value = true;
 }
 
