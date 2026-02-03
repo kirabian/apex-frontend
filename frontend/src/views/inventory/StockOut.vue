@@ -626,11 +626,6 @@ onMounted(() => {
     </div>
 
 
-    </button>
-    </div>
-    </div>
-    </div>
-
     <!-- Alert Modal for Blocked Returns -->
     <div v-if="showReturnBlockedAlert" class="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
         <div
