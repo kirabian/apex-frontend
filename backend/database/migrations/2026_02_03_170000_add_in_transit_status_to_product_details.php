@@ -9,11 +9,18 @@ return new class extends Migration {
     /**
      * Run the migrations.
      * Adds 'in_transit' status for items being transferred between branches
+     * Also adds 'deleted' and 'returned' status for stock out operations
      */
     public function up(): void
     {
-        // For PostgreSQL - modify the enum type
-        DB::statement("ALTER TYPE product_details_status ADD VALUE IF NOT EXISTS 'in_transit'");
+        // For PostgreSQL, Laravel enum is implemented as a CHECK constraint
+        // We need to drop the old constraint and add a new one with expanded values
+
+        // First, drop the existing check constraint
+        DB::statement("ALTER TABLE product_details DROP CONSTRAINT IF EXISTS product_details_status_check");
+
+        // Add the new check constraint with expanded enum values
+        DB::statement("ALTER TABLE product_details ADD CONSTRAINT product_details_status_check CHECK (status::text = ANY (ARRAY['available'::character varying, 'sold'::character varying, 'transfer'::character varying, 'service'::character varying, 'booked'::character varying, 'in_transit'::character varying, 'deleted'::character varying, 'returned'::character varying]::text[]))");
     }
 
     /**
@@ -21,7 +28,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        // PostgreSQL doesn't allow removing enum values easily
-        // Would need to recreate the type which is complex
+        // Revert to original constraint
+        DB::statement("ALTER TABLE product_details DROP CONSTRAINT IF EXISTS product_details_status_check");
+        DB::statement("ALTER TABLE product_details ADD CONSTRAINT product_details_status_check CHECK (status::text = ANY (ARRAY['available'::character varying, 'sold'::character varying, 'transfer'::character varying, 'service'::character varying, 'booked'::character varying]::text[]))");
     }
 };
