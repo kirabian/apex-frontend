@@ -25,6 +25,8 @@ class StockOut extends Model
         'retur_issue',
         'customer_name',
         'customer_phone',
+        'return_destination_id',
+        'proof_image',
         // Shopee
         'shopee_receiver',
         'shopee_phone',

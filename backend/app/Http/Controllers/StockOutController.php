@@ -113,29 +113,15 @@ class StockOutController extends Controller
                 'customer_phone' => $request->customer_phone,
                 'return_destination_id' => $request->return_destination_id,
                 'proof_image' => $proofImagePath,
-                
+
                 // Shopee
                 'shopee_receiver' => $request->shopee_receiver,
-                // ... rest of fields mapped below or handled by mass assignment if safely configured, 
-                // but let's be explicit to avoid issues
                 'shopee_phone' => $request->shopee_phone,
                 'shopee_address' => $request->shopee_address,
                 'shopee_notes' => $request->shopee_notes,
                 'shopee_tracking_no' => $request->shopee_tracking_no,
-                
+
                 'notes' => $request->notes, // Generic notes
-            ]);
-                'retur_officer' => $request->retur_officer,
-                'retur_seal' => $request->retur_seal,
-                'retur_issue' => $request->retur_issue,
-                'customer_name' => $request->customer_name,
-                'customer_phone' => $request->customer_phone,
-                // Shopee
-                'shopee_receiver' => $request->shopee_receiver,
-                'shopee_phone' => $request->shopee_phone,
-                'shopee_address' => $request->shopee_address,
-                'shopee_notes' => $request->shopee_notes,
-                'shopee_tracking_no' => $request->shopee_tracking_no,
             ]);
 
             // Attach items and update status
