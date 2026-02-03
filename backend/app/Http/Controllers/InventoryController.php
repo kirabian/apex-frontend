@@ -23,16 +23,19 @@ class InventoryController extends Controller
 
         // ============================================
         // BRANCH FILTER:
-        // - super_admin: sees ALL inventory
-        // - Other roles with branch_id: sees only their branch
-        // - Other roles without branch_id: sees ALL (fallback)
+        // - Roles in $unrestrictedRoles can see ALL or filter by any branch
+        // - Other roles with branch_id are LOCKED to their branch
         // ============================================
-        if ($user->role !== 'super_admin' && $user->branch_id) {
+
+        $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
+
+        // If user is NOT in unrestricted roles AND has a branch_id, lock them to their branch
+        if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
             $query->where('placement_type', 'branch')
                 ->where('placement_id', $user->branch_id);
         }
 
-        // Optional: filter by specific branch (for super_admin)
+        // Optional: filter by specific branch (for super_admin or admin_produk viewing specific branch)
         if ($request->has('branch_id')) {
             $query->where('placement_type', 'branch')
                 ->where('placement_id', $request->branch_id);
