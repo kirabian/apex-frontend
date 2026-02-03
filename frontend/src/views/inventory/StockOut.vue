@@ -624,6 +624,34 @@ onMounted(() => {
             </div>
         </div>
     </div>
+
+
+    </button>
+    </div>
+    </div>
+    </div>
+
+    <!-- Alert Modal for Blocked Returns -->
+    <div v-if="showReturnBlockedAlert" class="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+        <div
+            class="bg-surface-800 rounded-2xl max-w-md w-full p-6 border border-red-500/30 shadow-2xl animate-in zoom-in duration-200">
+            <div class="flex flex-col items-center text-center">
+                <div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                    <AlertTriangle :size="32" class="text-red-500" />
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Retur Tidak Diterima</h3>
+                <p class="text-text-secondary mb-6">
+                    Mohon maaf, gudang saat ini sedang <strong>TIDAK MENERIMA RETUR</strong>.
+                    Silakan coba lagi nanti atau hubungi Admin Gudang.
+                </p>
+                <button @click="showReturnBlockedAlert = false"
+                    class="btn bg-surface-700 hover:bg-surface-600 text-white w-full h-12 rounded-xl">
+                    Mengerti
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
 </template>
 
 <style scoped>
