@@ -303,13 +303,29 @@ async function submitStockOut() {
 
     isSubmitting.value = true;
     try {
-        const payload = {
-            category: selectedCategory.value,
-            product_detail_ids: selectedItems.value.map(i => i.id),
-            ...form.value
-        };
+        const formData = new FormData();
+        formData.append('category', selectedCategory.value);
 
-        const response = await api.post('/stock-outs', payload);
+        // Product IDs
+        selectedItems.value.forEach(item => {
+            formData.append('product_detail_ids[]', item.id);
+        });
+
+        // Form fields
+        Object.keys(form.value).forEach(key => {
+            if (key !== 'proof_image' && form.value[key] !== null && form.value[key] !== '') {
+                formData.append(key, form.value[key]);
+            }
+        });
+
+        // File upload for retur
+        if (selectedCategory.value === 'retur' && proofImageFile.value) {
+            formData.append('proof_image', proofImageFile.value);
+        }
+
+        const response = await api.post('/stock-outs', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
         toast.success(`Stok berhasil dikeluarkan! ID: ${response.data.data.receipt_id}`);
 
         selectedItems.value = [];
@@ -318,6 +334,7 @@ async function submitStockOut() {
 
     } catch (e) {
         toast.error(e.response?.data?.message || "Gagal keluar stok");
+        console.error(e);
     } finally {
         isSubmitting.value = false;
     }
