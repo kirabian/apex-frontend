@@ -65,7 +65,7 @@ const routes = [
                 meta: {
                     title: 'Input Barang Masuk',
                     menu: 'inventory', // Highlight Inventory menu
-                    permissions: ['inventory.manage', 'inventory.stock_in']
+                    permissions: ['inventory.view', 'inventory.manage', 'inventory.stock_in']
                 }
             },
             {

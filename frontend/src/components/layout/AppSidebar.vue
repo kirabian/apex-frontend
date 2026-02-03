@@ -63,7 +63,6 @@ const menuItems = [
 
     //   { id: "pos", path: "/pos", label: "Kasir (POS)", icon: ShoppingCart },
     { id: "inventory", path: "/inventory", label: "Inventory", icon: Box },
-    { id: "incoming_transfers", path: "/inventory/incoming-transfers", label: "Barang Masuk Transfer", icon: ArrowDownRight },
     { id: "products", path: "/products", label: "Produk", icon: Package },
     { id: "users", path: "/users", label: "Staff & Role", icon: Users },
     {

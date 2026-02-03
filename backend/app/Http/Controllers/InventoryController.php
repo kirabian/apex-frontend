@@ -22,22 +22,21 @@ class InventoryController extends Controller
         $query = ProductDetail::with(['product', 'distributor', 'user']);
 
         // ============================================
-        // BRANCH FILTER: Only super_admin sees ALL
-        // Other roles only see their branch's inventory
+        // BRANCH FILTER:
+        // - super_admin: sees ALL inventory
+        // - Other roles with branch_id: sees only their branch
+        // - Other roles without branch_id: sees ALL (fallback)
         // ============================================
-        if ($user->role !== 'super_admin') {
-            if ($user->branch_id) {
-                // Filter by user's branch (placement_type = 'branch' and placement_id = user's branch)
-                $query->where(function ($q) use ($user) {
-                    $q->where('placement_type', 'branch')
-                        ->where('placement_id', $user->branch_id);
-                });
-            } else {
-                // User has no branch - show nothing (or could show unassigned items)
-                $query->whereRaw('1 = 0'); // Returns no results
-            }
+        if ($user->role !== 'super_admin' && $user->branch_id) {
+            $query->where('placement_type', 'branch')
+                ->where('placement_id', $user->branch_id);
         }
-        // super_admin: no filter, sees everything
+
+        // Optional: filter by specific branch (for super_admin)
+        if ($request->has('branch_id')) {
+            $query->where('placement_type', 'branch')
+                ->where('placement_id', $request->branch_id);
+        }
 
         if ($request->search) {
             $search = $request->search;
@@ -55,12 +54,6 @@ class InventoryController extends Controller
             $query->where('status', $request->status);
         } else {
             $query->where('status', 'available');
-        }
-
-        // Optional: filter by placement for super_admin viewing specific branch
-        if ($request->has('branch_id') && $user->role === 'super_admin') {
-            $query->where('placement_type', 'branch')
-                ->where('placement_id', $request->branch_id);
         }
 
         $items = $query->latest()->paginate(20);
