@@ -113,8 +113,20 @@ async function toggleReturn() {
   isTogglingReturn.value = true;
   try {
     const response = await api.post(`/branches/${currentBranch.value.id}/toggle-return`);
-    currentBranch.value = response.data.data;
-    const status = currentBranch.value.can_accept_returns ? 'ON' : 'OFF';
+
+    // Update the property on the current branch object ensuring reactivity
+    const updatedBranch = response.data.data;
+    if (currentBranch.value.id === updatedBranch.id) {
+      currentBranch.value.can_accept_returns = updatedBranch.can_accept_returns;
+    }
+
+    // Also update in the list to keep consistency
+    const branchInList = branches.value.find(b => b.id === updatedBranch.id);
+    if (branchInList) {
+      branchInList.can_accept_returns = updatedBranch.can_accept_returns;
+    }
+
+    const status = updatedBranch.can_accept_returns ? 'ON' : 'OFF';
     toast.success(`Terima Retur berhasil diubah ke ${status}`);
   } catch (e) {
     toast.error("Gagal mengubah status retur");
