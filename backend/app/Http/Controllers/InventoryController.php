@@ -263,21 +263,31 @@ class InventoryController extends Controller
         }
 
         // Generate Credentials
-        $timestamp = time();
+        // Use microtime to collision avoidance
+        $timestamp = microtime(true);
         $random = rand(100, 999);
-        $username = 'inv.' . $timestamp . '.' . $random;
+        // Normalize timestamp for string
+        $tsString = str_replace('.', '', (string) $timestamp);
+
+        $username = 'inv.' . substr($tsString, -8) . '.' . $random;
         $email = $username . '@apex-inventory.com';
         $password = 'inventory123'; // Default password
 
         DB::beginTransaction();
         try {
+            // Ensure Role Exists
+            $roleName = 'inventory';
+            if (!\Spatie\Permission\Models\Role::where('name', $roleName)->exists()) {
+                \Spatie\Permission\Models\Role::create(['name' => $roleName, 'guard_name' => 'web']);
+            }
+
             $newUser = \App\Models\User::create([
                 'name' => $request->name,
                 'full_name' => $request->name,
                 'username' => $username,
-                'code_id' => 'INV-' . $timestamp,
+                'code_id' => 'INV-' . substr($tsString, -10) . $random,
                 'email' => $email,
-                'password' => $password, // Will be hashed by model mutator or we should hash it
+                'password' => $password,
                 'branch_id' => $user->branch_id,
                 'warehouse_id' => $user->warehouse_id,
                 'online_shop_id' => $user->online_shop_id,
@@ -286,7 +296,7 @@ class InventoryController extends Controller
                 'theme_color' => 'default',
             ]);
 
-            $newUser->assignRole('inventory');
+            $newUser->assignRole($roleName);
 
             DB::commit();
 
@@ -298,7 +308,9 @@ class InventoryController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('Create Inventory Account Error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error($e->getTraceAsString());
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 }

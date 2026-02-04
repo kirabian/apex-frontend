@@ -58,7 +58,8 @@ class AuthController extends Controller
         // Safely revoke the token
         try {
             if ($user = $request->user()) {
-                if ($token = $user->currentAccessToken()) {
+                $token = $user->currentAccessToken();
+                if ($token && !($token instanceof \Laravel\Sanctum\TransientToken)) {
                     $token->delete();
                 }
             }
