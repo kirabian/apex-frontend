@@ -77,7 +77,11 @@ const stockOutForm = ref({
 // Barcode Scanner
 const isScanning = ref(false);
 const scannerContainerId = 'barcode-scanner-container-modal';
+const scanningItemIndex = ref(null); // Track which item is being scanned
 let html5QrCode = null;
+
+// Per-item forms for Shopee
+const shopeeItemForms = ref([]);
 
 // Proof image for retur
 const proofImageFile = ref(null);
@@ -193,6 +197,20 @@ function selectStockOutCategory(category) {
     }
   }
   selectedStockOutCategory.value = category.id;
+
+  // Initialize per-item forms for Shopee
+  if (category.id === 'shopee') {
+    shopeeItemForms.value = selectedItems.value.map(item => ({
+      product_detail_id: item.id,
+      imei: item.imei,
+      product_name: item.product?.name || '-',
+      receiver: '',
+      phone: '',
+      address: '',
+      notes: '',
+      tracking_no: '',
+    }));
+  }
 }
 
 function resetStockOutForm() {
@@ -217,6 +235,8 @@ function resetStockOutForm() {
   };
   proofImageFile.value = null;
   proofImagePreview.value = null;
+  shopeeItemForms.value = [];
+  scanningItemIndex.value = null;
 }
 
 // File upload for retur
@@ -234,8 +254,9 @@ function handleFileChange(event) {
 }
 
 // Barcode Scanner
-async function startScanner() {
+async function startScanner(itemIndex = null) {
   isScanning.value = true;
+  scanningItemIndex.value = itemIndex;
   await new Promise(resolve => setTimeout(resolve, 100));
 
   try {
@@ -252,7 +273,12 @@ async function startScanner() {
       { facingMode: "environment" },
       config,
       (decodedText) => {
-        stockOutForm.value.shopee_tracking_no = decodedText;
+        // Put result in the correct form
+        if (scanningItemIndex.value !== null && shopeeItemForms.value[scanningItemIndex.value]) {
+          shopeeItemForms.value[scanningItemIndex.value].tracking_no = decodedText;
+        } else {
+          stockOutForm.value.shopee_tracking_no = decodedText;
+        }
         toast.success(`Barcode terdeteksi: ${decodedText}`);
         stopScanner();
       },
@@ -267,6 +293,7 @@ async function startScanner() {
 
 async function stopScanner() {
   isScanning.value = false;
+  scanningItemIndex.value = null;
   if (html5QrCode) {
     try {
       await html5QrCode.stop();
@@ -291,8 +318,10 @@ const canSubmitStockOut = computed(() => {
       return stockOutForm.value.retur_officer && stockOutForm.value.retur_issue &&
         stockOutForm.value.customer_name && stockOutForm.value.customer_phone;
     case 'shopee':
-      return stockOutForm.value.shopee_receiver && stockOutForm.value.shopee_phone &&
-        stockOutForm.value.shopee_address && stockOutForm.value.shopee_tracking_no;
+      // All items must have receiver, phone, address, and tracking_no
+      return shopeeItemForms.value.every(item =>
+        item.receiver && item.phone && item.address && item.tracking_no
+      );
     default:
       return true;
   }
@@ -311,11 +340,23 @@ async function submitStockOut() {
       formData.append('product_detail_ids[]', item.id);
     });
 
-    Object.keys(stockOutForm.value).forEach(key => {
-      if (key !== 'proof_image' && stockOutForm.value[key] !== null && stockOutForm.value[key] !== '') {
-        formData.append(key, stockOutForm.value[key]);
-      }
-    });
+    // For Shopee, send per-item data
+    if (selectedStockOutCategory.value === 'shopee') {
+      shopeeItemForms.value.forEach((itemForm, index) => {
+        formData.append(`shopee_items[${index}][product_detail_id]`, itemForm.product_detail_id);
+        formData.append(`shopee_items[${index}][receiver]`, itemForm.receiver);
+        formData.append(`shopee_items[${index}][phone]`, itemForm.phone);
+        formData.append(`shopee_items[${index}][address]`, itemForm.address);
+        formData.append(`shopee_items[${index}][notes]`, itemForm.notes);
+        formData.append(`shopee_items[${index}][tracking_no]`, itemForm.tracking_no);
+      });
+    } else {
+      Object.keys(stockOutForm.value).forEach(key => {
+        if (key !== 'proof_image' && stockOutForm.value[key] !== null && stockOutForm.value[key] !== '') {
+          formData.append(key, stockOutForm.value[key]);
+        }
+      });
+    }
 
     if (selectedStockOutCategory.value === 'retur' && proofImageFile.value) {
       formData.append('proof_image', proofImageFile.value);
@@ -783,37 +824,58 @@ function getStockStatus(product) {
               </div>
             </template>
 
-            <!-- Shopee Form -->
+            <!-- Shopee Form (Per-Item) -->
             <template v-if="selectedStockOutCategory === 'shopee'">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="label">Nama Penerima *</label>
-                  <input v-model="stockOutForm.shopee_receiver" class="input" placeholder="Nama penerima" />
-                </div>
-                <div>
-                  <label class="label">No. WA *</label>
-                  <input v-model="stockOutForm.shopee_phone" class="input" placeholder="08xxxxxxxxxx" />
-                </div>
-              </div>
-              <div>
-                <label class="label">Alamat Tujuan *</label>
-                <textarea v-model="stockOutForm.shopee_address" class="input" rows="2"
-                  placeholder="Alamat lengkap..."></textarea>
-              </div>
-              <div>
-                <label class="label">Catatan</label>
-                <textarea v-model="stockOutForm.shopee_notes" class="input" rows="2"
-                  placeholder="Catatan pengiriman..."></textarea>
-              </div>
-              <div>
-                <label class="label">No. Resi Shopee *</label>
-                <div class="flex gap-2">
-                  <input v-model="stockOutForm.shopee_tracking_no" class="input flex-1 font-mono"
-                    placeholder="Scan atau ketik manual..." />
-                  <button @click="startScanner" type="button" class="btn btn-secondary px-4"
-                    :class="isScanning ? 'bg-orange-500 text-white' : ''">
-                    <ScanBarcode :size="20" />
-                  </button>
+              <div class="space-y-4">
+                <p class="text-xs uppercase font-bold text-text-secondary">
+                  Isi detail pengiriman untuk setiap item ({{ shopeeItemForms.length }} item)
+                </p>
+
+                <!-- Per-item forms -->
+                <div v-for="(itemForm, index) in shopeeItemForms" :key="itemForm.product_detail_id"
+                  class="border border-surface-600 rounded-xl p-4 space-y-3">
+                  <!-- Item Header -->
+                  <div class="flex items-center gap-3 pb-3 border-b border-surface-600">
+                    <div
+                      class="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center text-primary-400 font-bold text-sm">
+                      {{ index + 1 }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-text-primary text-sm">{{ itemForm.product_name }}</p>
+                      <p class="font-mono text-xs text-text-secondary">{{ itemForm.imei }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Item Fields -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="label text-xs">Nama Penerima *</label>
+                      <input v-model="itemForm.receiver" class="input text-sm py-2" placeholder="Nama penerima" />
+                    </div>
+                    <div>
+                      <label class="label text-xs">No. WA *</label>
+                      <input v-model="itemForm.phone" class="input text-sm py-2" placeholder="08xxxxxxxxxx" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="label text-xs">Alamat Tujuan *</label>
+                    <textarea v-model="itemForm.address" class="input text-sm py-2" rows="2"
+                      placeholder="Alamat lengkap..."></textarea>
+                  </div>
+                  <div>
+                    <label class="label text-xs">Catatan</label>
+                    <input v-model="itemForm.notes" class="input text-sm py-2" placeholder="Catatan pengiriman..." />
+                  </div>
+                  <div>
+                    <label class="label text-xs">No. Resi *</label>
+                    <div class="flex gap-2">
+                      <input v-model="itemForm.tracking_no" class="input text-sm py-2 flex-1 font-mono"
+                        placeholder="Scan atau ketik manual..." />
+                      <button @click="startScanner(index)" type="button" class="btn btn-secondary px-3 h-9">
+                        <ScanBarcode :size="16" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </template>
