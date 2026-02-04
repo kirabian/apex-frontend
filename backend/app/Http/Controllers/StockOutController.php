@@ -32,7 +32,8 @@ class StockOutController extends Controller
     // Create stock out
     public function store(Request $request)
     {
-        $request->validate([
+        // Base validation
+        $rules = [
             'category' => [
                 'required',
                 Rule::in([
@@ -66,15 +67,21 @@ class StockOutController extends Controller
             'customer_name' => 'required_if:category,retur|nullable|string|max:255',
             'customer_phone' => 'required_if:category,retur|nullable|string|max:50',
             'return_destination_id' => 'required_if:category,retur|nullable|exists:warehouses,id',
-            'proof_image' => 'required_if:category,retur|nullable|image|max:10240', // Max 10MB
+            'proof_image' => 'nullable|image|max:10240', // Max 10MB
+        ];
 
-            // Shopee
-            'shopee_receiver' => 'required_if:category,shopee|nullable|string|max:255',
-            'shopee_phone' => 'required_if:category,shopee|nullable|string|max:50',
-            'shopee_address' => 'required_if:category,shopee|nullable|string',
-            'shopee_notes' => 'nullable|string',
-            'shopee_tracking_no' => 'required_if:category,shopee|nullable|string|max:100',
-        ]);
+        // Shopee: Per-item validation
+        if ($request->category === 'shopee') {
+            $rules['shopee_items'] = 'required|array|min:1';
+            $rules['shopee_items.*.product_detail_id'] = 'required|exists:product_details,id';
+            $rules['shopee_items.*.receiver'] = 'required|string|max:255';
+            $rules['shopee_items.*.phone'] = 'required|string|max:50';
+            $rules['shopee_items.*.address'] = 'required|string';
+            $rules['shopee_items.*.notes'] = 'nullable|string';
+            $rules['shopee_items.*.tracking_no'] = 'required|string|max:100';
+        }
+
+        $request->validate($rules);
 
         DB::beginTransaction();
 
@@ -92,6 +99,12 @@ class StockOutController extends Controller
             $proofImagePath = null;
             if ($request->hasFile('proof_image')) {
                 $proofImagePath = $request->file('proof_image')->store('stock-outs/proofs', 'public');
+            }
+
+            // For Shopee, store per-item data as JSON
+            $shopeeItemsData = null;
+            if ($request->category === 'shopee' && $request->shopee_items) {
+                $shopeeItemsData = json_encode($request->shopee_items);
             }
 
             // Create stock out record
@@ -114,12 +127,8 @@ class StockOutController extends Controller
                 'return_destination_id' => $request->return_destination_id,
                 'proof_image' => $proofImagePath,
 
-                // Shopee
-                'shopee_receiver' => $request->shopee_receiver,
-                'shopee_phone' => $request->shopee_phone,
-                'shopee_address' => $request->shopee_address,
-                'shopee_notes' => $request->shopee_notes,
-                'shopee_tracking_no' => $request->shopee_tracking_no,
+                // Shopee (per-item data stored as JSON)
+                'shopee_items_data' => $shopeeItemsData,
 
                 'notes' => $request->notes, // Generic notes
             ]);

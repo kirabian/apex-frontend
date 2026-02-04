@@ -27,14 +27,17 @@ class StockOut extends Model
         'customer_phone',
         'return_destination_id',
         'proof_image',
-        // Shopee
+        // Shopee (legacy single-item fields - kept for backward compatibility)
         'shopee_receiver',
         'shopee_phone',
         'shopee_address',
         'shopee_notes',
         'shopee_tracking_no',
+        // Shopee per-item data
+        'shopee_items_data',
         // Meta
         'user_id',
+        'notes',
         // Confirmation
         'confirmed_at',
         'confirmed_by',
@@ -44,6 +47,7 @@ class StockOut extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'shopee_items_data' => 'array',
     ];
 
     // Relationships
