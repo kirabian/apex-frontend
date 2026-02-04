@@ -16,11 +16,18 @@ class UserController extends Controller
 
         // Jika bukan super_admin, filter berdasarkan placement user login
         if (!$user->hasRole('super_admin')) {
-            // Logic filtering yg lebih kompleks jika user bukan superadmin
-            // Untuk sekarang kita biarkan logic branch_id saja dulu atau sesuaikan nanti
-            if ($user->branch_id)
+            if ($user->branch_id) {
                 $query->where('branch_id', $user->branch_id);
-            // Tambahan logic jika user login adalah kepala gudang dll (future improvement)
+            }
+            if ($user->warehouse_id) {
+                $query->where('warehouse_id', $user->warehouse_id);
+            }
+            if ($user->online_shop_id) {
+                $query->where('online_shop_id', $user->online_shop_id);
+            }
+            if ($user->distributor_id) {
+                $query->where('distributor_id', $user->distributor_id);
+            }
         }
 
         // Filters

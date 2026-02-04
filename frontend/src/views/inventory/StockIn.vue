@@ -189,7 +189,7 @@ async function fetchInitialData() {
         brands.value = brd.data.data || brd.data;
         allowedTypes.value = typ.data.data || typ.data;
         products.value = prd.data;
-        targetUsers.value = (user.data.data || user.data).filter(u => u.roles?.some(r => r.name === 'toko_online') || u.id === authStore.user?.id);
+        targetUsers.value = (user.data.data || user.data);
     } catch (e) { toast.error("Gagal load data"); }
     finally { isLoading.value = false; }
 }
