@@ -180,6 +180,27 @@ class StockOutController extends Controller
         return response()->json($stockOut);
     }
 
+    // Get Shopee History
+    public function shopeeHistory(Request $request)
+    {
+        $query = StockOut::with(['items.product', 'user'])
+            ->where('category', 'shopee');
+
+        if ($request->has('q') && !empty($request->q)) {
+            $search = $request->q;
+            $query->where(function ($q) use ($search) {
+                $q->where('receipt_id', 'like', "%{$search}%")
+                    ->orWhere('shopee_tracking_no', 'like', "%{$search}%") // legacy
+                    ->orWhere('shopee_receiver', 'like', "%{$search}%")    // legacy
+                    ->orWhere('shopee_items_data', 'like', "%{$search}%"); // search in JSON
+            });
+        }
+
+        $history = $query->latest()->paginate(20);
+
+        return response()->json($history);
+    }
+
     // Track by IMEI or Receipt ID
     public function track(Request $request)
     {

@@ -187,7 +187,7 @@ export const ROLE_PERMISSIONS = {
 
 // Sidebar menu configuration per role
 export const ROLE_MENUS = {
-    [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'pos', 'inventory', 'retur_items', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'warehouses', 'distributors', 'channels', 'categories', 'online_shops', 'brands', 'types', 'branches', 'track'],
+    [ROLES.SUPER_ADMIN]: ['dashboard', 'online_scan', 'online_analysis', 'shopee_history', 'pos', 'inventory', 'retur_items', 'products', 'users', 'transactions', 'audit', 'reports', 'settings', 'warehouses', 'distributors', 'channels', 'categories', 'online_shops', 'brands', 'types', 'branches', 'track'],
     [ROLES.ANALIST]: ['dashboard', 'reports', 'track'],
     [ROLES.ADMIN_PRODUK]: ['dashboard', 'products', 'inventory', 'brands', 'types', 'categories', 'track'],
     [ROLES.AUDIT]: ['dashboard', 'audit', 'transactions', 'inventory', 'track'],
@@ -198,8 +198,8 @@ export const ROLE_MENUS = {
     [ROLES.INVENTORY]: ['dashboard', 'inventory', 'retur_items', 'track'],
     [ROLES.GUDANG]: ['dashboard', 'inventory', 'retur_items', 'track'],
     [ROLES.INVENTORY_KASIR]: ['dashboard', 'pos', 'inventory', 'transactions', 'track'],
-    [ROLES.TOKO_ONLINE]: ['dashboard', 'online_scan', 'inventory', 'track'],
-    [ROLES.LEADER_SHOPEE]: ['dashboard', 'online_analysis', 'inventory', 'track']
+    [ROLES.TOKO_ONLINE]: ['dashboard', 'online_scan', 'shopee_history', 'inventory', 'track'],
+    [ROLES.LEADER_SHOPEE]: ['dashboard', 'online_analysis', 'shopee_history', 'inventory', 'track']
 }
 
 // Helper functions
