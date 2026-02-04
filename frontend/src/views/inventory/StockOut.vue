@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useToast } from "../../composables/useToast";
 import { inventory as inventoryApi, branches as branchesApi, warehouses as warehousesApi } from "../../api/axios";
 import api from "../../api/axios";
+import { Html5Qrcode } from "html5-qrcode";
 import {
     Package,
     ArrowRightFromLine,
@@ -100,9 +101,8 @@ const form = ref({
 
 // Barcode Scanner State
 const isScanning = ref(false);
-const videoRef = ref(null);
-let barcodeDetector = null;
-let scanStream = null;
+const scannerContainerId = 'barcode-scanner-container';
+let html5QrCode = null;
 
 async function fetchInventory() {
     isLoading.value = true;
@@ -222,53 +222,65 @@ function closeForm() {
 
 async function startScanner() {
     isScanning.value = true;
+
+    // Wait for DOM to render the container
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
-        scanStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
-        });
+        html5QrCode = new Html5Qrcode(scannerContainerId);
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const config = {
+            fps: 10,
+            qrbox: { width: 300, height: 150 },
+            formatsToSupport: [
+                0,  // QR_CODE
+                4,  // CODE_128
+                2,  // CODE_39
+                11, // EAN_13
+                10, // EAN_8
+            ],
+            aspectRatio: 1.7777778, // 16:9
+        };
 
-        if (videoRef.value) {
-            videoRef.value.srcObject = scanStream;
-            await videoRef.value.play();
-        }
-        if ('BarcodeDetector' in window) {
-            barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'] });
-            detectBarcode();
-        } else {
-            toast.error("Browser tidak support barcode scanner");
-            stopScanner();
-        }
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                // On successful scan
+                form.value.shopee_tracking_no = decodedText;
+                toast.success(`Barcode terdeteksi: ${decodedText}`);
+                stopScanner();
+            },
+            (errorMessage) => {
+                // Ignore scan errors (normal when no barcode in view)
+            }
+        );
     } catch (e) {
-        toast.error("Gagal akses kamera");
+        console.error("Scanner error:", e);
+        toast.error("Gagal akses kamera. Silakan ketik manual nomor resi.");
         stopScanner();
     }
 }
 
-async function detectBarcode() {
-    if (!isScanning.value || !videoRef.value || !barcodeDetector) return;
-
-    try {
-        const barcodes = await barcodeDetector.detect(videoRef.value);
-        if (barcodes.length > 0) {
-            form.value.shopee_tracking_no = barcodes[0].rawValue;
-            toast.success("Barcode terdeteksi!");
-            stopScanner();
-            return;
-        }
-    } catch (e) { }
-
-    requestAnimationFrame(detectBarcode);
-}
-
-function stopScanner() {
+async function stopScanner() {
     isScanning.value = false;
-    if (scanStream) {
-        scanStream.getTracks().forEach(track => track.stop());
-        scanStream = null;
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+            html5QrCode.clear();
+        } catch (e) {
+            console.error("Error stopping scanner:", e);
+        }
+        html5QrCode = null;
     }
 }
+
+// Cleanup on unmount
+onUnmounted(() => {
+    if (html5QrCode) {
+        html5QrCode.stop().catch(() => { });
+    }
+});
 
 async function fetchCurrentBranch() {
     if (authStore.userBranch?.id) {
@@ -545,16 +557,34 @@ onMounted(() => {
                         </div>
                     </div>
 
-                    <div v-if="isScanning" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
-                        <div class="relative w-full max-w-lg">
-                            <video ref="videoRef" class="w-full rounded-2xl" autoplay playsinline muted></video>
-                            <div class="absolute inset-0 border-4 border-orange-500/50 rounded-2xl pointer-events-none">
+                    <!-- Scanner Modal -->
+                    <div v-if="isScanning"
+                        class="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4">
+                        <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
+                            <!-- Scanner Header -->
+                            <div class="flex items-center justify-between p-4 border-b border-surface-700">
+                                <h3 class="text-white font-bold flex items-center gap-2">
+                                    <ScanBarcode :size="20" class="text-orange-500" />
+                                    Scan Barcode Resi
+                                </h3>
+                                <button @click="stopScanner"
+                                    class="text-text-secondary hover:text-white transition-colors">
+                                    <X :size="24" />
+                                </button>
                             </div>
-                            <button @click="stopScanner"
-                                class="absolute top-4 right-4 bg-white/10 p-3 rounded-full text-white">
-                                <X :size="24" />
-                            </button>
-                            <p class="text-center text-white mt-4 animate-pulse">Arahkan kamera ke barcode resi...</p>
+
+                            <!-- Scanner Container -->
+                            <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
+
+                            <!-- Instructions -->
+                            <div class="p-4 text-center space-y-3">
+                                <p class="text-text-secondary text-sm animate-pulse">
+                                    Arahkan kamera ke barcode resi...
+                                </p>
+                                <div class="text-xs text-text-secondary">
+                                    <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
