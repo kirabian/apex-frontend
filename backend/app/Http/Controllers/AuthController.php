@@ -62,8 +62,9 @@ class AuthController extends Controller
                     $token->delete();
                 }
             }
-        } catch (\Exception $e) {
-            // Ignore errors during logout (e.g. token already deleted) to ensure frontend can proceed
+        } catch (\Throwable $e) {
+            // Watch out for ANY error (Exception or Error)
+            // Log it but allow the frontend to proceed as "logged out"
             \Illuminate\Support\Facades\Log::error('Logout error: ' . $e->getMessage());
         }
 
