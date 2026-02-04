@@ -689,7 +689,7 @@ function getStockStatus(product) {
             </button>
             <h2 class="text-xl font-bold text-white">
               {{selectedStockOutCategory ? stockOutCategories.find(c => c.id === selectedStockOutCategory)?.name :
-              'Pilih Kategori' }}
+                'Pilih Kategori'}}
             </h2>
           </div>
           <button @click="closeStockOutModal" class="text-text-secondary hover:text-white transition-colors">
@@ -887,15 +887,22 @@ function getStockStatus(product) {
 }
 
 .checkbox {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: 0.375rem;
-  border: 2px solid rgb(var(--color-surface-500));
-  background-color: rgb(var(--color-surface-700));
+  border: 2.5px solid rgb(100, 116, 139);
+  /* slate-500 - more visible */
+  background-color: transparent;
   cursor: pointer;
   transition: all 0.2s;
   appearance: none;
   position: relative;
+  flex-shrink: 0;
+}
+
+.checkbox:hover {
+  border-color: rgb(var(--color-primary-400));
+  background-color: rgba(var(--color-primary-500), 0.1);
 }
 
 .checkbox:checked {
@@ -906,12 +913,12 @@ function getStockStatus(product) {
 .checkbox:checked::after {
   content: '';
   position: absolute;
-  left: 5px;
+  left: 6px;
   top: 2px;
   width: 5px;
   height: 10px;
   border: solid white;
-  border-width: 0 2px 2px 0;
+  border-width: 0 2.5px 2.5px 0;
   transform: rotate(45deg);
 }
 
@@ -924,10 +931,11 @@ function getStockStatus(product) {
   content: '';
   position: absolute;
   left: 3px;
-  top: 7px;
-  width: 10px;
-  height: 2px;
+  top: 8px;
+  width: 12px;
+  height: 2.5px;
   background: white;
+  border-radius: 1px;
 }
 
 .label {
