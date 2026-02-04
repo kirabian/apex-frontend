@@ -160,6 +160,34 @@ const filteredItems = computed(() => {
     );
 });
 
+// Check if all filtered items are selected
+const isAllSelected = computed(() => {
+    if (filteredItems.value.length === 0) return false;
+    return filteredItems.value.every(item => isSelected(item));
+});
+
+// Check if some (but not all) items are selected
+const isSomeSelected = computed(() => {
+    if (filteredItems.value.length === 0) return false;
+    const selectedCount = filteredItems.value.filter(item => isSelected(item)).length;
+    return selectedCount > 0 && selectedCount < filteredItems.value.length;
+});
+
+function toggleSelectAll() {
+    if (isAllSelected.value) {
+        // Deselect all filtered items
+        filteredItems.value.forEach(item => {
+            const idx = selectedItems.value.findIndex(i => i.id === item.id);
+            if (idx !== -1) selectedItems.value.splice(idx, 1);
+        });
+    } else {
+        // Select all filtered items
+        filteredItems.value.forEach(item => {
+            if (!isSelected(item)) selectedItems.value.push(item);
+        });
+    }
+}
+
 function toggleSelect(item) {
     const idx = selectedItems.value.findIndex(i => i.id === item.id);
     if (idx === -1) {
@@ -171,6 +199,11 @@ function toggleSelect(item) {
 
 function isSelected(item) {
     return selectedItems.value.some(i => i.id === item.id);
+}
+
+function formatCurrency(val) {
+    if (!val) return '-';
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 }
 
 async function openStockOutForm() {
@@ -376,41 +409,114 @@ onMounted(() => {
         </div>
 
         <div v-if="!showForm">
+            <!-- Header Bar -->
             <div class="card mb-4">
-                <div class="relative">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
-                    <input v-model="searchQuery" type="text" placeholder="Cari IMEI, produk, SKU..."
-                        class="input pl-10" />
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <!-- Search -->
+                    <div class="relative flex-1 max-w-md">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
+                        <input v-model="searchQuery" type="text" placeholder="Pencarian Stok dengan IMEI"
+                            class="input pl-10" />
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2">
+                        <button @click="fetchInventory" class="btn btn-secondary h-10 px-4 rounded-xl">
+                            <Loader2 v-if="isLoading" :size="16" class="animate-spin mr-2" />
+                            <span>Refresh</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div v-if="isLoading" class="col-span-full text-center py-12 text-text-secondary">
-                    <Loader2 :size="32" class="animate-spin mx-auto mb-2" />
-                    Memuat inventory...
-                </div>
-                <div v-else-if="filteredItems.length === 0" class="col-span-full text-center py-12 text-text-secondary">
-                    <Package :size="48" class="mx-auto mb-2 opacity-50" />
-                    Tidak ada barang tersedia
-                </div>
-                <div v-else v-for="item in filteredItems" :key="item.id" @click="toggleSelect(item)"
-                    class="card p-4 cursor-pointer border-2 transition-all hover:border-primary-500/50"
-                    :class="isSelected(item) ? 'border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30' : 'border-transparent'">
-                    <div class="flex items-start gap-3">
-                        <div class="w-12 h-12 rounded-xl flex items-center justify-center"
-                            :class="isSelected(item) ? 'bg-primary-500 text-white' : 'bg-surface-700'">
-                            <CheckCircle2 v-if="isSelected(item)" :size="24" />
-                            <Smartphone v-else :size="20" class="text-text-secondary" />
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium text-text-primary truncate">{{ item.product?.name }}</p>
-                            <p class="text-xs text-text-secondary">{{ item.product?.brand }}</p>
-                            <p class="font-mono text-xs bg-surface-700 px-2 py-1 rounded mt-2 w-fit">{{ item.imei }}</p>
-                            <p class="text-xs text-text-secondary mt-1" v-if="item.ram || item.storage">
-                                {{ item.ram }} / {{ item.storage }}
-                            </p>
-                        </div>
-                    </div>
+            <!-- Stats -->
+            <div class="mb-4 flex items-center justify-between">
+                <p class="text-text-primary font-medium">
+                    Total Stok <span class="text-primary-500 font-bold">{{ filteredItems.length }}</span> Unit
+                </p>
+                <p v-if="selectedItems.length > 0" class="text-sm text-primary-400">
+                    {{ selectedItems.length }} item dipilih
+                </p>
+            </div>
+
+            <!-- Table -->
+            <div class="card p-0 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-surface-700 bg-surface-700/50">
+                                <th class="p-4 text-left w-12">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="checkbox" :checked="isAllSelected"
+                                            :indeterminate.prop="isSomeSelected" @change="toggleSelectAll"
+                                            class="checkbox" />
+                                    </label>
+                                </th>
+                                <th class="p-4 text-left text-xs font-bold text-text-secondary uppercase w-12">No</th>
+                                <th class="p-4 text-left text-xs font-bold text-text-secondary uppercase">Merek</th>
+                                <th class="p-4 text-left text-xs font-bold text-text-secondary uppercase">Tipe</th>
+                                <th class="p-4 text-center text-xs font-bold text-text-secondary uppercase">Ram/Storage
+                                </th>
+                                <th class="p-4 text-left text-xs font-bold text-text-secondary uppercase">IMEI</th>
+                                <th class="p-4 text-right text-xs font-bold text-text-secondary uppercase">Harga Modal
+                                </th>
+                                <th class="p-4 text-center text-xs font-bold text-text-secondary uppercase">Kondisi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="isLoading">
+                                <td colspan="8" class="p-12 text-center text-text-secondary">
+                                    <Loader2 :size="32" class="animate-spin mx-auto mb-2" />
+                                    Memuat inventory...
+                                </td>
+                            </tr>
+                            <tr v-else-if="filteredItems.length === 0">
+                                <td colspan="8" class="p-12 text-center text-text-secondary">
+                                    <Package :size="48" class="mx-auto mb-2 opacity-50" />
+                                    Tidak ada barang tersedia
+                                </td>
+                            </tr>
+                            <tr v-else v-for="(item, index) in filteredItems" :key="item.id" @click="toggleSelect(item)"
+                                class="border-b border-surface-700/50 cursor-pointer transition-all hover:bg-surface-700/30"
+                                :class="isSelected(item) ? 'bg-primary-500/10' : ''">
+                                <td class="p-4">
+                                    <label class="flex items-center" @click.stop>
+                                        <input type="checkbox" :checked="isSelected(item)" @change="toggleSelect(item)"
+                                            class="checkbox" />
+                                    </label>
+                                </td>
+                                <td class="p-4 text-text-secondary text-sm">{{ index + 1 }}</td>
+                                <td class="p-4">
+                                    <span class="text-text-primary font-medium">{{ item.product?.brand || '-' }}</span>
+                                </td>
+                                <td class="p-4">
+                                    <span class="text-text-secondary">{{ item.product?.name || '-' }}</span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <span v-if="item.ram || item.storage"
+                                        class="inline-flex px-2 py-1 rounded-lg bg-primary-500/20 text-primary-400 text-xs font-bold">
+                                        {{ item.ram || '-' }}/{{ item.storage || '-' }}
+                                    </span>
+                                    <span v-else class="text-text-secondary">-</span>
+                                </td>
+                                <td class="p-4">
+                                    <span class="font-mono text-sm text-text-primary">{{ item.imei }}</span>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <span class="text-text-secondary text-sm">{{ formatCurrency(item.cost_price)
+                                    }}</span>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <span :class="[
+                                        'px-2 py-1 rounded text-xs font-bold uppercase',
+                                        item.condition === 'new' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
+                                    ]">
+                                        {{ item.condition === 'new' ? 'NEW' : 'SCD' }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -659,5 +765,35 @@ onMounted(() => {
 
 .card {
     @apply bg-surface-800 rounded-2xl p-6 border border-surface-700;
+}
+
+.checkbox {
+    @apply w-5 h-5 rounded border-2 border-surface-500 bg-surface-700 checked:bg-primary-500 checked:border-primary-500 focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-0 cursor-pointer transition-all appearance-none relative;
+}
+
+.checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox:indeterminate {
+    @apply bg-primary-500 border-primary-500;
+}
+
+.checkbox:indeterminate::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 7px;
+    width: 10px;
+    height: 2px;
+    background: white;
 }
 </style>
