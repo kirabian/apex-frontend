@@ -59,6 +59,16 @@ class User extends Authenticatable
         return $this->belongsTo(Distributor::class);
     }
 
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function createdUsers()
+    {
+        return $this->hasMany(User::class, 'created_by');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

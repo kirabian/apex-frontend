@@ -16,17 +16,30 @@ class UserController extends Controller
 
         // Jika bukan super_admin, filter berdasarkan placement user login
         if (!$user->hasRole('super_admin')) {
-            if ($user->branch_id) {
-                $query->where('branch_id', $user->branch_id);
+            // Logic Isolation:
+            // Untuk role Toko Online, Sales, dll yang sifatnya "Individual" bukan Branch, 
+            // maka hanya bisa melihat akun yang DIA BUAT SENDIRI (e.g. Inventory Account nya).
+            // Atau dirinya sendiri.
+            if ($user->hasAnyRole(['toko_online', 'sales', 'inventory', 'leader_shopee'])) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                        ->orWhere('id', $user->id);
+                });
             }
-            if ($user->warehouse_id) {
-                $query->where('warehouse_id', $user->warehouse_id);
-            }
-            if ($user->online_shop_id) {
-                $query->where('online_shop_id', $user->online_shop_id);
-            }
-            if ($user->distributor_id) {
-                $query->where('distributor_id', $user->distributor_id);
+            // Untuk Branch/Warehouse/Gudang, kita tetap pakai logic placement sharing
+            else {
+                if ($user->branch_id) {
+                    $query->where('branch_id', $user->branch_id);
+                }
+                if ($user->warehouse_id) {
+                    $query->where('warehouse_id', $user->warehouse_id);
+                }
+                if ($user->online_shop_id) {
+                    $query->where('online_shop_id', $user->online_shop_id);
+                }
+                if ($user->distributor_id) {
+                    $query->where('distributor_id', $user->distributor_id);
+                }
             }
         }
 

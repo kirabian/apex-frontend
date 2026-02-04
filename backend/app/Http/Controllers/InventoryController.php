@@ -294,6 +294,7 @@ class InventoryController extends Controller
                 'warehouse_id' => $user->warehouse_id,
                 'online_shop_id' => $user->online_shop_id,
                 'distributor_id' => $user->distributor_id,
+                'created_by' => $user->id, // Mark ownership
                 'is_active' => true,
                 'theme_color' => 'default',
             ]);
