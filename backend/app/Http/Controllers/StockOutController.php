@@ -101,10 +101,10 @@ class StockOutController extends Controller
                 $proofImagePath = $request->file('proof_image')->store('stock-outs/proofs', 'public');
             }
 
-            // For Shopee, store per-item data as JSON
+            // For Shopee, store per-item data (Model casts to JSON automatically)
             $shopeeItemsData = null;
             if ($request->category === 'shopee' && $request->shopee_items) {
-                $shopeeItemsData = json_encode($request->shopee_items);
+                $shopeeItemsData = $request->shopee_items; // Don't json_encode - Model 'array' cast handles it
             }
 
             // Create stock out record
