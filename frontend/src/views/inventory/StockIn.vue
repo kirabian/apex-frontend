@@ -178,12 +178,19 @@ function prevStep() {
     if (currentStep.value > 1) currentStep.value--;
 }
 
+const showCreateAccountModal = ref(false);
+const newAccountName = ref("");
+const isCreatingAccount = ref(false);
+
 async function fetchInitialData() {
     isLoading.value = true;
     try {
         const [dist, user, brd, typ, prd] = await Promise.all([
-            distributorsApi.list(), usersApi.list(), brandsApi.list(),
-            productTypesApi.list(), inventoryApi.getProductsLookup({ type: 'hp' })
+            distributorsApi.list(), 
+            usersApi.list({ role: 'inventory' }), // FILTER BY ROLE
+            brandsApi.list(),
+            productTypesApi.list(), 
+            inventoryApi.getProductsLookup({ type: 'hp' })
         ]);
         distributors.value = dist.data.data;
         brands.value = brd.data.data || brd.data;
@@ -192,6 +199,22 @@ async function fetchInitialData() {
         targetUsers.value = (user.data.data || user.data);
     } catch (e) { toast.error("Gagal load data"); }
     finally { isLoading.value = false; }
+}
+
+async function createInventoryAccount() {
+    if (!newAccountName.value) return;
+    isCreatingAccount.value = true;
+    try {
+        await inventoryApi.createAccount({ name: newAccountName.value });
+        toast.success("Akun inventory berhasil dibuat!");
+        showCreateAccountModal.value = false;
+        newAccountName.value = "";
+        fetchInitialData(); // Reload list
+    } catch (e) {
+        toast.error(e.response?.data?.message || "Gagal membuat akun");
+    } finally {
+        isCreatingAccount.value = false;
+    }
 }
 
 function selectUserPlacement(user) {
@@ -311,20 +334,54 @@ onMounted(fetchInitialData);
         </div>
 
         <div class="card p-8 border-t-4 border-t-primary-500 bg-surface-800 rounded-2xl shadow-2xl">
-            <div v-if="currentStep === 1" class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-right">
-                <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
-                    class="p-5 rounded-2xl border border-surface-700 bg-surface-900 cursor-pointer hover:border-primary-500 transition-all relative">
-                    <div v-if="placementLabel === (user.full_name || user.name)"
-                        class="absolute top-3 right-3 text-primary-500">
-                        <CheckCircle2 :size="24" />
+            <div v-if="currentStep === 1" class="animate-in slide-in-from-right">
+                <div v-if="targetUsers.length === 0" class="text-center py-10">
+                    <div class="bg-red-500/10 border border-red-500/20 text-red-500 p-6 rounded-2xl max-w-lg mx-auto mb-6">
+                        <h3 class="font-bold text-lg mb-2">Belum Ada Akun Inventory</h3>
+                        <p class="text-sm opacity-80">Anda belum memiliki akun khusus inventory untuk cabang/lokasi ini. Silahkan buat terlebih dahulu untuk melanjutkan stok in.</p>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <div
-                            class="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center text-white font-bold">
-                            {{ user.name[0] }}</div>
-                        <div>
-                            <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3><span
-                                class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name }}</span>
+                    <button @click="showCreateAccountModal = true" class="btn btn-primary px-8 py-4 rounded-xl">
+                        <Plus :size="20" class="mr-2"/> Buat Akun Inventory Baru
+                    </button>
+                </div>
+                
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
+                        class="p-5 rounded-2xl border border-surface-700 bg-surface-900 cursor-pointer hover:border-primary-500 transition-all relative">
+                        <div v-if="placementLabel === (user.full_name || user.name)"
+                            class="absolute top-3 right-3 text-primary-500">
+                            <CheckCircle2 :size="24" />
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center text-white font-bold">
+                                {{ user.name[0] }}</div>
+                            <div>
+                                <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3><span
+                                    class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Create Account -->
+                <div v-if="showCreateAccountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div class="bg-surface-900 border border-surface-700 p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                        <h3 class="text-xl font-bold text-white mb-4">Buat Akun Inventory</h3>
+                        <p class="text-text-secondary text-sm mb-6">Akun ini akan digunakan khusus untuk pencatatan keluar masuk barang di lokasi ini.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="label text-xs uppercase">Nama Akun / Bagian</label>
+                                <input v-model="newAccountName" class="input bg-surface-800" placeholder="Contoh: Gudang Fisik A" autoFocus />
+                            </div>
+                            <div class="flex justify-end gap-3 mt-6">
+                                <button @click="showCreateAccountModal = false" class="btn btn-secondary px-6 rounded-xl">Batal</button>
+                                <button @click="createInventoryAccount" :disabled="!newAccountName || isCreatingAccount" class="btn btn-primary px-6 rounded-xl">
+                                    <Loader2 v-if="isCreatingAccount" class="animate-spin mr-2" :size="16" />
+                                    {{ isCreatingAccount ? 'Membuat...' : 'Buat Akun' }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

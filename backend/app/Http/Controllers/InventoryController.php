@@ -250,4 +250,55 @@ class InventoryController extends Controller
             'data' => $item
         ]);
     }
+    // Create Dedicated Inventory Account
+    public function createAccount(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:50',
+        ]);
+
+        $user = Auth::user();
+        if (!$user->branch_id && !$user->warehouse_id && !$user->online_shop_id && !$user->hasRole('super_admin')) {
+            return response()->json(['message' => 'Anda tidak memiliki lokasi fisik untuk membuat akun inventory.'], 403);
+        }
+
+        // Generate Credentials
+        $timestamp = time();
+        $random = rand(100, 999);
+        $username = 'inv.' . $timestamp . '.' . $random;
+        $email = $username . '@apex-inventory.com';
+        $password = 'inventory123'; // Default password
+
+        DB::beginTransaction();
+        try {
+            $newUser = \App\Models\User::create([
+                'name' => $request->name,
+                'full_name' => $request->name,
+                'username' => $username,
+                'code_id' => 'INV-' . $timestamp,
+                'email' => $email,
+                'password' => $password, // Will be hashed by model mutator or we should hash it
+                'branch_id' => $user->branch_id,
+                'warehouse_id' => $user->warehouse_id,
+                'online_shop_id' => $user->online_shop_id,
+                'distributor_id' => $user->distributor_id,
+                'is_active' => true,
+                'theme_color' => 'default',
+            ]);
+
+            $newUser->assignRole('inventory');
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Akun inventory berhasil dibuat.',
+                'data' => $newUser
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
 }

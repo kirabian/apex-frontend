@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/inventory/stock-in', [InventoryController::class, 'stockIn']);
     Route::patch('/inventory/{id}/status', [InventoryController::class, 'updateStatus']);
     Route::get('/inventory/products-lookup', [InventoryController::class, 'getProducts']);
+    Route::post('/inventory/account', [InventoryController::class, 'createAccount']);
 
     // Stock Out (Pengeluaran Stok)
     Route::get('/stock-outs', [\App\Http\Controllers\StockOutController::class, 'index']);
