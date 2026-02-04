@@ -70,6 +70,21 @@ class InventoryController extends Controller
         // This resolves "branch #6" to "PSTORE BIG JAKARTA"
         $items->getCollection()->transform(function ($item) {
             $item->placement_name = $item->placement ? $item->placement->name : null;
+
+            // For returned items, include proof_image and return details
+            if ($item->status === 'returned') {
+                $returnStockOut = $item->latestReturnStockOut();
+                if ($returnStockOut) {
+                    $item->proof_image = $returnStockOut->proof_image
+                        ? asset('storage/' . $returnStockOut->proof_image)
+                        : null;
+                    $item->customer_name = $returnStockOut->customer_name;
+                    $item->retur_issue = $returnStockOut->retur_issue;
+                    $item->retur_officer = $returnStockOut->retur_officer;
+                    $item->return_date = $returnStockOut->created_at;
+                }
+            }
+
             return $item;
         });
 

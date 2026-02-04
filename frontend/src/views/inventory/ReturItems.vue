@@ -14,7 +14,11 @@ import {
     CheckCircle,
     AlertTriangle,
     Search,
-    RefreshCw
+    RefreshCw,
+    Image,
+    X,
+    UserCircle,
+    MessageSquare
 } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -24,6 +28,11 @@ const authStore = useAuthStore();
 const returItems = ref([]);
 const isLoading = ref(false);
 const searchQuery = ref('');
+
+// Lightbox state
+const showLightbox = ref(false);
+const lightboxImage = ref(null);
+const lightboxItem = ref(null);
 
 // Fetch returned items (status = 'returned', placement_type = 'warehouse')
 async function fetchReturItems() {
@@ -51,7 +60,8 @@ const filteredItems = computed(() => {
     return returItems.value.filter(item =>
         item.imei?.toLowerCase().includes(q) ||
         item.product?.name?.toLowerCase().includes(q) ||
-        item.sku?.toLowerCase().includes(q)
+        item.sku?.toLowerCase().includes(q) ||
+        item.customer_name?.toLowerCase().includes(q)
     );
 });
 
@@ -60,10 +70,24 @@ async function acceptReturn(item) {
     try {
         await api.patch(`/inventory/${item.id}/status`, { status: 'available' });
         toast.success("Barang berhasil diterima ke gudang");
+        closeLightbox();
         fetchReturItems();
     } catch (e) {
         toast.error("Gagal menerima barang");
     }
+}
+
+// Lightbox functions
+function openLightbox(item) {
+    lightboxItem.value = item;
+    lightboxImage.value = item.proof_image;
+    showLightbox.value = true;
+}
+
+function closeLightbox() {
+    showLightbox.value = false;
+    lightboxItem.value = null;
+    lightboxImage.value = null;
 }
 
 onMounted(() => {
@@ -90,7 +114,8 @@ onMounted(() => {
         <div class="card">
             <div class="relative">
                 <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
-                <input v-model="searchQuery" type="text" placeholder="Cari IMEI, produk, SKU..." class="input pl-10" />
+                <input v-model="searchQuery" type="text" placeholder="Cari IMEI, produk, SKU, customer..."
+                    class="input pl-10" />
             </div>
         </div>
 
@@ -121,13 +146,22 @@ onMounted(() => {
                 class="card p-5 border-l-4 border-l-amber-500 hover:bg-surface-700/50 transition-colors">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-start gap-4">
-                        <!-- Product Image/Icon -->
-                        <div class="w-16 h-16 rounded-xl bg-surface-700 flex items-center justify-center shrink-0">
-                            <Package :size="28" class="text-text-secondary" />
+                        <!-- Product Image/Proof Thumbnail -->
+                        <div @click="item.proof_image && openLightbox(item)"
+                            class="w-20 h-20 rounded-xl bg-surface-700 flex items-center justify-center shrink-0 overflow-hidden relative group"
+                            :class="{ 'cursor-pointer hover:ring-2 hover:ring-amber-500': item.proof_image }">
+                            <img v-if="item.proof_image" :src="item.proof_image" alt="Foto Bukti"
+                                class="w-full h-full object-cover" />
+                            <Package v-else :size="28" class="text-text-secondary" />
+                            <!-- Hover overlay -->
+                            <div v-if="item.proof_image"
+                                class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Image :size="20" class="text-white" />
+                            </div>
                         </div>
 
                         <!-- Info -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 flex-1">
                             <div>
                                 <h3 class="font-bold text-text-primary">{{ item.product?.name || 'Produk' }}</h3>
                                 <p class="text-xs text-text-secondary">SKU: {{ item.sku || '-' }}</p>
@@ -136,6 +170,27 @@ onMounted(() => {
                                 <Smartphone :size="14" />
                                 <span class="font-mono">{{ item.imei }}</span>
                             </div>
+
+                            <!-- Return Details -->
+                            <div v-if="item.customer_name || item.retur_issue"
+                                class="mt-2 p-3 rounded-lg bg-surface-700/50 space-y-1">
+                                <div v-if="item.customer_name"
+                                    class="flex items-center gap-2 text-xs text-text-secondary">
+                                    <UserCircle :size="12" />
+                                    <span>Customer: <strong class="text-text-primary">{{ item.customer_name
+                                            }}</strong></span>
+                                </div>
+                                <div v-if="item.retur_issue" class="flex items-start gap-2 text-xs text-text-secondary">
+                                    <MessageSquare :size="12" class="shrink-0 mt-0.5" />
+                                    <span>Kendala: <span class="text-amber-400">{{ item.retur_issue }}</span></span>
+                                </div>
+                                <div v-if="item.retur_officer"
+                                    class="flex items-center gap-2 text-xs text-text-secondary">
+                                    <User :size="12" />
+                                    <span>Petugas: {{ item.retur_officer }}</span>
+                                </div>
+                            </div>
+
                             <div class="flex flex-wrap gap-3 text-xs">
                                 <span class="flex items-center gap-1 text-text-secondary">
                                     <Calendar :size="12" />
@@ -148,6 +203,11 @@ onMounted(() => {
                                 <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                     {{ item.condition || 'Second' }}
                                 </span>
+                                <span v-if="item.proof_image"
+                                    class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 flex items-center gap-1">
+                                    <Image :size="10" />
+                                    Ada Foto
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -158,6 +218,49 @@ onMounted(() => {
                         <CheckCircle :size="16" class="mr-1" />
                         Terima
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lightbox Modal -->
+        <div v-if="showLightbox" class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            @click.self="closeLightbox">
+            <div class="relative max-w-4xl w-full animate-in zoom-in duration-200">
+                <!-- Close Button -->
+                <button @click="closeLightbox"
+                    class="absolute -top-12 right-0 text-white/70 hover:text-white transition-colors">
+                    <X :size="32" />
+                </button>
+
+                <!-- Image -->
+                <div class="bg-surface-800 rounded-2xl overflow-hidden">
+                    <img :src="lightboxImage" alt="Foto Bukti Retur" class="w-full max-h-[70vh] object-contain" />
+
+                    <!-- Item Details -->
+                    <div v-if="lightboxItem" class="p-6 border-t border-surface-700">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="space-y-2">
+                                <h3 class="font-bold text-text-primary text-lg">
+                                    {{ lightboxItem.product?.name || 'Produk' }}
+                                </h3>
+                                <p class="font-mono text-sm text-text-secondary">IMEI: {{ lightboxItem.imei }}</p>
+                                <div v-if="lightboxItem.customer_name" class="flex items-center gap-2 text-sm">
+                                    <UserCircle :size="16" class="text-text-secondary" />
+                                    <span class="text-text-secondary">Customer:</span>
+                                    <span class="text-text-primary font-medium">{{ lightboxItem.customer_name }}</span>
+                                </div>
+                                <div v-if="lightboxItem.retur_issue" class="text-sm">
+                                    <span class="text-text-secondary">Kendala:</span>
+                                    <span class="text-amber-400 ml-2">{{ lightboxItem.retur_issue }}</span>
+                                </div>
+                            </div>
+                            <button @click="acceptReturn(lightboxItem)"
+                                class="btn bg-green-600 hover:bg-green-700 text-white px-6 h-12 rounded-xl font-bold shrink-0">
+                                <CheckCircle :size="18" class="mr-2" />
+                                Terima Barang
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

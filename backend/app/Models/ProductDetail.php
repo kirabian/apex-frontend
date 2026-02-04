@@ -57,4 +57,20 @@ class ProductDetail extends Model
             return $this->belongsTo(OnlineShop::class, 'placement_id');
         return null;
     }
+
+    // Relationship for stock outs (to get return proof_image)
+    public function stockOuts()
+    {
+        return $this->belongsToMany(StockOut::class, 'stock_out_items')
+            ->withTimestamps();
+    }
+
+    // Get the latest return stock out for this item
+    public function latestReturnStockOut()
+    {
+        return $this->stockOuts()
+            ->where('category', 'retur')
+            ->latest()
+            ->first();
+    }
 }
