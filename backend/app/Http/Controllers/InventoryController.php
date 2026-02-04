@@ -253,6 +253,8 @@ class InventoryController extends Controller
     // Create Dedicated Inventory Account
     public function createAccount(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Entering createAccount', ['user_id' => Auth::id(), 'request' => $request->all()]);
+
         $request->validate([
             'name' => 'required|string|max:50',
         ]);

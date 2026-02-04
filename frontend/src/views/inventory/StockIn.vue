@@ -211,7 +211,9 @@ async function createInventoryAccount() {
         newAccountName.value = "";
         fetchInitialData(); // Reload list
     } catch (e) {
-        toast.error(e.response?.data?.message || "Gagal membuat akun");
+        console.error("Create account error:", e);
+        const errMsg = e.response?.data?.message || "Gagal membuat akun (" + (e.response?.status || 'Unknown') + ")";
+        toast.error(errMsg);
     } finally {
         isCreatingAccount.value = false;
     }
