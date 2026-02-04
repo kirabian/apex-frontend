@@ -55,8 +55,18 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Revoke the token that was used to authenticate the current request
-        $request->user()->currentAccessToken()->delete();
+        // Safely revoke the token
+        try {
+            if ($user = $request->user()) {
+                if ($token = $user->currentAccessToken()) {
+                    $token->delete();
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignore errors during logout (e.g. token already deleted) to ensure frontend can proceed
+            \Illuminate\Support\Facades\Log::error('Logout error: ' . $e->getMessage());
+        }
+
         return response()->json(['success' => true]);
     }
 
