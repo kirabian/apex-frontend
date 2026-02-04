@@ -278,16 +278,45 @@ function formatCurrency(value) {
                                 </div>
                             </template>
 
-                            <!-- Shopee -->
+                            <!-- Shopee (Per-Item) -->
                             <template v-if="result.category === 'shopee'">
-                                <div>
-                                    <p class="text-text-secondary text-xs">Penerima</p>
-                                    <p class="text-text-primary">{{ result.shopee_receiver }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-text-secondary text-xs">No. Resi Shopee</p>
-                                    <p class="text-text-primary font-mono">{{ result.shopee_tracking_no }}</p>
-                                </div>
+                                <!-- Per-item data if available -->
+                                <template v-if="result.shopee_items_data?.length > 0">
+                                    <div class="col-span-full space-y-2">
+                                        <p class="text-text-secondary text-xs uppercase font-bold">Detail Penerima ({{
+                                            result.shopee_items_data.length }})</p>
+                                        <div v-for="(shopeeItem, idx) in result.shopee_items_data" :key="idx"
+                                            class="bg-surface-700/50 rounded-lg px-3 py-2 text-sm flex flex-wrap gap-x-6 gap-y-1">
+                                            <span class="text-primary-400 font-bold">#{{ idx + 1 }}</span>
+                                            <span>
+                                                <span class="text-text-secondary text-xs">Penerima:</span>
+                                                <span class="text-text-primary ml-1">{{ shopeeItem.receiver || '-'
+                                                    }}</span>
+                                            </span>
+                                            <span>
+                                                <span class="text-text-secondary text-xs">No. Resi:</span>
+                                                <span class="text-text-primary font-mono ml-1">{{ shopeeItem.tracking_no
+                                                    || '-' }}</span>
+                                            </span>
+                                            <span v-if="shopeeItem.phone">
+                                                <span class="text-text-secondary text-xs">WA:</span>
+                                                <span class="text-text-primary ml-1">{{ shopeeItem.phone }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
+                                <!-- Legacy single item fallback -->
+                                <template v-else>
+                                    <div>
+                                        <p class="text-text-secondary text-xs">Penerima</p>
+                                        <p class="text-text-primary">{{ result.shopee_receiver || '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-text-secondary text-xs">No. Resi Shopee</p>
+                                        <p class="text-text-primary font-mono">{{ result.shopee_tracking_no || '-' }}
+                                        </p>
+                                    </div>
+                                </template>
                             </template>
 
                             <!-- Kesalahan Input -->

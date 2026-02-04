@@ -234,14 +234,41 @@ class StockOutController extends Controller
             })
             ->get();
 
-        // Search by Shopee tracking
+        // Search by Shopee tracking (legacy field OR inside shopee_items_data JSON)
         $byShopee = StockOut::with(['items.product', 'user', 'destinationBranch'])
-            ->where('shopee_tracking_no', 'like', "%{$query}%")
+            ->where(function ($q) use ($query) {
+                $q->where('shopee_tracking_no', 'like', "%{$query}%")
+                    ->orWhere('shopee_items_data', 'like', "%{$query}%");
+            })
             ->get();
 
         $stockOuts = $byReceipt->merge($byImei)->merge($byShopee)->unique('id');
 
         foreach ($stockOuts as $out) {
+            // Parse Shopee per-item data
+            $shopeeItems = $out->shopee_items_data ?? [];
+            $shopeeReceivers = [];
+            $shopeeTrackingNos = [];
+
+            if (is_array($shopeeItems) && count($shopeeItems) > 0) {
+                foreach ($shopeeItems as $item) {
+                    if (!empty($item['receiver'])) {
+                        $shopeeReceivers[] = $item['receiver'];
+                    }
+                    if (!empty($item['tracking_no'])) {
+                        $shopeeTrackingNos[] = $item['tracking_no'];
+                    }
+                }
+            } else {
+                // Fallback to legacy single fields
+                if ($out->shopee_receiver) {
+                    $shopeeReceivers[] = $out->shopee_receiver;
+                }
+                if ($out->shopee_tracking_no) {
+                    $shopeeTrackingNos[] = $out->shopee_tracking_no;
+                }
+            }
+
             $results[] = [
                 'type' => 'stock_out',
                 'id' => $out->receipt_id,
@@ -253,8 +280,13 @@ class StockOutController extends Controller
                 'destination_branch' => $out->destinationBranch?->name,
                 'receiver_name' => $out->receiver_name,
                 'customer_name' => $out->customer_name,
-                'shopee_receiver' => $out->shopee_receiver,
-                'shopee_tracking_no' => $out->shopee_tracking_no,
+                // Shopee: now returns arrays for per-item data
+                'shopee_receivers' => $shopeeReceivers,
+                'shopee_tracking_nos' => $shopeeTrackingNos,
+                'shopee_items_data' => $shopeeItems, // Full per-item data
+                // Legacy fields for backward compatibility
+                'shopee_receiver' => implode(', ', $shopeeReceivers) ?: null,
+                'shopee_tracking_no' => implode(', ', $shopeeTrackingNos) ?: null,
                 'deletion_reason' => $out->deletion_reason,
                 'processed_by' => $out->user?->name ?? $out->user?->username,
                 'created_at' => $out->created_at,
