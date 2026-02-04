@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
 import api from "../../api/axios";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
+import { Html5Qrcode } from "html5-qrcode";
 const router = useRouter();
 import {
   Search,
@@ -20,7 +21,23 @@ import {
   TrendingUp,
   TrendingDown,
   Box,
-  Smartphone
+  Smartphone,
+  X,
+  Building2,
+  RotateCcw,
+  ShoppingBag,
+  Gift,
+  Trophy,
+  UserCheck,
+  Calendar,
+  Percent,
+  Archive,
+  ChevronLeft,
+  CheckCircle,
+  Loader2,
+  ScanBarcode,
+  Upload,
+  Warehouse
 } from "lucide-vue-next";
 
 const inventoryStore = useInventoryStore();
@@ -30,13 +47,71 @@ const searchQuery = ref("");
 const selectedCategory = ref("");
 const showStockFilter = ref("all");
 
+// Stock Out Selection State
+const selectedItems = ref([]);
+const showStockOutModal = ref(false);
+const selectedStockOutCategory = ref(null);
+const isSubmitting = ref(false);
+
+// Stock Out Form
+const stockOutForm = ref({
+  destination_branch_id: null,
+  receiver_name: '',
+  transfer_notes: '',
+  deletion_reason: '',
+  retur_officer: '',
+  retur_seal: '',
+  retur_issue: '',
+  customer_name: '',
+  customer_phone: '',
+  return_destination_id: null,
+  proof_image: null,
+  shopee_receiver: '',
+  shopee_phone: '',
+  shopee_address: '',
+  shopee_notes: '',
+  shopee_tracking_no: '',
+  notes: '',
+});
+
+// Barcode Scanner
+const isScanning = ref(false);
+const scannerContainerId = 'barcode-scanner-container-modal';
+let html5QrCode = null;
+
+// Proof image for retur
+const proofImageFile = ref(null);
+const proofImagePreview = ref(null);
+
+// Branches & Warehouses
+const branches = ref([]);
+const warehouses = ref([]);
+
 onMounted(() => {
   inventoryStore.fetchProducts();
+  fetchCurrentBranch();
+  fetchCurrentWarehouse();
+  fetchBranches();
+  fetchWarehouses();
 });
+
+// Stock Out Categories
+const stockOutCategories = [
+  { id: 'pindah_cabang', name: 'Pindah Cabang', icon: Building2, color: 'blue' },
+  { id: 'kesalahan_input', name: 'Kesalahan Input', icon: AlertTriangle, color: 'amber' },
+  { id: 'retur', name: 'Retur', icon: RotateCcw, color: 'purple' },
+  { id: 'shopee', name: 'Shopee', icon: ShoppingBag, color: 'orange' },
+  { id: 'giveaway', name: 'Giveaway Customer', icon: Gift, color: 'pink' },
+  { id: 'hadiah', name: 'Hadiah', icon: Trophy, color: 'yellow' },
+  { id: 'brand_ambassador', name: 'Brand Ambassador', icon: UserCheck, color: 'indigo' },
+  { id: 'event', name: 'Event / Sponsorship', icon: Calendar, color: 'cyan' },
+  { id: 'promo', name: 'Promo', icon: Percent, color: 'red' },
+  { id: 'inventaris', name: 'Inventaris', icon: Archive, color: 'slate' },
+];
 
 // Filtered items (Granular)
 const filteredProducts = computed(() => {
-  let items = inventoryStore.products; // These are now ProductDetail objects
+  let items = inventoryStore.products;
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
@@ -53,10 +128,221 @@ const filteredProducts = computed(() => {
     items = items.filter((item) => item.product?.category === selectedCategory.value);
   }
 
-  // Stock filter logic removed as we list individual units now
-  // if (showStockFilter.value === "low") ...
-
   return items;
+});
+
+// Selection helpers
+const isAllSelected = computed(() => {
+  if (filteredProducts.value.length === 0) return false;
+  return filteredProducts.value.every(item => isSelected(item));
+});
+
+const isSomeSelected = computed(() => {
+  if (filteredProducts.value.length === 0) return false;
+  const selectedCount = filteredProducts.value.filter(item => isSelected(item)).length;
+  return selectedCount > 0 && selectedCount < filteredProducts.value.length;
+});
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    filteredProducts.value.forEach(item => {
+      const idx = selectedItems.value.findIndex(i => i.id === item.id);
+      if (idx !== -1) selectedItems.value.splice(idx, 1);
+    });
+  } else {
+    filteredProducts.value.forEach(item => {
+      if (!isSelected(item)) selectedItems.value.push(item);
+    });
+  }
+}
+
+function toggleSelect(item) {
+  const idx = selectedItems.value.findIndex(i => i.id === item.id);
+  if (idx === -1) {
+    selectedItems.value.push(item);
+  } else {
+    selectedItems.value.splice(idx, 1);
+  }
+}
+
+function isSelected(item) {
+  return selectedItems.value.some(i => i.id === item.id);
+}
+
+// Stock Out Modal Functions
+function openStockOutModal() {
+  if (selectedItems.value.length === 0) {
+    toast.error("Pilih minimal 1 barang");
+    return;
+  }
+  showStockOutModal.value = true;
+  selectedStockOutCategory.value = null;
+}
+
+function closeStockOutModal() {
+  showStockOutModal.value = false;
+  selectedStockOutCategory.value = null;
+  resetStockOutForm();
+}
+
+function selectStockOutCategory(category) {
+  if (category.id === 'retur' && warehouses.value.length > 0) {
+    if (!warehouses.value[0].can_accept_returns) {
+      toast.error("Gudang sedang tidak menerima retur");
+      return;
+    }
+  }
+  selectedStockOutCategory.value = category.id;
+}
+
+function resetStockOutForm() {
+  stockOutForm.value = {
+    destination_branch_id: null,
+    receiver_name: '',
+    transfer_notes: '',
+    deletion_reason: '',
+    retur_officer: '',
+    retur_seal: '',
+    retur_issue: '',
+    customer_name: '',
+    customer_phone: '',
+    return_destination_id: null,
+    proof_image: null,
+    shopee_receiver: '',
+    shopee_phone: '',
+    shopee_address: '',
+    shopee_notes: '',
+    shopee_tracking_no: '',
+    notes: '',
+  };
+  proofImageFile.value = null;
+  proofImagePreview.value = null;
+}
+
+// File upload for retur
+function handleFileChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran file maksimal 10MB");
+      event.target.value = '';
+      return;
+    }
+    proofImageFile.value = file;
+    proofImagePreview.value = URL.createObjectURL(file);
+  }
+}
+
+// Barcode Scanner
+async function startScanner() {
+  isScanning.value = true;
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  try {
+    html5QrCode = new Html5Qrcode(scannerContainerId);
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 300, height: 150 },
+      formatsToSupport: [0, 4, 2, 11, 10],
+      aspectRatio: 1.7777778,
+    };
+
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        stockOutForm.value.shopee_tracking_no = decodedText;
+        toast.success(`Barcode terdeteksi: ${decodedText}`);
+        stopScanner();
+      },
+      () => { }
+    );
+  } catch (e) {
+    console.error("Scanner error:", e);
+    toast.error("Gagal akses kamera. Silakan ketik manual nomor resi.");
+    stopScanner();
+  }
+}
+
+async function stopScanner() {
+  isScanning.value = false;
+  if (html5QrCode) {
+    try {
+      await html5QrCode.stop();
+      html5QrCode.clear();
+    } catch (e) {
+      console.error("Error stopping scanner:", e);
+    }
+    html5QrCode = null;
+  }
+}
+
+// Can Submit validation
+const canSubmitStockOut = computed(() => {
+  if (!selectedStockOutCategory.value || selectedItems.value.length === 0) return false;
+
+  switch (selectedStockOutCategory.value) {
+    case 'pindah_cabang':
+      return stockOutForm.value.destination_branch_id && stockOutForm.value.receiver_name;
+    case 'kesalahan_input':
+      return stockOutForm.value.deletion_reason.length >= 5;
+    case 'retur':
+      return stockOutForm.value.retur_officer && stockOutForm.value.retur_issue &&
+        stockOutForm.value.customer_name && stockOutForm.value.customer_phone;
+    case 'shopee':
+      return stockOutForm.value.shopee_receiver && stockOutForm.value.shopee_phone &&
+        stockOutForm.value.shopee_address && stockOutForm.value.shopee_tracking_no;
+    default:
+      return true;
+  }
+});
+
+// Submit Stock Out
+async function submitStockOut() {
+  if (!canSubmitStockOut.value) return;
+
+  isSubmitting.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('category', selectedStockOutCategory.value);
+
+    selectedItems.value.forEach(item => {
+      formData.append('product_detail_ids[]', item.id);
+    });
+
+    Object.keys(stockOutForm.value).forEach(key => {
+      if (key !== 'proof_image' && stockOutForm.value[key] !== null && stockOutForm.value[key] !== '') {
+        formData.append(key, stockOutForm.value[key]);
+      }
+    });
+
+    if (selectedStockOutCategory.value === 'retur' && proofImageFile.value) {
+      formData.append('proof_image', proofImageFile.value);
+    }
+
+    const response = await api.post('/stock-outs', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    toast.success(`Stok berhasil dikeluarkan! ID: ${response.data.data.receipt_id}`);
+    selectedItems.value = [];
+    closeStockOutModal();
+    inventoryStore.fetchProducts();
+
+  } catch (e) {
+    toast.error(e.response?.data?.message || "Gagal keluar stok");
+    console.error(e);
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+// Cleanup
+onUnmounted(() => {
+  if (html5QrCode) {
+    html5QrCode.stop().catch(() => { });
+  }
 });
 
 // Stats
@@ -107,15 +393,33 @@ async function fetchCurrentBranch() {
   }
 }
 
+async function fetchBranches() {
+  try {
+    const response = await branchesApi.list();
+    branches.value = response.data.data || response.data;
+  } catch (e) {
+    console.error("Gagal memuat cabang", e);
+  }
+}
+
+async function fetchWarehouses() {
+  try {
+    const response = await api.get('/warehouses');
+    warehouses.value = response.data.data || response.data;
+  } catch (e) {
+    console.error("Gagal memuat gudang", e);
+  }
+}
+
 const currentWarehouse = ref(null);
 
 async function fetchCurrentWarehouse() {
   if (canToggleReturn.value) {
     try {
       const response = await api.get('/warehouses');
-      const warehouses = response.data.data || response.data;
-      if (Array.isArray(warehouses) && warehouses.length > 0) {
-        currentWarehouse.value = warehouses[0];
+      const warehouseList = response.data.data || response.data;
+      if (Array.isArray(warehouseList) && warehouseList.length > 0) {
+        currentWarehouse.value = warehouseList[0];
       }
     } catch (e) {
       console.error("Gagal load info warehouse", e);
@@ -129,13 +433,10 @@ async function toggleReturn() {
   isTogglingReturn.value = true;
   try {
     const response = await api.post(`/warehouses/${currentWarehouse.value.id}/toggle-return`);
-
-    // Update locally
     const updated = response.data.data;
     if (currentWarehouse.value.id === updated.id) {
       currentWarehouse.value.can_accept_returns = updated.can_accept_returns;
     }
-
     const status = updated.can_accept_returns ? 'ON' : 'OFF';
     toast.success(`Terima Retur (Gudang) berhasil diubah ke ${status}`);
   } catch (e) {
@@ -145,31 +446,11 @@ async function toggleReturn() {
   }
 }
 
-onMounted(() => {
-  inventoryStore.fetchProducts();
-  fetchCurrentBranch();
-});
-
-// Stats
-// ... (existing code)
-
 const categories = computed(() => inventoryStore.categories);
 
-const branches = ref([]);
-
-// Permission check for toggling return
 const canToggleReturn = computed(() => {
-  // Allow: ONLY SUPER_ADMIN
   const allowedRoles = ['super_admin'];
   return authStore.hasRole(allowedRoles);
-});
-
-
-
-onMounted(() => {
-  inventoryStore.fetchProducts();
-  fetchCurrentBranch();
-  fetchCurrentWarehouse(); // Load warehouse for toggle
 });
 
 function getStockStatus(product) {
@@ -190,7 +471,7 @@ function getStockStatus(product) {
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
       <div class="flex gap-3 items-center">
-        <!-- Return Toggle (Using Warehouse Status) -->
+        <!-- Return Toggle -->
         <div v-if="currentWarehouse && canToggleReturn"
           class="flex items-center gap-2 bg-surface-800 p-2 rounded-xl border border-surface-700 mr-2">
           <span class="text-sm font-medium text-text-secondary pl-2">Terima Retur</span>
@@ -205,9 +486,14 @@ function getStockStatus(product) {
           </button>
         </div>
 
-        <button class="btn btn-secondary" @click="router.push({ name: 'StockOut' })">
+        <!-- Keluar Stok Button -->
+        <button class="btn" :class="selectedItems.length > 0 ? 'btn-primary' : 'btn-secondary'"
+          @click="openStockOutModal" :disabled="selectedItems.length === 0">
           <ArrowDownUp :size="16" />
           Keluar Stok
+          <span v-if="selectedItems.length > 0" class="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+            {{ selectedItems.length }}
+          </span>
         </button>
         <button class="btn btn-primary" @click="router.push({ name: 'StockIn' })">
           <Plus :size="16" />
@@ -274,17 +560,33 @@ function getStockStatus(product) {
       </div>
     </div>
 
+    <!-- Selection Info -->
+    <div v-if="selectedItems.length > 0"
+      class="bg-primary-500/10 border border-primary-500/30 rounded-xl p-4 flex items-center justify-between">
+      <p class="text-primary-400 font-medium">
+        {{ selectedItems.length }} item dipilih
+      </p>
+      <button @click="selectedItems = []" class="text-primary-400 hover:text-primary-300 text-sm">
+        Batalkan Semua
+      </button>
+    </div>
+
     <!-- Table -->
     <div class="card p-0">
       <div class="table-container">
         <table class="table">
           <thead>
             <tr>
+              <th class="w-12">
+                <label class="flex items-center cursor-pointer">
+                  <input type="checkbox" :checked="isAllSelected" :indeterminate.prop="isSomeSelected"
+                    @change="toggleSelectAll" class="checkbox" />
+                </label>
+              </th>
               <th>SKU</th>
               <th>Produk</th>
               <th>Detail (IMEI)</th>
               <th>Lokasi</th>
-              <th>Admin</th>
               <th>Distributor</th>
               <th>Harga Jual</th>
               <th>Status</th>
@@ -293,18 +595,25 @@ function getStockStatus(product) {
           </thead>
           <tbody>
             <tr v-if="inventoryStore.isLoading">
-              <td colspan="8" class="text-center py-12">
+              <td colspan="9" class="text-center py-12">
                 <RefreshCw :size="24" class="animate-spin mx-auto text-blue-400 mb-2" />
                 <p class="text-text-secondary">Memuat data...</p>
               </td>
             </tr>
             <tr v-else-if="filteredProducts.length === 0">
-              <td colspan="8" class="text-center py-12">
+              <td colspan="9" class="text-center py-12">
                 <Box :size="48" class="mx-auto text-text-secondary mb-2" />
                 <p class="text-text-secondary">Tidak ada data ditemukan</p>
               </td>
             </tr>
-            <tr v-else v-for="item in filteredProducts" :key="item.id">
+            <tr v-else v-for="item in filteredProducts" :key="item.id" @click="toggleSelect(item)"
+              class="cursor-pointer transition-all hover:bg-surface-700/30"
+              :class="isSelected(item) ? 'bg-primary-500/10' : ''">
+              <td @click.stop>
+                <label class="flex items-center">
+                  <input type="checkbox" :checked="isSelected(item)" @change="toggleSelect(item)" class="checkbox" />
+                </label>
+              </td>
               <td class="font-mono text-sm text-text-secondary">
                 {{ item.product?.sku || '-' }}
               </td>
@@ -340,9 +649,6 @@ function getStockStatus(product) {
                 </div>
               </td>
               <td class="text-sm text-text-secondary">
-                {{ item.user?.username || item.user?.name || '-' }}
-              </td>
-              <td class="text-sm text-text-secondary">
                 {{ item.distributor?.name || '-' }}
               </td>
               <td class="text-text-primary font-medium">
@@ -354,7 +660,7 @@ function getStockStatus(product) {
                   {{ item.status }}
                 </span>
               </td>
-              <td>
+              <td @click.stop>
                 <div class="flex items-center justify-center gap-2">
                   <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Eye :size="16" class="text-text-secondary" />
@@ -367,6 +673,197 @@ function getStockStatus(product) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Stock Out Modal -->
+    <div v-if="showStockOutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+      <div
+        class="bg-surface-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-200">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-surface-700">
+          <div class="flex items-center gap-3">
+            <button v-if="selectedStockOutCategory" @click="selectedStockOutCategory = null"
+              class="text-text-secondary hover:text-white transition-colors">
+              <ChevronLeft :size="20" />
+            </button>
+            <h2 class="text-xl font-bold text-white">
+              {{selectedStockOutCategory ? stockOutCategories.find(c => c.id === selectedStockOutCategory)?.name :
+              'Pilih Kategori' }}
+            </h2>
+          </div>
+          <button @click="closeStockOutModal" class="text-text-secondary hover:text-white transition-colors">
+            <X :size="24" />
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <!-- Category Selection -->
+          <div v-if="!selectedStockOutCategory" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <button v-for="cat in stockOutCategories" :key="cat.id" @click="selectStockOutCategory(cat)"
+              class="card p-4 text-center hover:border-primary-500 border-2 border-transparent transition-all">
+              <component :is="cat.icon" :size="32" class="mx-auto mb-2" :class="`text-${cat.color}-500`" />
+              <p class="font-bold text-text-primary text-sm">{{ cat.name }}</p>
+            </button>
+          </div>
+
+          <!-- Category Forms -->
+          <div v-else class="space-y-4">
+            <!-- Pindah Cabang Form -->
+            <template v-if="selectedStockOutCategory === 'pindah_cabang'">
+              <div>
+                <label class="label">Cabang Tujuan *</label>
+                <select v-model="stockOutForm.destination_branch_id" class="input">
+                  <option :value="null">-- Pilih Cabang --</option>
+                  <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Nama Penerima *</label>
+                <input v-model="stockOutForm.receiver_name" class="input" placeholder="Nama yang menerima barang" />
+              </div>
+              <div>
+                <label class="label">Catatan</label>
+                <textarea v-model="stockOutForm.transfer_notes" class="input" rows="3"
+                  placeholder="Catatan tambahan..."></textarea>
+              </div>
+            </template>
+
+            <!-- Kesalahan Input Form -->
+            <template v-if="selectedStockOutCategory === 'kesalahan_input'">
+              <div>
+                <label class="label">Alasan Hapus *</label>
+                <textarea v-model="stockOutForm.deletion_reason" class="input" rows="4"
+                  placeholder="Jelaskan alasan penghapusan data..."></textarea>
+              </div>
+            </template>
+
+            <!-- Retur Form -->
+            <template v-if="selectedStockOutCategory === 'retur'">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Nama Petugas *</label>
+                  <input v-model="stockOutForm.retur_officer" class="input" placeholder="Nama petugas retur" />
+                </div>
+                <div>
+                  <label class="label">Pilih Gudang *</label>
+                  <select v-model="stockOutForm.return_destination_id" class="input">
+                    <option :value="null">-- Pilih Gudang Retur --</option>
+                    <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="label">Foto Bukti / Kondisi (Max 10MB)</label>
+                <input type="file" accept="image/*" @change="handleFileChange"
+                  class="w-full text-sm text-text-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-surface-700 file:text-primary-400 hover:file:bg-surface-600 transition-all cursor-pointer border border-surface-700 rounded-xl bg-surface-800" />
+                <div v-if="proofImagePreview" class="mt-3">
+                  <img :src="proofImagePreview" class="h-24 rounded-xl object-cover border border-surface-600" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Segel</label>
+                  <input v-model="stockOutForm.retur_seal" class="input" placeholder="Nomor segel (opsional)" />
+                </div>
+                <div>
+                  <label class="label">Nama Customer *</label>
+                  <input v-model="stockOutForm.customer_name" class="input" placeholder="Nama customer" />
+                </div>
+              </div>
+              <div>
+                <label class="label">Kendala / Masalah *</label>
+                <textarea v-model="stockOutForm.retur_issue" class="input" rows="3"
+                  placeholder="Jelaskan kendala atau masalah..."></textarea>
+              </div>
+              <div>
+                <label class="label">No. WA Customer *</label>
+                <input v-model="stockOutForm.customer_phone" class="input" placeholder="08xxxxxxxxxx" />
+              </div>
+            </template>
+
+            <!-- Shopee Form -->
+            <template v-if="selectedStockOutCategory === 'shopee'">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Nama Penerima *</label>
+                  <input v-model="stockOutForm.shopee_receiver" class="input" placeholder="Nama penerima" />
+                </div>
+                <div>
+                  <label class="label">No. WA *</label>
+                  <input v-model="stockOutForm.shopee_phone" class="input" placeholder="08xxxxxxxxxx" />
+                </div>
+              </div>
+              <div>
+                <label class="label">Alamat Tujuan *</label>
+                <textarea v-model="stockOutForm.shopee_address" class="input" rows="2"
+                  placeholder="Alamat lengkap..."></textarea>
+              </div>
+              <div>
+                <label class="label">Catatan</label>
+                <textarea v-model="stockOutForm.shopee_notes" class="input" rows="2"
+                  placeholder="Catatan pengiriman..."></textarea>
+              </div>
+              <div>
+                <label class="label">No. Resi Shopee *</label>
+                <div class="flex gap-2">
+                  <input v-model="stockOutForm.shopee_tracking_no" class="input flex-1 font-mono"
+                    placeholder="Scan atau ketik manual..." />
+                  <button @click="startScanner" type="button" class="btn btn-secondary px-4"
+                    :class="isScanning ? 'bg-orange-500 text-white' : ''">
+                    <ScanBarcode :size="20" />
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Selected Items Summary -->
+            <div class="mt-6 pt-4 border-t border-surface-700">
+              <p class="text-xs uppercase font-bold text-text-secondary mb-3">
+                Barang yang akan dikeluarkan ({{ selectedItems.length }})
+              </p>
+              <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                <div v-for="item in selectedItems" :key="item.id"
+                  class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
+                  <Smartphone :size="14" />
+                  <span class="font-mono text-xs">{{ item.imei }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div v-if="selectedStockOutCategory" class="p-6 border-t border-surface-700">
+          <button @click="submitStockOut" :disabled="!canSubmitStockOut || isSubmitting"
+            class="btn btn-primary w-full h-12 rounded-xl font-bold disabled:opacity-30">
+            <Loader2 v-if="isSubmitting" :size="20" class="animate-spin mr-2" />
+            {{ isSubmitting ? 'Memproses...' : 'Konfirmasi Keluar Stok' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div v-if="isScanning" class="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4">
+      <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between p-4 border-b border-surface-700">
+          <h3 class="text-white font-bold flex items-center gap-2">
+            <ScanBarcode :size="20" class="text-orange-500" />
+            Scan Barcode Resi
+          </h3>
+          <button @click="stopScanner" class="text-text-secondary hover:text-white transition-colors">
+            <X :size="24" />
+          </button>
+        </div>
+        <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
+        <div class="p-4 text-center space-y-3">
+          <p class="text-text-secondary text-sm animate-pulse">Arahkan kamera ke barcode resi...</p>
+          <div class="text-xs text-text-secondary">
+            <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -387,5 +884,57 @@ function getStockStatus(product) {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  border: 2px solid rgb(var(--color-surface-500));
+  background-color: rgb(var(--color-surface-700));
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  position: relative;
+}
+
+.checkbox:checked {
+  background-color: rgb(var(--color-primary-500));
+  border-color: rgb(var(--color-primary-500));
+}
+
+.checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox:indeterminate {
+  background-color: rgb(var(--color-primary-500));
+  border-color: rgb(var(--color-primary-500));
+}
+
+.checkbox:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 10px;
+  height: 2px;
+  background: white;
+}
+
+.label {
+  display: block;
+  color: rgb(var(--color-text-secondary));
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 </style>
