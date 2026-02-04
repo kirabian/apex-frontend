@@ -14,7 +14,6 @@ import {
     ChevronRight,
     ShoppingBag
 } from "lucide-vue-next";
-import { useDebounceFn } from "@vueuse/core";
 
 const toast = useToast();
 
@@ -29,6 +28,7 @@ const pagination = ref({
 });
 
 const search = ref("");
+let searchTimeout = null;
 
 // Fetch history
 const fetchHistory = async (page = 1) => {
@@ -58,9 +58,12 @@ const fetchHistory = async (page = 1) => {
 };
 
 // Search handler with debounce
-const handleSearch = useDebounceFn(() => {
-    fetchHistory(1);
-}, 500);
+const handleSearch = () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        fetchHistory(1);
+    }, 500);
+};
 
 watch(search, handleSearch);
 
@@ -184,7 +187,7 @@ onMounted(() => {
                                             <div>
                                                 <p class="text-xs text-text-secondary">Penerima</p>
                                                 <p class="font-medium text-text-primary">{{ item.shopee_receiver || '-'
-                                                }}</p>
+                                                    }}</p>
                                             </div>
                                             <div>
                                                 <p class="text-xs text-text-secondary">No. Resi</p>
