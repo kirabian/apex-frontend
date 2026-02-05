@@ -41,6 +41,10 @@ api.interceptors.response.use(
         if (error.response) {
             switch (error.response.status) {
                 case 401:
+                    // Check if it's a login attempt failure, don't redirect
+                    if (error.config.url.includes('/login')) {
+                        break;
+                    }
                     // Unauthorized - clear auth and redirect to login
                     localStorage.removeItem('auth_token')
                     localStorage.removeItem('user')
