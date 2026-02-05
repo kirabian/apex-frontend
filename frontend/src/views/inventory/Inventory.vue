@@ -2,8 +2,41 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
-import api, { productTypes } from "../../api/axios";
+import api, { inventory as inventoryApi, productTypes } from "../../api/axios";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
+
+// ... (existing code)
+
+function editItem(item) {
+  editStockForm.value = { ...item }; // Copy data item ke form
+
+  // Find matching product type to get storage options
+  const productName = item.product?.name || '';
+  const matchedType = typeList.value.find(t => t.name.toLowerCase() === productName.toLowerCase());
+
+  if (matchedType && matchedType.storage) {
+    capacityOptions.value = matchedType.storage.split(/[,/]+/).map(s => s.trim());
+  } else {
+    capacityOptions.value = ['64', '128', '256', '512', '1024', '1TB'];
+  }
+
+  showEditStockModal.value = true;
+}
+
+async function updateItem() {
+  isSubmitting.value = true;
+  try {
+    await inventoryApi.update(editStockForm.value.id, editStockForm.value);
+    toast.success("Data berhasil diperbarui");
+    showEditStockModal.value = false;
+    inventoryStore.fetchProducts(); // Reload lists
+  } catch (e) {
+    console.error(e);
+    toast.error("Gagal update: " + (e.response?.data?.message || e.message));
+  } finally {
+    isSubmitting.value = false;
+  }
+}
 import { Html5Qrcode } from "html5-qrcode";
 const router = useRouter();
 import {
