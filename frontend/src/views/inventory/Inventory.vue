@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
-import api from "../../api/axios";
+import api, { productTypes } from "../../api/axios";
 import { formatCurrency, formatNumber } from "../../utils/formatters";
 import { Html5Qrcode } from "html5-qrcode";
 const router = useRouter();
@@ -49,6 +49,8 @@ const searchQuery = ref("");
 const debouncedSearch = ref("");
 const selectedCategory = ref("");
 const showStockFilter = ref("all");
+const typeList = ref([]);
+const capacityOptions = ref([]);
 
 // Stock Out Selection State
 const selectedItems = ref([]);
@@ -100,6 +102,11 @@ onMounted(() => {
   fetchCurrentWarehouse();
   fetchBranches();
   fetchWarehouses();
+
+  // Fetch Product Types for capacity lookup
+  productTypes.list().then(res => {
+    typeList.value = res.data.data;
+  }).catch(err => console.error("Failed to load types", err));
 });
 
 // Watcher untuk debounce search
@@ -521,6 +528,20 @@ const editStockForm = ref({
 
 function editItem(item) {
   editStockForm.value = { ...item }; // Copy data item ke form
+
+  // Find matching product type to get storage options
+  const productName = item.product?.name || '';
+  const matchedType = typeList.value.find(t => t.name.toLowerCase() === productName.toLowerCase());
+
+  if (matchedType && matchedType.storage) {
+    // Assuming storage is comma separated string "64, 128, 256"
+    // Split by comma or slash
+    capacityOptions.value = matchedType.storage.split(/[,/]+/).map(s => s.trim());
+  } else {
+    // Fallback if no type found or no storage defined
+    capacityOptions.value = ['64', '128', '256', '512', '1024', '1TB'];
+  }
+
   showEditStockModal.value = true;
 }
 </script>
@@ -973,11 +994,7 @@ function editItem(item) {
             <label class="label">Kapasitas</label>
             <select v-model="editStockForm.storage" class="input">
               <option value="">- Tidak Ada -</option>
-              <option value="64">64</option>
-              <option value="128">128</option>
-              <option value="256">256</option>
-              <option value="512">512</option>
-              <option value="1024">1TB</option>
+              <option v-for="cap in capacityOptions" :key="cap" :value="cap">{{ cap }}</option>
             </select>
           </div>
           <div class="grid grid-cols-2 gap-4">
