@@ -631,18 +631,19 @@ function getStockStatus(product) {
               <th>Distributor</th>
               <th>Harga Jual</th>
               <th>Status</th>
+              <th>Akun Inventory</th>
               <th class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="inventoryStore.isLoading">
-              <td colspan="9" class="text-center py-12">
+              <td colspan="10" class="text-center py-12">
                 <RefreshCw :size="24" class="animate-spin mx-auto text-blue-400 mb-2" />
                 <p class="text-text-secondary">Memuat data...</p>
               </td>
             </tr>
             <tr v-else-if="filteredProducts.length === 0">
-              <td colspan="9" class="text-center py-12">
+              <td colspan="10" class="text-center py-12">
                 <Box :size="48" class="mx-auto text-text-secondary mb-2" />
                 <p class="text-text-secondary">Tidak ada data ditemukan</p>
               </td>
@@ -700,6 +701,13 @@ function getStockStatus(product) {
                   :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
                   {{ item.status }}
                 </span>
+              </td>
+              <td>
+                <div class="flex flex-col">
+                  <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name || '-'
+                  }}</span>
+                  <span class="text-[10px] text-text-secondary">{{ item.user?.username }}</span>
+                </div>
               </td>
               <td @click.stop>
                 <div class="flex items-center justify-center gap-2">
