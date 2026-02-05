@@ -19,6 +19,9 @@ class AuthController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
+            // Log successful login attempt
+            \Illuminate\Support\Facades\Log::info('Login Success for: ' . $user->username);
+
             if (!$user->is_active) {
                 Auth::logout();
                 return response()->json([
@@ -31,10 +34,8 @@ class AuthController extends Controller
             $remember = $request->boolean('remember_me');
 
             if ($remember) {
-                // Persistent token (no specific expiration set, Sanctum default is usually unlimited or config based)
                 $token = $user->createToken('auth_token')->plainTextToken;
             } else {
-                // 8 hours expiration
                 $expiration = now()->addHours(8);
                 $token = $user->createToken('auth_token', ['*'], $expiration)->plainTextToken;
             }
@@ -43,13 +44,16 @@ class AuthController extends Controller
                 'success' => true,
                 'token' => $token,
                 'user' => $user->load('branch', 'roles', 'warehouse', 'onlineShop'),
-                'theme_color' => $user->theme_color, // TAMBAHKAN INI
+                'theme_color' => $user->theme_color,
             ]);
         }
 
+        // Log failed login
+        \Illuminate\Support\Facades\Log::warning('Login Failed for: ' . $credentials['username']);
+
         return response()->json([
             'success' => false,
-            'message' => 'Login gagal. Periksa username dan password.',
+            'message' => 'Login gagal. Username atau password salah.',
         ], 401);
     }
 
