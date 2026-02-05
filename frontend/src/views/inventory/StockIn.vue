@@ -96,52 +96,50 @@ const availableSpecs = computed(() => {
     };
 });
 
-// FIX LOGIKA: Pencocokan dengan API Search
-// Ganti computed autoSelectedProduct dengan Watcher + API Call
-// karena limit 20 di awal tidak cukup.
-watch([selectedBrand, selectedTypeName], async () => {
-    if (!selectedBrand.value || !selectedTypeName.value) {
+import { debounce } from "../../utils/debounce";
+
+// ... (state)
+
+// --- PERBAIKAN: Gunakan Debounce pada API Lookup agar tidak lag saat ganti merk/tipe ---
+const fetchProductMatch = debounce(async (brandId, typeName) => {
+    if (!brandId || !typeName) {
         selectedProduct.value = null;
         return;
     }
 
     try {
-        const brandObj = brands.value.find(b => b.id === selectedBrand.value);
+        const brandObj = brands.value.find(b => b.id === brandId);
         const brandName = brandObj ? brandObj.name : "";
 
+        // Panggil API hanya setelah user berhenti memilih/mengetik selama 300ms
         const response = await inventoryApi.getProductsLookup({
             type: 'hp',
-            name: selectedTypeName.value
+            name: typeName
         });
 
         const matches = response.data;
-
-        // 1. Coba Match Paling Spesifik (Brand Sama + Nama Sama Persis)
         let found = matches.find(p => {
             const dbBrand = (p.brand || "").toLowerCase().trim();
             const selBrand = brandName.toLowerCase().trim();
             const dbName = p.name.toLowerCase().trim();
-            const selName = selectedTypeName.value.toLowerCase().trim();
+            const selName = typeName.toLowerCase().trim();
             return dbBrand === selBrand && dbName === selName;
         });
 
-        // 2. Jika tidak ketemu, Coba Match Nama Saja (Abaikan Brand)
-        if (!found) {
-            found = matches.find(p => p.name.toLowerCase().trim() === selectedTypeName.value.toLowerCase().trim());
-        }
-
-        // 3. Jika masih tidak ketemu, tapi ada hasil search (Fuzzy Match dari API), pakai yg pertama
-        if (!found && matches.length > 0) {
-            found = matches[0];
-        }
-
+        if (!found && matches.length > 0) found = matches[0];
         selectedProduct.value = found ? found.id : null;
 
     } catch (e) {
         console.error("Gagal lookup product", e);
         selectedProduct.value = null;
     }
+}, 300);
+
+// NEW: Optimized Watcher
+watch([selectedBrand, selectedTypeName], ([newBrand, newType]) => {
+    fetchProductMatch(newBrand, newType);
 });
+
 watch(selectedBrand, () => { selectedTypeName.value = ""; selectedRam.value = ""; selectedStorage.value = ""; });
 watch(selectedTypeName, () => { selectedRam.value = ""; selectedStorage.value = ""; });
 
@@ -154,17 +152,15 @@ const canNext = computed(() => {
 
 // CARI DAN GANTI LOGIKA INI DI StockIn.vue
 const canSubmit = computed(() => {
-    // Tombol AKTIF jika:
-    // 1. Tipe Model sudah dipilih (selectedTypeName tidak kosong)
-    // 2. Data unit minimal 1 dan IMEI/Harga sudah diisi
     if (!selectedTypeName.value) return false;
 
+    // Optimized validation
     if (itemType.value === 'hp') {
-        return imeiRows.value.length > 0 &&
-            imeiRows.value.every(r => r.imei.trim().length >= 5 && r.cost_price > 0);
-    } else {
-        return nonHpForm.value.quantity > 0;
+        if (imeiRows.value.length === 0) return false;
+        // Simple validation check
+        return imeiRows.value.every(r => r.imei && r.imei.length >= 5 && r.cost_price > 0);
     }
+    return nonHpForm.value.quantity > 0;
 });
 
 // CARI DAN GANTI FUNGSI submitStockIn AGAR SELALU KIRIM ID MESKIPUN MAPPING

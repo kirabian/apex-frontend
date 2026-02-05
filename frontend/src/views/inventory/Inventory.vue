@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useInventoryStore } from "../../store/inventory";
 import api from "../../api/axios";
@@ -42,8 +42,11 @@ import {
 
 const inventoryStore = useInventoryStore();
 
+import { debounce } from "../../utils/debounce";
+
 // Local state
 const searchQuery = ref("");
+const debouncedSearch = ref("");
 const selectedCategory = ref("");
 const showStockFilter = ref("all");
 
@@ -99,6 +102,11 @@ onMounted(() => {
   fetchWarehouses();
 });
 
+// Watcher untuk debounce search
+watch(searchQuery, debounce((newVal) => {
+  debouncedSearch.value = newVal;
+}, 300));
+
 // Stock Out Categories
 const stockOutCategories = [
   { id: 'pindah_cabang', name: 'Pindah Cabang', icon: Building2, color: 'blue' },
@@ -117,8 +125,8 @@ const stockOutCategories = [
 const filteredProducts = computed(() => {
   let items = inventoryStore.products;
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
+  if (debouncedSearch.value) {
+    const query = debouncedSearch.value.toLowerCase();
     items = items.filter(
       (item) =>
         item.imei?.toLowerCase().includes(query) ||
