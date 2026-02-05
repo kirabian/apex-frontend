@@ -362,29 +362,37 @@ class InventoryController extends Controller
         DB::beginTransaction();
         try {
             foreach ($details as $detail) {
-                // Split by newline, comma, space (including multiple spaces)
+                // Split by newline, comma, space
                 $imeis = preg_split('/[\s,\n]+/', $detail->imei, -1, PREG_SPLIT_NO_EMPTY);
-                $imeis = array_values(array_unique($imeis)); // Unique just in case
+                $imeis = array_values(array_unique($imeis));
 
                 if (count($imeis) > 1) {
-                    // Update original with first IMEI
-                    $detail->update(['imei' => $imeis[0]]);
-                    $fixedCount++;
+                    // Valid details extracted
+                    foreach ($imeis as $singleImei) {
+                        // Check if this single IMEI already exists globally
+                        $exists = ProductDetail::where('imei', $singleImei)->exists();
 
-                    // Create new rows for the rest
-                    for ($i = 1; $i < count($imeis); $i++) {
-                        $newDetail = $detail->replicate();
-                        $newDetail->imei = $imeis[$i];
-                        $newDetail->save();
-                        $newRowsCount++;
+                        if (!$exists) {
+                            // Create new row
+                            $newDetail = $detail->replicate();
+                            $newDetail->imei = $singleImei;
+                            $newDetail->created_at = now();
+                            $newDetail->updated_at = now();
+                            $newDetail->save();
+                            $newRowsCount++;
+                        }
                     }
+
+                    // Delete the original corrupted row
+                    $detail->forceDelete();
+                    $fixedCount++;
                 }
             }
             DB::commit();
             return response()->json([
-                'message' => 'Fixer executed',
-                'fixed_rows' => $fixedCount,
-                'new_rows_created' => $newRowsCount
+                'message' => 'Fixer executed v2 (Safe Mode)',
+                'corrupted_rows_removed' => $fixedCount,
+                'new_valid_rows_created' => $newRowsCount
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
