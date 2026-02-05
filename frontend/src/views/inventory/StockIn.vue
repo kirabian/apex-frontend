@@ -315,42 +315,34 @@ async function submitStockIn() {
         isSubmitting.value = false;
     }
 
-    const handleImeiInput = (index, event) => {
-        const rawValue = event.target.value;
+}
 
-        // Check if it contains separators (newline, comma)
-        // We don't split on space usually because some IMEIs might have spaces? 
-        // Actually standard IMEIs don't have spaces, but let's be safe.
-        // User asked for "123, 1234". Space after comma is common.
-        // Let's split by newline or comma.
-        if (/[\n,]/.test(rawValue)) {
-            // Split by newline or comma
-            const imeis = rawValue.split(/[\n,]+/)
-                .map(s => s.trim())
-                .filter(s => s.length > 0);
+const handleImeiInput = (index, event) => {
+    const rawValue = event.target.value;
 
-            if (imeis.length > 0) {
-                // Update current row with the first IMEI
-                // We need to use nextTick or direct array manipulation to avoid v-model conflict loop if possible
-                // But since we are replacing the value, it should be fine.
-                imeiRows.value[index].imei = imeis[0];
+    // Check if it contains separators (newline, comma)
+    if (/[\n,]/.test(rawValue)) {
+        const imeis = rawValue.split(/[\n,]+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
 
-                // Create new rows for the rest
-                const newRows = imeis.slice(1).map(imei => ({
-                    imei: imei,
-                    condition: imeiRows.value[index].condition, // Copy condition
-                    cost_price: imeiRows.value[index].cost_price, // Copy price
-                    selling_price: imeiRows.value[index].selling_price // Copy price
-                }));
+        if (imeis.length > 0) {
+            imeiRows.value[index].imei = imeis[0];
 
-                if (newRows.length > 0) {
-                    imeiRows.value.splice(index + 1, 0, ...newRows);
-                    toast.success(`${newRows.length} baris IMEI ditambahkan otomatis`);
-                }
+            const newRows = imeis.slice(1).map(imei => ({
+                imei: imei,
+                condition: imeiRows.value[index].condition,
+                cost_price: imeiRows.value[index].cost_price,
+                selling_price: imeiRows.value[index].selling_price
+            }));
+
+            if (newRows.length > 0) {
+                imeiRows.value.splice(index + 1, 0, ...newRows);
+                toast.success(`${newRows.length} baris IMEI ditambahkan otomatis`);
             }
         }
-    };
-}
+    }
+};
 
 
 onMounted(fetchInitialData);
