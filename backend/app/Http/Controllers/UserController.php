@@ -22,8 +22,38 @@ class UserController extends Controller
             // Atau dirinya sendiri.
             if ($user->hasAnyRole(['toko_online', 'sales', 'inventory', 'leader_shopee'])) {
                 $query->where(function ($q) use ($user) {
+                    // 1. Own accounts or Self
                     $q->where('created_by', $user->id)
                         ->orWhere('id', $user->id);
+
+                    // 2. Allow seeing "Inventory" accounts in the SAME placement
+                    $q->orWhere(function ($sub) use ($user) {
+                        $sub->whereHas('roles', function ($r) {
+                            $r->where('name', 'inventory');
+                        });
+
+                        $sub->where(function ($place) use ($user) {
+                            // Match any placement that the current user has
+                            $hasPlacement = false;
+                            if ($user->branch_id) {
+                                $place->orWhere('branch_id', $user->branch_id);
+                                $hasPlacement = true;
+                            }
+                            if ($user->warehouse_id) {
+                                $place->orWhere('warehouse_id', $user->warehouse_id);
+                                $hasPlacement = true;
+                            }
+                            if ($user->online_shop_id) {
+                                $place->orWhere('online_shop_id', $user->online_shop_id);
+                                $hasPlacement = true;
+                            }
+
+                            // If user has no placement (edge case), ensure we don't return all inventory
+                            if (!$hasPlacement) {
+                                $place->whereRaw('1 = 0');
+                            }
+                        });
+                    });
                 });
             }
             // Untuk Branch/Warehouse/Gudang, kita tetap pakai logic placement sharing
