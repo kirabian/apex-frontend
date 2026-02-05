@@ -165,9 +165,7 @@ onMounted(fetchData);
                             </td>
                             <td class="px-6 py-4 text-text-secondary">
                                 <div v-if="type.category === 'imei'" class="flex gap-3 text-xs">
-                                    <span v-if="type.ram" class="bg-surface-900 px-2 py-1 rounded">RAM: {{ type.ram
-                                        }}</span>
-                                    <span v-if="type.storage" class="bg-surface-900 px-2 py-1 rounded">ROM: {{
+                                    <span v-if="type.storage" class="bg-surface-900 px-2 py-1 rounded">Kapasitas: {{
                                         type.storage }}</span>
                                 </div>
                                 <span v-else class="text-xs italic">-</span>

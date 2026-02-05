@@ -681,8 +681,8 @@ function getStockStatus(product) {
               <td>
                 <div class="flex flex-col">
                   <span class="font-mono text-xs bg-surface-700 px-2 py-1 rounded w-fit">{{ item.imei }}</span>
-                  <span class="text-[10px] text-text-secondary mt-1" v-if="item.ram || item.storage">
-                    {{ item.ram }} / {{ item.storage }}
+                  <span class="text-[10px] text-text-secondary mt-1" v-if="item.storage">
+                    Kapasitas: {{ item.storage }}
                   </span>
                 </div>
               </td>

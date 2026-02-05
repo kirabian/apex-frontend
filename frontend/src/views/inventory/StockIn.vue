@@ -314,7 +314,44 @@ async function submitStockIn() {
     } finally {
         isSubmitting.value = false;
     }
+
+    const handleImeiInput = (index, event) => {
+        const rawValue = event.target.value;
+
+        // Check if it contains separators (newline, comma)
+        // We don't split on space usually because some IMEIs might have spaces? 
+        // Actually standard IMEIs don't have spaces, but let's be safe.
+        // User asked for "123, 1234". Space after comma is common.
+        // Let's split by newline or comma.
+        if (/[\n,]/.test(rawValue)) {
+            // Split by newline or comma
+            const imeis = rawValue.split(/[\n,]+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+
+            if (imeis.length > 0) {
+                // Update current row with the first IMEI
+                // We need to use nextTick or direct array manipulation to avoid v-model conflict loop if possible
+                // But since we are replacing the value, it should be fine.
+                imeiRows.value[index].imei = imeis[0];
+
+                // Create new rows for the rest
+                const newRows = imeis.slice(1).map(imei => ({
+                    imei: imei,
+                    condition: imeiRows.value[index].condition, // Copy condition
+                    cost_price: imeiRows.value[index].cost_price, // Copy price
+                    selling_price: imeiRows.value[index].selling_price // Copy price
+                }));
+
+                if (newRows.length > 0) {
+                    imeiRows.value.splice(index + 1, 0, ...newRows);
+                    toast.success(`${newRows.length} baris IMEI ditambahkan otomatis`);
+                }
+            }
+        }
+    };
 }
+
 
 onMounted(fetchInitialData);
 </script>
@@ -364,7 +401,7 @@ onMounted(fetchInitialData);
                                 <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3>
                                 <div class="flex flex-col">
                                     <span class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name
-                                        }}</span>
+                                    }}</span>
                                     <span v-if="user.created_by" class="text-[10px] text-text-secondary/70">
                                         by: {{ user.created_by.username }}
                                     </span>
@@ -450,7 +487,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
@@ -492,7 +529,9 @@ onMounted(fetchInitialData);
                         </button>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
                             <div><label class="label text-[10px] uppercase">IMEI</label><input v-model="row.imei"
-                                    class="input bg-surface-900 font-mono text-sm" placeholder="Scan..." /></div>
+                                    @input="(e) => handleImeiInput(index, e)"
+                                    class="input bg-surface-900 font-mono text-sm" placeholder="Scan or Paste..." />
+                            </div>
                             <div><label class="label text-[10px] uppercase">Kondisi</label><select
                                     v-model="row.condition" class="input bg-surface-900">
                                     <option value="new">Baru</option>
@@ -506,9 +545,7 @@ onMounted(fetchInitialData);
                                     type="number" class="input bg-surface-900" placeholder="0" /></div>
                         </div>
                     </div>
-                    <button @click="addImeiRow" class="btn btn-outline w-full border-dashed border-2 py-4 rounded-3xl">
-                        <Plus :size="20" class="mr-2" /> Tambah Unit
-                    </button>
+
                 </div>
             </div>
 
