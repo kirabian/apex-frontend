@@ -364,6 +364,15 @@ onMounted(fetchInitialData);
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Always Allow Creating New Account -->
+                    <button @click="showCreateAccountModal = true"
+                        class="p-5 rounded-2xl border-2 border-dashed border-surface-700 hover:border-primary-500 bg-surface-900/50 hover:bg-surface-800 transition-all flex flex-col items-center justify-center gap-2 group min-h-[88px]">
+                        <div class="h-10 w-10 rounded-full bg-surface-800 group-hover:bg-primary-500/20 flex items-center justify-center transition-colors">
+                            <Plus :size="24" class="text-text-secondary group-hover:text-primary-500" />
+                        </div>
+                        <span class="font-bold text-text-secondary group-hover:text-primary-500 text-sm">Buat Akun Baru</span>
+                    </button>
                 </div>
 
                 <!-- Modal Create Account -->
