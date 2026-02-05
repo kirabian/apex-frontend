@@ -15,19 +15,15 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'], // Tambahkan login/logout jika tidak pakai prefix api/
 
     'allowed_methods' => ['*'],
-
     'allowed_origins' => [
-        'http://localhost:5173',
         'https://stokps.com',
         'https://www.stokps.com',
-        'https://api.stokps.com',
-        env('FRONTEND_URL', 'https://stokps.com'),
     ],
 
-    'allowed_origins_patterns' => ['*.stokps.com'],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
