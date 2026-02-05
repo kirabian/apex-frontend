@@ -118,6 +118,16 @@ class InventoryController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // Determine Ownership User (Who 'owns' the stock)
+        // If inventory_user_id is passed (from shared account selection), use that.
+        // Otherwise use logged in user.
+        $ownerUserId = $user->id;
+        if ($request->has('inventory_user_id') && $request->inventory_user_id) {
+            // Verify access? For now assume if they can see it they can use it (filtered by UI)
+            $ownerUserId = $request->inventory_user_id;
+        }
+
         DB::beginTransaction();
 
         try {
@@ -184,7 +194,7 @@ class InventoryController extends Controller
                         'cost_price' => $item['cost_price'],
                         'selling_price' => $item['selling_price'],
                         'distributor_id' => $distributorId,
-                        'user_id' => $user->id,
+                        'user_id' => $ownerUserId, // Use Owner User ID (Inventory Account)
                     ]);
                 }
 

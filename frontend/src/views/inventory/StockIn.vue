@@ -219,10 +219,13 @@ async function createInventoryAccount() {
     }
 }
 
+const selectedInventoryUserId = ref(null);
+
 function selectUserPlacement(user) {
     placementId.value = user.online_shop_id || user.warehouse_id || user.branch_id;
     placementType.value = user.online_shop_id ? 'online_shop' : (user.warehouse_id ? 'warehouse' : 'branch');
     placementLabel.value = user.full_name || user.name;
+    selectedInventoryUserId.value = user.id; // Capture Inventory Account ID
     nextStep();
 }
 
@@ -288,6 +291,7 @@ async function submitStockIn() {
             type: itemType.value,
             placement_type: placementType.value,
             placement_id: placementId.value,
+            inventory_user_id: selectedInventoryUserId.value, // Send selected account ID
         };
 
         if (itemType.value === 'hp') {
