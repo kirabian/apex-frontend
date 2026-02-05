@@ -357,7 +357,9 @@ class InventoryController extends Controller
         DB::beginTransaction();
         try {
             foreach ($details as $detail) {
-                $imeis = array_values(array_filter(array_map('trim', explode("\n", $detail->imei))));
+                // Split by newline, comma, space (including multiple spaces)
+                $imeis = preg_split('/[\s,\n]+/', $detail->imei, -1, PREG_SPLIT_NO_EMPTY);
+                $imeis = array_values(array_unique($imeis)); // Unique just in case
 
                 if (count($imeis) > 1) {
                     // Update original with first IMEI
