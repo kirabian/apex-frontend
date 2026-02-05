@@ -509,6 +509,20 @@ function getStockStatus(product) {
     return { label: "Menipis", class: "bg-amber-500/20 text-amber-400" };
   return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
 }
+
+const showEditStockModal = ref(false);
+const editStockForm = ref({
+  imei: '',
+  storage: '',
+  cost_price: 0,
+  selling_price: 0,
+  status: 'available'
+});
+
+function editItem(item) {
+  editStockForm.value = { ...item }; // Copy data item ke form
+  showEditStockModal.value = true;
+}
 </script>
 
 <template>
@@ -946,11 +960,7 @@ function getStockStatus(product) {
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Edit Stock Modal -->
-  <template v-if="showEditStockModal">
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+    <div v-if="showEditStockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div class="bg-surface-800 rounded-2xl w-full max-w-lg p-6 animate-in zoom-in duration-200">
         <h2 class="text-xl font-bold text-white mb-6">Edit Detail Stok</h2>
 
@@ -1000,7 +1010,7 @@ function getStockStatus(product) {
         </div>
       </div>
     </div>
-  </template>
+  </div>
 </template>
 
 <style scoped>
