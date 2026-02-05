@@ -345,4 +345,42 @@ class InventoryController extends Controller
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
+
+    // FIXER: Split merged IMEIs (Temporary Tool)
+    public function fixMergedImeis()
+    {
+        $details = ProductDetail::where('imei', 'like', "%\n%")->get();
+        $fixedCount = 0;
+        $newRowsCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($details as $detail) {
+                $imeis = array_values(array_filter(array_map('trim', explode("\n", $detail->imei))));
+
+                if (count($imeis) > 1) {
+                    // Update original with first IMEI
+                    $detail->update(['imei' => $imeis[0]]);
+                    $fixedCount++;
+
+                    // Create new rows for the rest
+                    for ($i = 1; $i < count($imeis); $i++) {
+                        $newDetail = $detail->replicate();
+                        $newDetail->imei = $imeis[$i];
+                        $newDetail->save();
+                        $newRowsCount++;
+                    }
+                }
+            }
+            DB::commit();
+            return response()->json([
+                'message' => 'Fixer executed',
+                'fixed_rows' => $fixedCount,
+                'new_rows_created' => $newRowsCount
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }
