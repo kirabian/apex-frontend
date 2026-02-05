@@ -14,11 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
-        $middleware->append(\App\Http\Middleware\UpdateLastSeen::class);
         // Solusi untuk error "Route [login] not defined"
         // Jika user belum login dan akses API, jangan di-redirect, tapi kasih error 401
-        $middleware->redirectGuestsTo(fn(Request $request) => $request->expectsJson() ? null : route('login'));
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*')) {
+                abort(response()->json([
+                    'message' => 'Unauthenticated.'
+                ], 401));
+            }
+            return route('login');
+        });
 
         $middleware->validateCsrfTokens(except: [
             'api/*', // Kecualikan semua jalur API dari pengecekan CSRF
