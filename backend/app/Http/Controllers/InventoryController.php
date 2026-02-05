@@ -347,6 +347,33 @@ class InventoryController extends Controller
         }
     }
 
+    public function update(Request $request, $id)
+    {
+        $detail = ProductDetail::findOrFail($id);
+
+        $request->validate([
+            'imei' => 'required|string|max:20|regex:/^[a-zA-Z0-9]+$/|unique:product_details,imei,' . $id,
+            'storage' => 'nullable|string',
+            'cost_price' => 'required|numeric',
+            'selling_price' => 'numeric',
+            'status' => 'required|in:available,sold,retur,missing',
+        ]);
+
+        $detail->update($request->only([
+            'imei',
+            'storage',
+            'cost_price',
+            'selling_price',
+            'status'
+        ]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Detail inventory updated',
+            'data' => $detail
+        ]);
+    }
+
     // FIXER: Split merged IMEIs (Temporary Tool)
     public function fixMergedImeis()
     {

@@ -724,7 +724,7 @@ function getStockStatus(product) {
                   <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Eye :size="16" class="text-text-secondary" />
                   </button>
-                  <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
+                  <button @click="editItem(item)" class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Edit :size="16" class="text-text-secondary" />
                   </button>
                 </div>
@@ -789,8 +789,8 @@ function getStockStatus(product) {
               </div>
             </template>
 
-            <!-- Kesalahan Input Form -->
-            <template v-if="selectedStockOutCategory === 'kesalahan_input'">
+<!-- Kesalahan Input Form -->
+<template v-if="selectedStockOutCategory === 'kesalahan_input'">
               <div>
                 <label class="label">Alasan Hapus *</label>
                 <textarea v-model="stockOutForm.deletion_reason" class="input" rows="4"
@@ -798,8 +798,8 @@ function getStockStatus(product) {
               </div>
             </template>
 
-            <!-- Retur Form -->
-            <template v-if="selectedStockOutCategory === 'retur'">
+<!-- Retur Form -->
+<template v-if="selectedStockOutCategory === 'retur'">
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="label">Nama Petugas *</label>
@@ -842,8 +842,8 @@ function getStockStatus(product) {
               </div>
             </template>
 
-            <!-- Shopee Form (Per-Item) -->
-            <template v-if="selectedStockOutCategory === 'shopee'">
+<!-- Shopee Form (Per-Item) -->
+<template v-if="selectedStockOutCategory === 'shopee'">
               <div class="space-y-4">
                 <p class="text-xs uppercase font-bold text-text-secondary">
                   Isi detail pengiriman untuk setiap item ({{ shopeeItemForms.length }} item)
@@ -898,55 +898,55 @@ function getStockStatus(product) {
               </div>
             </template>
 
-            <!-- Selected Items Summary -->
-            <div class="mt-6 pt-4 border-t border-surface-700">
-              <p class="text-xs uppercase font-bold text-text-secondary mb-3">
-                Barang yang akan dikeluarkan ({{ selectedItems.length }})
-              </p>
-              <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                <div v-for="item in selectedItems" :key="item.id"
-                  class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
-                  <Smartphone :size="14" />
-                  <span class="font-mono text-xs">{{ item.imei }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div v-if="selectedStockOutCategory" class="p-6 border-t border-surface-700">
-          <button @click="submitStockOut" :disabled="!canSubmitStockOut || isSubmitting"
-            class="btn btn-primary w-full h-12 rounded-xl font-bold disabled:opacity-30">
-            <Loader2 v-if="isSubmitting" :size="20" class="animate-spin mr-2" />
-            {{ isSubmitting ? 'Memproses...' : 'Konfirmasi Keluar Stok' }}
-          </button>
-        </div>
-      </div>
+<!-- Selected Items Summary -->
+<div class="mt-6 pt-4 border-t border-surface-700">
+  <p class="text-xs uppercase font-bold text-text-secondary mb-3">
+    Barang yang akan dikeluarkan ({{ selectedItems.length }})
+  </p>
+  <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+    <div v-for="item in selectedItems" :key="item.id"
+      class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
+      <Smartphone :size="14" />
+      <span class="font-mono text-xs">{{ item.imei }}</span>
     </div>
+  </div>
+</div>
+</div>
+</div>
 
-    <!-- Scanner Modal -->
-    <div v-if="isScanning" class="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4">
-      <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
-        <div class="flex items-center justify-between p-4 border-b border-surface-700">
-          <h3 class="text-white font-bold flex items-center gap-2">
-            <ScanBarcode :size="20" class="text-orange-500" />
-            Scan Barcode Resi
-          </h3>
-          <button @click="stopScanner" class="text-text-secondary hover:text-white transition-colors">
-            <X :size="24" />
-          </button>
-        </div>
-        <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
-        <div class="p-4 text-center space-y-3">
-          <p class="text-text-secondary text-sm animate-pulse">Arahkan kamera ke barcode resi...</p>
-          <div class="text-xs text-text-secondary">
-            <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
-          </div>
-        </div>
+<!-- Modal Footer -->
+<div v-if="selectedStockOutCategory" class="p-6 border-t border-surface-700">
+  <button @click="submitStockOut" :disabled="!canSubmitStockOut || isSubmitting"
+    class="btn btn-primary w-full h-12 rounded-xl font-bold disabled:opacity-30">
+    <Loader2 v-if="isSubmitting" :size="20" class="animate-spin mr-2" />
+    {{ isSubmitting ? 'Memproses...' : 'Konfirmasi Keluar Stok' }}
+  </button>
+</div>
+</div>
+</div>
+
+<!-- Scanner Modal -->
+<div v-if="isScanning" class="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4">
+  <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
+    <div class="flex items-center justify-between p-4 border-b border-surface-700">
+      <h3 class="text-white font-bold flex items-center gap-2">
+        <ScanBarcode :size="20" class="text-orange-500" />
+        Scan Barcode Resi
+      </h3>
+      <button @click="stopScanner" class="text-text-secondary hover:text-white transition-colors">
+        <X :size="24" />
+      </button>
+    </div>
+    <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
+    <div class="p-4 text-center space-y-3">
+      <p class="text-text-secondary text-sm animate-pulse">Arahkan kamera ke barcode resi...</p>
+      <div class="text-xs text-text-secondary">
+        <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
       </div>
     </div>
   </div>
+</div>
+</div>
 </template>
 
 <style scoped>
@@ -1026,3 +1026,57 @@ function getStockStatus(product) {
   font-size: 0.875rem;
 }
 </style>
+
+<!-- Edit Stock Modal -->
+<template v-if="showEditStockModal">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+    <div class="bg-surface-800 rounded-2xl w-full max-w-lg p-6 animate-in zoom-in duration-200">
+      <h2 class="text-xl font-bold text-white mb-6">Edit Detail Stok</h2>
+
+      <div class="space-y-4">
+        <div>
+          <label class="label">IMEI</label>
+          <input v-model="editStockForm.imei" class="input font-mono" />
+        </div>
+        <div>
+          <label class="label">Kapasitas</label>
+          <select v-model="editStockForm.storage" class="input">
+            <option value="">- Tidak Ada -</option>
+            <option value="64">64</option>
+            <option value="128">128</option>
+            <option value="256">256</option>
+            <option value="512">512</option>
+            <option value="1024">1TB</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Harga Modal</label>
+            <input v-model="editStockForm.cost_price" type="number" class="input" />
+          </div>
+          <div>
+            <label class="label">Harga Jual</label>
+            <input v-model="editStockForm.selling_price" type="number" class="input" />
+          </div>
+        </div>
+        <div>
+          <label class="label">Status</label>
+          <select v-model="editStockForm.status" class="input capitalize">
+            <option value="available">Available</option>
+            <option value="sold">Sold</option>
+            <option value="retur">Retur</option>
+            <option value="missing">Missing</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8">
+        <button @click="showEditStockModal = false" class="btn btn-ghost text-text-secondary">Batal</button>
+        <button @click="updateItem" class="btn btn-primary" :disabled="isSubmitting">
+          <span v-if="isSubmitting">Menyimpan...</span>
+          <span v-else>Simpan Perubahan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
