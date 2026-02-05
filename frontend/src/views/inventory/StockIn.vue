@@ -393,7 +393,7 @@ onMounted(fetchInitialData);
                                 <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3>
                                 <div class="flex flex-col">
                                     <span class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name
-                                    }}</span>
+                                        }}</span>
                                     <span v-if="user.created_by" class="text-[10px] text-text-secondary/70">
                                         by: {{ user.created_by.username }}
                                     </span>
@@ -479,7 +479,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
@@ -495,12 +495,7 @@ onMounted(fetchInitialData);
                             <option value="">-- Pilih Tipe --</option>
                             <option v-for="n in uniqueTypeNames" :key="n" :value="n">{{ n }}</option>
                         </select></div>
-                    <div><label class="label text-[10px] uppercase">RAM</label><select v-model="selectedRam"
-                            :disabled="!selectedTypeName" class="input bg-surface-900 disabled:opacity-30">
-                            <option value="">-- Semua --</option>
-                            <option v-for="r in availableSpecs.rams" :key="r" :value="r">{{ r }}</option>
-                        </select></div>
-                    <div><label class="label text-[10px] uppercase">ROM</label><select v-model="selectedStorage"
+                    <div><label class="label text-[10px] uppercase">Kapasitas</label><select v-model="selectedStorage"
                             :disabled="!selectedTypeName" class="input bg-surface-900 disabled:opacity-30">
                             <option value="">-- Semua --</option>
                             <option v-for="s in availableSpecs.storages" :key="s" :value="s">{{ s }}</option>
@@ -520,9 +515,13 @@ onMounted(fetchInitialData);
                             <Trash2 :size="14" />
                         </button>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
-                            <div><label class="label text-[10px] uppercase">IMEI</label><input v-model="row.imei"
-                                    @input="(e) => handleImeiInput(index, e)"
-                                    class="input bg-surface-900 font-mono text-sm" placeholder="Scan or Paste..." />
+                            <div>
+                                <label class="label text-[10px] uppercase">IMEI <span
+                                        class="text-xs normal-case font-normal text-text-secondary ml-1">(Wajib 15
+                                        Angka)</span></label>
+                                <textarea v-model="row.imei" @input="(e) => handleImeiInput(index, e)" rows="1"
+                                    class="input bg-surface-900 font-mono text-sm py-3 min-h-[46px] resize-y"
+                                    placeholder="Scan or Paste..."></textarea>
                             </div>
                             <div><label class="label text-[10px] uppercase">Kondisi</label><select
                                     v-model="row.condition" class="input bg-surface-900">

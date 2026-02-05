@@ -174,19 +174,27 @@ class InventoryController extends Controller
             }
 
             // 2. Handle HP (IMEI Based)
+            // 2. Handle HP (IMEI Based)
             else {
-                foreach ($request->imeis as $item) {
+                // Determine details array key
+                $details = $request->imeis ?? $validated['details'] ?? [];
+
+                $inserted_count = 0;
+                $duplicates = [];
+
+                foreach ($details as $item) {
                     // Check Duplicate IMEI globally
                     if (ProductDetail::where('imei', $item['imei'])->exists()) {
-                        throw new \Exception("IMEI {$item['imei']} already exists.");
+                        $duplicates[] = $item['imei'];
+                        continue;
                     }
 
                     ProductDetail::create([
                         'product_id' => $product->id,
                         'imei' => $item['imei'],
                         'color' => $item['color'] ?? null,
-                        'ram' => $item['ram'] ?? null,
-                        'storage' => $item['storage'] ?? null,
+                        'ram' => $request->ram ?? null, // Use parent spec
+                        'storage' => $request->storage ?? null, // Use parent spec
                         'condition' => $item['condition'],
                         'status' => 'available',
                         'placement_type' => $request->placement_type,
@@ -194,22 +202,33 @@ class InventoryController extends Controller
                         'cost_price' => $item['cost_price'],
                         'selling_price' => $item['selling_price'],
                         'distributor_id' => $distributorId,
-                        'user_id' => $ownerUserId, // Use Owner User ID (Inventory Account)
+                        'user_id' => $ownerUserId,
+                    ]);
+                    $inserted_count++;
+                }
+
+                // Log
+                if ($inserted_count > 0) {
+                    InventoryLog::create([
+                        'product_id' => $product->id,
+                        'branch_id' => 1,
+                        'user_id' => $user->id,
+                        'type' => 'in',
+                        'quantity' => $inserted_count,
+                        'balance_after' => ProductDetail::where('product_id', $product->id)->where('status', 'available')->count(),
+                        'description' => "Stock In {$inserted_count} units (HP)",
+                        'reference_id' => 'STOCK-IN-HP-' . time()
                     ]);
                 }
 
-                // Log (Aggregate for HP stock in? or detailed?)
-                // Usually just log that we added X items
-                InventoryLog::create([
-                    'product_id' => $product->id,
-                    'branch_id' => 1, // Placeholder
-                    'user_id' => $user->id,
-                    'type' => 'in',
-                    'quantity' => count($request->imeis),
-                    'balance_after' => ProductDetail::where('product_id', $product->id)->where('status', 'available')->count(),
-                    'description' => "Stock In " . count($request->imeis) . " units (HP)",
-                    'reference_id' => 'STOCK-IN-HP-' . time()
-                ]);
+                DB::commit();
+
+                return response()->json([
+                    'message' => 'Stock in processed',
+                    'success' => true,
+                    'inserted_count' => $inserted_count,
+                    'duplicates' => $duplicates
+                ], 201);
             }
 
             // Update Master Product Price (Sync with latest Stock In Selling Price)
