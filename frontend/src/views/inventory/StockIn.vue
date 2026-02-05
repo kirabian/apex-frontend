@@ -186,10 +186,10 @@ async function fetchInitialData() {
     isLoading.value = true;
     try {
         const [dist, user, brd, typ, prd] = await Promise.all([
-            distributorsApi.list(), 
+            distributorsApi.list(),
             usersApi.list({ role: 'inventory' }), // FILTER BY ROLE
             brandsApi.list(),
-            productTypesApi.list(), 
+            productTypesApi.list(),
             inventoryApi.getProductsLookup({ type: 'hp' })
         ]);
         distributors.value = dist.data.data;
@@ -338,15 +338,17 @@ onMounted(fetchInitialData);
         <div class="card p-8 border-t-4 border-t-primary-500 bg-surface-800 rounded-2xl shadow-2xl">
             <div v-if="currentStep === 1" class="animate-in slide-in-from-right">
                 <div v-if="targetUsers.length === 0" class="text-center py-10">
-                    <div class="bg-red-500/10 border border-red-500/20 text-red-500 p-6 rounded-2xl max-w-lg mx-auto mb-6">
+                    <div
+                        class="bg-red-500/10 border border-red-500/20 text-red-500 p-6 rounded-2xl max-w-lg mx-auto mb-6">
                         <h3 class="font-bold text-lg mb-2">Belum Ada Akun Inventory</h3>
-                        <p class="text-sm opacity-80">Anda belum memiliki akun khusus inventory untuk cabang/lokasi ini. Silahkan buat terlebih dahulu untuk melanjutkan stok in.</p>
+                        <p class="text-sm opacity-80">Anda belum memiliki akun khusus inventory untuk cabang/lokasi ini.
+                            Silahkan buat terlebih dahulu untuk melanjutkan stok in.</p>
                     </div>
                     <button @click="showCreateAccountModal = true" class="btn btn-primary px-8 py-4 rounded-xl">
-                        <Plus :size="20" class="mr-2"/> Buat Akun Inventory Baru
+                        <Plus :size="20" class="mr-2" /> Buat Akun Inventory Baru
                     </button>
                 </div>
-                
+
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div v-for="user in targetUsers" :key="user.id" @click="selectUserPlacement(user)"
                         class="p-5 rounded-2xl border border-surface-700 bg-surface-900 cursor-pointer hover:border-primary-500 transition-all relative">
@@ -359,36 +361,50 @@ onMounted(fetchInitialData);
                                 class="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center text-white font-bold">
                                 {{ user.name[0] }}</div>
                             <div>
-                                <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3><span
-                                    class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name }}</span>
+                                <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name
+                                        }}</span>
+                                    <span v-if="user.created_by" class="text-[10px] text-text-secondary/70">
+                                        by: {{ user.created_by.username }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Always Allow Creating New Account -->
                     <button @click="showCreateAccountModal = true"
                         class="p-5 rounded-2xl border-2 border-dashed border-surface-700 hover:border-primary-500 bg-surface-900/50 hover:bg-surface-800 transition-all flex flex-col items-center justify-center gap-2 group min-h-[88px]">
-                        <div class="h-10 w-10 rounded-full bg-surface-800 group-hover:bg-primary-500/20 flex items-center justify-center transition-colors">
+                        <div
+                            class="h-10 w-10 rounded-full bg-surface-800 group-hover:bg-primary-500/20 flex items-center justify-center transition-colors">
                             <Plus :size="24" class="text-text-secondary group-hover:text-primary-500" />
                         </div>
-                        <span class="font-bold text-text-secondary group-hover:text-primary-500 text-sm">Buat Akun Baru</span>
+                        <span class="font-bold text-text-secondary group-hover:text-primary-500 text-sm">Buat Akun
+                            Baru</span>
                     </button>
                 </div>
 
                 <!-- Modal Create Account -->
-                <div v-if="showCreateAccountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div class="bg-surface-900 border border-surface-700 p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                <div v-if="showCreateAccountModal"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div
+                        class="bg-surface-900 border border-surface-700 p-8 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95">
                         <h3 class="text-xl font-bold text-white mb-4">Buat Akun Inventory</h3>
-                        <p class="text-text-secondary text-sm mb-6">Akun ini akan digunakan khusus untuk pencatatan keluar masuk barang di lokasi ini.</p>
-                        
+                        <p class="text-text-secondary text-sm mb-6">Akun ini akan digunakan khusus untuk pencatatan
+                            keluar masuk barang di lokasi ini.</p>
+
                         <div class="space-y-4">
                             <div>
                                 <label class="label text-xs uppercase">Nama Akun / Bagian</label>
-                                <input v-model="newAccountName" class="input bg-surface-800" placeholder="Contoh: Gudang Fisik A" autoFocus />
+                                <input v-model="newAccountName" class="input bg-surface-800"
+                                    placeholder="Contoh: Gudang Fisik A" autoFocus />
                             </div>
                             <div class="flex justify-end gap-3 mt-6">
-                                <button @click="showCreateAccountModal = false" class="btn btn-secondary px-6 rounded-xl">Batal</button>
-                                <button @click="createInventoryAccount" :disabled="!newAccountName || isCreatingAccount" class="btn btn-primary px-6 rounded-xl">
+                                <button @click="showCreateAccountModal = false"
+                                    class="btn btn-secondary px-6 rounded-xl">Batal</button>
+                                <button @click="createInventoryAccount" :disabled="!newAccountName || isCreatingAccount"
+                                    class="btn btn-primary px-6 rounded-xl">
                                     <Loader2 v-if="isCreatingAccount" class="animate-spin mr-2" :size="16" />
                                     {{ isCreatingAccount ? 'Membuat...' : 'Buat Akun' }}
                                 </button>
@@ -434,7 +450,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                    }}</span></div>
+                            }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
