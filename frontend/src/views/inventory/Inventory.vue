@@ -559,24 +559,7 @@ const editStockForm = ref({
   status: 'available'
 });
 
-function editItem(item) {
-  editStockForm.value = { ...item }; // Copy data item ke form
 
-  // Find matching product type to get storage options
-  const productName = item.product?.name || '';
-  const matchedType = typeList.value.find(t => t.name.toLowerCase() === productName.toLowerCase());
-
-  if (matchedType && matchedType.storage) {
-    // Assuming storage is comma separated string "64, 128, 256"
-    // Split by comma or slash
-    capacityOptions.value = matchedType.storage.split(/[,/]+/).map(s => s.trim());
-  } else {
-    // Fallback if no type found or no storage defined
-    capacityOptions.value = ['64', '128', '256', '512', '1024', '1TB'];
-  }
-
-  showEditStockModal.value = true;
-}
 </script>
 
 <template>
