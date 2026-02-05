@@ -678,275 +678,274 @@ function getStockStatus(product) {
                     <p class="text-xs text-text-secondary">{{ item.product?.brand }}</p>
                   </div>
                 </div>
+              </td>
+              <td class="text-sm">
+                <span class="bg-surface-800 px-3 py-1 rounded-lg text-text-secondary" v-if="item.storage">{{
+                  item.storage
+                  }}</span>
+                <span v-else class="text-text-secondary">-</span>
+              </td>
+              <td class="font-mono text-sm">
+                <div class="bg-surface-700/50 px-2 py-1 rounded w-fit text-text-primary">{{ item.imei }}</div>
+              </td>
+              <td class="text-sm text-text-secondary">
+                <div v-if="item.placement_name" class="font-medium text-text-primary">
+                  {{ item.placement_name }}
+                  <span class="text-[10px] text-text-secondary block capitalize">
+                    {{ item.placement_type?.replace('_', ' ') }}
+                  </span>
+                </div>
+                <div v-else>
+                  <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
+                  <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                </div>
+              </td>
+              <td class="text-sm text-text-secondary">
+                {{ item.distributor?.name || '-' }}
+              </td>
+              <td class="text-text-primary font-medium">
+                {{ formatCurrency(item.selling_price) }}
+              </td>
+              <td>
+                <span class="badge"
+                  :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
+                  {{ item.status }}
+                </span>
+              </td>
+              <td>
+                <div class="flex flex-col">
+                  <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name || '-'
+                    }}</span>
+                  <span class="text-[10px] text-text-secondary">{{ item.user?.username }}</span>
+                </div>
+              </td>
+              <td @click.stop>
+                <div class="flex items-center justify-center gap-2">
+                  <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
+                    <Eye :size="16" class="text-text-secondary" />
+                  </button>
+                  <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
+                    <Edit :size="16" class="text-text-secondary" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
-    </td>
-    <td class="text-sm">
-      <span class="bg-surface-800 px-3 py-1 rounded-lg text-text-secondary" v-if="item.storage">{{ item.storage
-      }}</span>
-      <span v-else class="text-text-secondary">-</span>
-    </td>
-    <td class="font-mono text-sm">
-      <div class="bg-surface-700/50 px-2 py-1 rounded w-fit text-text-primary">{{ item.imei }}</div>
-    </td>
-    <td class="text-sm text-text-secondary">
-      <div v-if="item.placement_name" class="font-medium text-text-primary">
-        {{ item.placement_name }}
-        <span class="text-[10px] text-text-secondary block capitalize">
-          {{ item.placement_type?.replace('_', ' ') }}
-        </span>
-      </div>
-      <div v-else>
-        <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
-        <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
-      </div>
-    </td>
-    <td class="text-sm text-text-secondary">
-      {{ item.distributor?.name || '-' }}
-    </td>
-    <td class="text-text-primary font-medium">
-      {{ formatCurrency(item.selling_price) }}
-    </td>
-    <td>
-      <span class="badge"
-        :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
-        {{ item.status }}
-      </span>
-    </td>
-    <td>
-      <div class="flex flex-col">
-        <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name || '-'
-        }}</span>
-        <span class="text-[10px] text-text-secondary">{{ item.user?.username }}</span>
-      </div>
-    </td>
-    <td @click.stop>
-      <div class="flex items-center justify-center gap-2">
-        <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
-          <Eye :size="16" class="text-text-secondary" />
-        </button>
-        <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
-          <Edit :size="16" class="text-text-secondary" />
-        </button>
-      </div>
-    </td>
-    </tr>
-    </tbody>
-    </table>
-  </div>
-  </div>
 
-  <!-- Stock Out Modal -->
-  <div v-if="showStockOutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-    <div
-      class="bg-surface-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-200">
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between p-6 border-b border-surface-700">
-        <div class="flex items-center gap-3">
-          <button v-if="selectedStockOutCategory" @click="selectedStockOutCategory = null"
-            class="text-text-secondary hover:text-white transition-colors">
-            <ChevronLeft :size="20" />
-          </button>
-          <h2 class="text-xl font-bold text-white">
-            {{selectedStockOutCategory ? stockOutCategories.find(c => c.id === selectedStockOutCategory)?.name :
-              'Pilih Kategori'}}
-          </h2>
-        </div>
-        <button @click="closeStockOutModal" class="text-text-secondary hover:text-white transition-colors">
-          <X :size="24" />
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <div class="flex-1 overflow-y-auto p-6">
-        <!-- Category Selection -->
-        <div v-if="!selectedStockOutCategory" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <button v-for="cat in stockOutCategories" :key="cat.id" @click="selectStockOutCategory(cat)"
-            class="card p-4 text-center hover:border-primary-500 border-2 border-transparent transition-all">
-            <component :is="cat.icon" :size="32" class="mx-auto mb-2" :class="`text-${cat.color}-500`" />
-            <p class="font-bold text-text-primary text-sm">{{ cat.name }}</p>
+    <!-- Stock Out Modal -->
+    <div v-if="showStockOutModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+      <div
+        class="bg-surface-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-200">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-surface-700">
+          <div class="flex items-center gap-3">
+            <button v-if="selectedStockOutCategory" @click="selectedStockOutCategory = null"
+              class="text-text-secondary hover:text-white transition-colors">
+              <ChevronLeft :size="20" />
+            </button>
+            <h2 class="text-xl font-bold text-white">
+              {{selectedStockOutCategory ? stockOutCategories.find(c => c.id === selectedStockOutCategory)?.name :
+                'Pilih Kategori'}}
+            </h2>
+          </div>
+          <button @click="closeStockOutModal" class="text-text-secondary hover:text-white transition-colors">
+            <X :size="24" />
           </button>
         </div>
 
-        <!-- Category Forms -->
-        <div v-else class="space-y-4">
-          <!-- Pindah Cabang Form -->
-          <template v-if="selectedStockOutCategory === 'pindah_cabang'">
-            <div>
-              <label class="label">Cabang Tujuan *</label>
-              <select v-model="stockOutForm.destination_branch_id" class="input">
-                <option :value="null">-- Pilih Cabang --</option>
-                <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="label">Nama Penerima *</label>
-              <input v-model="stockOutForm.receiver_name" class="input" placeholder="Nama yang menerima barang" />
-            </div>
-            <div>
-              <label class="label">Catatan</label>
-              <textarea v-model="stockOutForm.transfer_notes" class="input" rows="3"
-                placeholder="Catatan tambahan..."></textarea>
-            </div>
-          </template>
+        <!-- Modal Body -->
+        <div class="flex-1 overflow-y-auto p-6">
+          <!-- Category Selection -->
+          <div v-if="!selectedStockOutCategory" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <button v-for="cat in stockOutCategories" :key="cat.id" @click="selectStockOutCategory(cat)"
+              class="card p-4 text-center hover:border-primary-500 border-2 border-transparent transition-all">
+              <component :is="cat.icon" :size="32" class="mx-auto mb-2" :class="`text-${cat.color}-500`" />
+              <p class="font-bold text-text-primary text-sm">{{ cat.name }}</p>
+            </button>
+          </div>
 
-          <!-- Kesalahan Input Form -->
-          <template v-if="selectedStockOutCategory === 'kesalahan_input'">
-            <div>
-              <label class="label">Alasan Hapus *</label>
-              <textarea v-model="stockOutForm.deletion_reason" class="input" rows="4"
-                placeholder="Jelaskan alasan penghapusan data..."></textarea>
-            </div>
-          </template>
-
-          <!-- Retur Form -->
-          <template v-if="selectedStockOutCategory === 'retur'">
-            <div class="grid grid-cols-2 gap-4">
+          <!-- Category Forms -->
+          <div v-else class="space-y-4">
+            <!-- Pindah Cabang Form -->
+            <template v-if="selectedStockOutCategory === 'pindah_cabang'">
               <div>
-                <label class="label">Nama Petugas *</label>
-                <input v-model="stockOutForm.retur_officer" class="input" placeholder="Nama petugas retur" />
-              </div>
-              <div>
-                <label class="label">Pilih Gudang *</label>
-                <select v-model="stockOutForm.return_destination_id" class="input">
-                  <option :value="null">-- Pilih Gudang Retur --</option>
-                  <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+                <label class="label">Cabang Tujuan *</label>
+                <select v-model="stockOutForm.destination_branch_id" class="input">
+                  <option :value="null">-- Pilih Cabang --</option>
+                  <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
                 </select>
               </div>
-            </div>
-            <div>
-              <label class="label">Foto Bukti / Kondisi (Max 10MB)</label>
-              <input type="file" accept="image/*" @change="handleFileChange"
-                class="w-full text-sm text-text-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-surface-700 file:text-primary-400 hover:file:bg-surface-600 transition-all cursor-pointer border border-surface-700 rounded-xl bg-surface-800" />
-              <div v-if="proofImagePreview" class="mt-3">
-                <img :src="proofImagePreview" class="h-24 rounded-xl object-cover border border-surface-600" />
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="label">Segel</label>
-                <input v-model="stockOutForm.retur_seal" class="input" placeholder="Nomor segel (opsional)" />
+                <label class="label">Nama Penerima *</label>
+                <input v-model="stockOutForm.receiver_name" class="input" placeholder="Nama yang menerima barang" />
               </div>
               <div>
-                <label class="label">Nama Customer *</label>
-                <input v-model="stockOutForm.customer_name" class="input" placeholder="Nama customer" />
+                <label class="label">Catatan</label>
+                <textarea v-model="stockOutForm.transfer_notes" class="input" rows="3"
+                  placeholder="Catatan tambahan..."></textarea>
               </div>
-            </div>
-            <div>
-              <label class="label">Kendala / Masalah *</label>
-              <textarea v-model="stockOutForm.retur_issue" class="input" rows="3"
-                placeholder="Jelaskan kendala atau masalah..."></textarea>
-            </div>
-            <div>
-              <label class="label">No. WA Customer *</label>
-              <input v-model="stockOutForm.customer_phone" class="input" placeholder="08xxxxxxxxxx" />
-            </div>
-          </template>
+            </template>
 
-          <!-- Shopee Form (Per-Item) -->
-          <template v-if="selectedStockOutCategory === 'shopee'">
-            <div class="space-y-4">
-              <p class="text-xs uppercase font-bold text-text-secondary">
-                Isi detail pengiriman untuk setiap item ({{ shopeeItemForms.length }} item)
+            <!-- Kesalahan Input Form -->
+            <template v-if="selectedStockOutCategory === 'kesalahan_input'">
+              <div>
+                <label class="label">Alasan Hapus *</label>
+                <textarea v-model="stockOutForm.deletion_reason" class="input" rows="4"
+                  placeholder="Jelaskan alasan penghapusan data..."></textarea>
+              </div>
+            </template>
+
+            <!-- Retur Form -->
+            <template v-if="selectedStockOutCategory === 'retur'">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Nama Petugas *</label>
+                  <input v-model="stockOutForm.retur_officer" class="input" placeholder="Nama petugas retur" />
+                </div>
+                <div>
+                  <label class="label">Pilih Gudang *</label>
+                  <select v-model="stockOutForm.return_destination_id" class="input">
+                    <option :value="null">-- Pilih Gudang Retur --</option>
+                    <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="label">Foto Bukti / Kondisi (Max 10MB)</label>
+                <input type="file" accept="image/*" @change="handleFileChange"
+                  class="w-full text-sm text-text-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-surface-700 file:text-primary-400 hover:file:bg-surface-600 transition-all cursor-pointer border border-surface-700 rounded-xl bg-surface-800" />
+                <div v-if="proofImagePreview" class="mt-3">
+                  <img :src="proofImagePreview" class="h-24 rounded-xl object-cover border border-surface-600" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="label">Segel</label>
+                  <input v-model="stockOutForm.retur_seal" class="input" placeholder="Nomor segel (opsional)" />
+                </div>
+                <div>
+                  <label class="label">Nama Customer *</label>
+                  <input v-model="stockOutForm.customer_name" class="input" placeholder="Nama customer" />
+                </div>
+              </div>
+              <div>
+                <label class="label">Kendala / Masalah *</label>
+                <textarea v-model="stockOutForm.retur_issue" class="input" rows="3"
+                  placeholder="Jelaskan kendala atau masalah..."></textarea>
+              </div>
+              <div>
+                <label class="label">No. WA Customer *</label>
+                <input v-model="stockOutForm.customer_phone" class="input" placeholder="08xxxxxxxxxx" />
+              </div>
+            </template>
+
+            <!-- Shopee Form (Per-Item) -->
+            <template v-if="selectedStockOutCategory === 'shopee'">
+              <div class="space-y-4">
+                <p class="text-xs uppercase font-bold text-text-secondary">
+                  Isi detail pengiriman untuk setiap item ({{ shopeeItemForms.length }} item)
+                </p>
+
+                <!-- Per-item forms -->
+                <div v-for="(itemForm, index) in shopeeItemForms" :key="itemForm.product_detail_id"
+                  class="border border-surface-600 rounded-xl p-4 space-y-3">
+                  <!-- Item Header -->
+                  <div class="flex items-center gap-3 pb-3 border-b border-surface-600">
+                    <div
+                      class="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center text-primary-400 font-bold text-sm">
+                      {{ index + 1 }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-text-primary text-sm">{{ itemForm.product_name }}</p>
+                      <p class="font-mono text-xs text-text-secondary">{{ itemForm.imei }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Item Fields -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="label text-xs">Nama Penerima *</label>
+                      <input v-model="itemForm.receiver" class="input text-sm py-2" placeholder="Nama penerima" />
+                    </div>
+                    <div>
+                      <label class="label text-xs">No. WA *</label>
+                      <input v-model="itemForm.phone" class="input text-sm py-2" placeholder="08xxxxxxxxxx" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="label text-xs">Alamat Tujuan *</label>
+                    <textarea v-model="itemForm.address" class="input text-sm py-2" rows="2"
+                      placeholder="Alamat lengkap..."></textarea>
+                  </div>
+                  <div>
+                    <label class="label text-xs">Catatan</label>
+                    <input v-model="itemForm.notes" class="input text-sm py-2" placeholder="Catatan pengiriman..." />
+                  </div>
+                  <div>
+                    <label class="label text-xs">No. Resi *</label>
+                    <div class="flex gap-2">
+                      <input v-model="itemForm.tracking_no" class="input text-sm py-2 flex-1 font-mono"
+                        placeholder="Scan atau ketik manual..." />
+                      <button @click="startScanner(index)" type="button" class="btn btn-secondary px-3 h-9">
+                        <ScanBarcode :size="16" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Selected Items Summary -->
+            <div class="mt-6 pt-4 border-t border-surface-700">
+              <p class="text-xs uppercase font-bold text-text-secondary mb-3">
+                Barang yang akan dikeluarkan ({{ selectedItems.length }})
               </p>
-
-              <!-- Per-item forms -->
-              <div v-for="(itemForm, index) in shopeeItemForms" :key="itemForm.product_detail_id"
-                class="border border-surface-600 rounded-xl p-4 space-y-3">
-                <!-- Item Header -->
-                <div class="flex items-center gap-3 pb-3 border-b border-surface-600">
-                  <div
-                    class="w-8 h-8 bg-primary-500/20 rounded-lg flex items-center justify-center text-primary-400 font-bold text-sm">
-                    {{ index + 1 }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-text-primary text-sm">{{ itemForm.product_name }}</p>
-                    <p class="font-mono text-xs text-text-secondary">{{ itemForm.imei }}</p>
-                  </div>
+              <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                <div v-for="item in selectedItems" :key="item.id"
+                  class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
+                  <Smartphone :size="14" />
+                  <span class="font-mono text-xs">{{ item.imei }}</span>
                 </div>
-
-                <!-- Item Fields -->
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="label text-xs">Nama Penerima *</label>
-                    <input v-model="itemForm.receiver" class="input text-sm py-2" placeholder="Nama penerima" />
-                  </div>
-                  <div>
-                    <label class="label text-xs">No. WA *</label>
-                    <input v-model="itemForm.phone" class="input text-sm py-2" placeholder="08xxxxxxxxxx" />
-                  </div>
-                </div>
-                <div>
-                  <label class="label text-xs">Alamat Tujuan *</label>
-                  <textarea v-model="itemForm.address" class="input text-sm py-2" rows="2"
-                    placeholder="Alamat lengkap..."></textarea>
-                </div>
-                <div>
-                  <label class="label text-xs">Catatan</label>
-                  <input v-model="itemForm.notes" class="input text-sm py-2" placeholder="Catatan pengiriman..." />
-                </div>
-                <div>
-                  <label class="label text-xs">No. Resi *</label>
-                  <div class="flex gap-2">
-                    <input v-model="itemForm.tracking_no" class="input text-sm py-2 flex-1 font-mono"
-                      placeholder="Scan atau ketik manual..." />
-                    <button @click="startScanner(index)" type="button" class="btn btn-secondary px-3 h-9">
-                      <ScanBarcode :size="16" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Selected Items Summary -->
-          <div class="mt-6 pt-4 border-t border-surface-700">
-            <p class="text-xs uppercase font-bold text-text-secondary mb-3">
-              Barang yang akan dikeluarkan ({{ selectedItems.length }})
-            </p>
-            <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-              <div v-for="item in selectedItems" :key="item.id"
-                class="bg-surface-700 px-3 py-2 rounded-xl text-sm flex items-center gap-2">
-                <Smartphone :size="14" />
-                <span class="font-mono text-xs">{{ item.imei }}</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Modal Footer -->
-      <div v-if="selectedStockOutCategory" class="p-6 border-t border-surface-700">
-        <button @click="submitStockOut" :disabled="!canSubmitStockOut || isSubmitting"
-          class="btn btn-primary w-full h-12 rounded-xl font-bold disabled:opacity-30">
-          <Loader2 v-if="isSubmitting" :size="20" class="animate-spin mr-2" />
-          {{ isSubmitting ? 'Memproses...' : 'Konfirmasi Keluar Stok' }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Scanner Modal -->
-  <div v-if="isScanning" class="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4">
-    <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
-      <div class="flex items-center justify-between p-4 border-b border-surface-700">
-        <h3 class="text-white font-bold flex items-center gap-2">
-          <ScanBarcode :size="20" class="text-orange-500" />
-          Scan Barcode Resi
-        </h3>
-        <button @click="stopScanner" class="text-text-secondary hover:text-white transition-colors">
-          <X :size="24" />
-        </button>
-      </div>
-      <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
-      <div class="p-4 text-center space-y-3">
-        <p class="text-text-secondary text-sm animate-pulse">Arahkan kamera ke barcode resi...</p>
-        <div class="text-xs text-text-secondary">
-          <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
+        <!-- Modal Footer -->
+        <div v-if="selectedStockOutCategory" class="p-6 border-t border-surface-700">
+          <button @click="submitStockOut" :disabled="!canSubmitStockOut || isSubmitting"
+            class="btn btn-primary w-full h-12 rounded-xl font-bold disabled:opacity-30">
+            <Loader2 v-if="isSubmitting" :size="20" class="animate-spin mr-2" />
+            {{ isSubmitting ? 'Memproses...' : 'Konfirmasi Keluar Stok' }}
+          </button>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Scanner Modal -->
+    <div v-if="isScanning" class="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-center p-4">
+      <div class="relative w-full max-w-lg bg-surface-800 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between p-4 border-b border-surface-700">
+          <h3 class="text-white font-bold flex items-center gap-2">
+            <ScanBarcode :size="20" class="text-orange-500" />
+            Scan Barcode Resi
+          </h3>
+          <button @click="stopScanner" class="text-text-secondary hover:text-white transition-colors">
+            <X :size="24" />
+          </button>
+        </div>
+        <div :id="scannerContainerId" class="w-full aspect-video bg-black"></div>
+        <div class="p-4 text-center space-y-3">
+          <p class="text-text-secondary text-sm animate-pulse">Arahkan kamera ke barcode resi...</p>
+          <div class="text-xs text-text-secondary">
+            <p>Atau ketik manual nomor resi di form lalu tutup scanner</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
