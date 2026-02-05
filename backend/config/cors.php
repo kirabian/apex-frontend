@@ -25,7 +25,15 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Content-Type',
+        'X-Auth-Token',
+        'Origin',
+        'Authorization',
+        'X-Requested-With',
+        'X-Branch-ID',
+        'X-XSRF-TOKEN', // Laravel CSRF
+    ],
 
     'exposed_headers' => [],
 
