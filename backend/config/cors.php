@@ -21,19 +21,13 @@ return [
     'allowed_origins' => [
         'https://stokps.com',
         'https://www.stokps.com',
+        'http://stokps.com',
+        'http://localhost:5173',
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'Content-Type',
-        'X-Auth-Token',
-        'Origin',
-        'Authorization',
-        'X-Requested-With',
-        'X-Branch-ID',
-        'X-XSRF-TOKEN', // Laravel CSRF
-    ],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
