@@ -775,9 +775,6 @@ const editStockForm = ref({
                   <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Eye :size="16" class="text-text-secondary" />
                   </button>
-                  <button @click="editItem(item)" class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
-                    <Edit :size="16" class="text-text-secondary" />
-                  </button>
                 </div>
               </td>
             </tr>

@@ -24,8 +24,8 @@ const form = ref({
 
 const categories = [
     { value: 'imei', label: 'HP / Gadget (IMEI)', icon: Smartphone },
-    { value: 'non_imei', label: 'Aksesoris (Non-IMEI)', icon: Disc },
-    { value: 'service', label: 'Jasa Service', icon: Wrench }
+    { value: 'non_imei', label: 'Barang Non IMEI', icon: Disc },
+    // { value: 'service', label: 'Jasa Service', icon: Wrench } // Merged into non_imei
 ];
 
 const isEditing = computed(() => !!props.type);

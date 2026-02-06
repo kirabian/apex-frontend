@@ -177,6 +177,23 @@ const canNext = computed(() => {
 });
 
 // CARI DAN GANTI LOGIKA INI DI StockIn.vue
+const costPriceDisplay = computed({
+    get: () => batchDetails.value.cost_price ? formatRupiah(batchDetails.value.cost_price).replace('Rp', '').trim() : '',
+    set: (val) => {
+        // Remove non-numeric chars
+        const num = parseInt(val.replace(/[^\d]/g, ''));
+        batchDetails.value.cost_price = isNaN(num) ? 0 : num;
+    }
+});
+
+const sellingPriceDisplay = computed({
+    get: () => batchDetails.value.selling_price ? formatRupiah(batchDetails.value.selling_price).replace('Rp', '').trim() : '',
+    set: (val) => {
+        const num = parseInt(val.replace(/[^\d]/g, ''));
+        batchDetails.value.selling_price = isNaN(num) ? 0 : num;
+    }
+});
+
 const canSubmit = computed(() => {
     if (!selectedTypeName.value) return false;
 
@@ -528,13 +545,21 @@ onMounted(fetchInitialData);
                         </div>
                         <div>
                             <label class="label text-[10px] uppercase text-emerald-500">Modal Satuan</label>
-                            <input v-model="batchDetails.cost_price" type="number"
-                                class="input bg-surface-900 h-10 text-sm" placeholder="0" />
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">Rp</span>
+                                <input v-model="costPriceDisplay" type="text"
+                                    class="input bg-surface-900 h-10 text-sm pl-10" placeholder="0" />
+                            </div>
                         </div>
                         <div>
                             <label class="label text-[10px] uppercase text-blue-500">Jual Satuan</label>
-                            <input v-model="batchDetails.selling_price" type="number"
-                                class="input bg-surface-900 h-10 text-sm" placeholder="0" />
+                            <div class="relative">
+                                <span
+                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm">Rp</span>
+                                <input v-model="sellingPriceDisplay" type="text"
+                                    class="input bg-surface-900 h-10 text-sm pl-10" placeholder="0" />
+                            </div>
                         </div>
                     </div>
 
