@@ -114,6 +114,18 @@ const stockOutForm = ref({
   shopee_postal_code: '',
   shopee_notes: '',
   shopee_tracking_no: '',
+
+  // Giveaway Fields
+  giveaway_receiver: '',
+  giveaway_phone: '',
+  giveaway_address: '',
+  giveaway_province: '',
+  giveaway_city: '',
+  giveaway_district: '',
+  giveaway_village: '',
+  giveaway_postal_code: '',
+  giveaway_notes: '',
+
   notes: '',
 });
 
@@ -176,9 +188,15 @@ async function onProvinceChange(id) {
   selectedRegionIds.value.village = "";
   cities.value = []; districts.value = []; villages.value = [];
 
-  // Save Name
+  // Save Name based on Category
   const p = provinces.value.find(x => x.id === id);
-  stockOutForm.value.shopee_province = p ? p.name : "";
+  const name = p ? p.name : "";
+
+  if (selectedStockOutCategory.value === 'shopee') {
+    stockOutForm.value.shopee_province = name;
+  } else if (selectedStockOutCategory.value === 'giveaway') {
+    stockOutForm.value.giveaway_province = name;
+  }
 
   if (id) {
     try {
@@ -195,7 +213,13 @@ async function onCityChange(id) {
   districts.value = []; villages.value = [];
 
   const c = cities.value.find(x => x.id === id);
-  stockOutForm.value.shopee_city = c ? c.name : "";
+  const name = c ? c.name : "";
+
+  if (selectedStockOutCategory.value === 'shopee') {
+    stockOutForm.value.shopee_city = name;
+  } else if (selectedStockOutCategory.value === 'giveaway') {
+    stockOutForm.value.giveaway_city = name;
+  }
 
   if (id) {
     try {
@@ -211,7 +235,13 @@ async function onDistrictChange(id) {
   villages.value = [];
 
   const d = districts.value.find(x => x.id === id);
-  stockOutForm.value.shopee_district = d ? d.name : "";
+  const name = d ? d.name : "";
+
+  if (selectedStockOutCategory.value === 'shopee') {
+    stockOutForm.value.shopee_district = name;
+  } else if (selectedStockOutCategory.value === 'giveaway') {
+    stockOutForm.value.giveaway_district = name;
+  }
 
   if (id) {
     try {
@@ -224,7 +254,13 @@ async function onDistrictChange(id) {
 function onVillageChange(id) {
   selectedRegionIds.value.village = id;
   const v = villages.value.find(x => x.id === id);
-  stockOutForm.value.shopee_village = v ? v.name : "";
+  const name = v ? v.name : "";
+
+  if (selectedStockOutCategory.value === 'shopee') {
+    stockOutForm.value.shopee_village = name;
+  } else if (selectedStockOutCategory.value === 'giveaway') {
+    stockOutForm.value.giveaway_village = name;
+  }
 }
 
 // Watcher untuk debounce search
@@ -358,6 +394,15 @@ function resetStockOutForm() {
     shopee_postal_code: '',
     shopee_notes: '',
     shopee_tracking_no: '',
+    giveaway_receiver: '',
+    giveaway_phone: '',
+    giveaway_address: '',
+    giveaway_province: '',
+    giveaway_city: '',
+    giveaway_district: '',
+    giveaway_village: '',
+    giveaway_postal_code: '',
+    giveaway_notes: '',
     notes: '',
   };
 
@@ -456,6 +501,13 @@ const canSubmitStockOut = computed(() => {
         stockOutForm.value.shopee_phone &&
         stockOutForm.value.shopee_address &&
         stockOutForm.value.shopee_tracking_no;
+    case 'giveaway':
+      return stockOutForm.value.giveaway_receiver &&
+        stockOutForm.value.giveaway_phone &&
+        stockOutForm.value.giveaway_address &&
+        stockOutForm.value.giveaway_province &&
+        stockOutForm.value.giveaway_city &&
+        stockOutForm.value.giveaway_district;
     default:
       return true;
   }
@@ -494,6 +546,16 @@ async function submitStockOut() {
       formData.append('shopee_district', stockOutForm.value.shopee_district);
       formData.append('shopee_village', stockOutForm.value.shopee_village);
       formData.append('shopee_postal_code', stockOutForm.value.shopee_postal_code);
+    } else if (selectedStockOutCategory.value === 'giveaway') {
+      formData.append('giveaway_receiver', stockOutForm.value.giveaway_receiver);
+      formData.append('giveaway_phone', stockOutForm.value.giveaway_phone);
+      formData.append('giveaway_address', stockOutForm.value.giveaway_address);
+      formData.append('giveaway_province', stockOutForm.value.giveaway_province);
+      formData.append('giveaway_city', stockOutForm.value.giveaway_city);
+      formData.append('giveaway_district', stockOutForm.value.giveaway_district);
+      formData.append('giveaway_village', stockOutForm.value.giveaway_village);
+      formData.append('giveaway_postal_code', stockOutForm.value.giveaway_postal_code);
+      formData.append('giveaway_notes', stockOutForm.value.giveaway_notes);
     } else {
       Object.keys(stockOutForm.value).forEach(key => {
         if (key !== 'proof_image' && stockOutForm.value[key] !== null && stockOutForm.value[key] !== '') {
@@ -1078,6 +1140,91 @@ const editStockForm = ref({
                       <ScanBarcode :size="18" />
                     </button>
                   </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Giveaway Form -->
+            <template v-if="selectedStockOutCategory === 'giveaway'">
+              <div class="space-y-4">
+                <div class="bg-surface-700/30 p-4 rounded-xl border border-surface-600">
+                  <p class="text-xs uppercase font-bold text-text-secondary mb-2">
+                    Item Giveaway ({{ selectedItems.length }})
+                  </p>
+                  <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    <div v-for="(item, idx) in selectedItems" :key="item.id"
+                      class="bg-surface-800 px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-2 border border-surface-600">
+                      <span class="text-primary-400 font-bold">{{ idx + 1 }}.</span>
+                      <span>{{ item.product?.name }}</span>
+                      <span class="text-text-secondary">|</span>
+                      <span>{{ item.imei }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="label">Nama Customer *</label>
+                    <input v-model="stockOutForm.giveaway_receiver" class="input" placeholder="Nama customer" />
+                  </div>
+                  <div>
+                    <label class="label">No. WA *</label>
+                    <input v-model="stockOutForm.giveaway_phone" class="input" placeholder="08xxxxxxxxxx" />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="label">Provinsi *</label>
+                    <select :value="selectedRegionIds.province" @change="e => onProvinceChange(e.target.value)"
+                      class="input">
+                      <option value="">-- Pilih Provinsi --</option>
+                      <option v-for="p in provinces" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label">Kota/Kabupaten *</label>
+                    <select :value="selectedRegionIds.city" @change="e => onCityChange(e.target.value)" class="input"
+                      :disabled="!selectedRegionIds.province">
+                      <option value="">-- Pilih Kota --</option>
+                      <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="label">Kecamatan *</label>
+                    <select :value="selectedRegionIds.district" @change="e => onDistrictChange(e.target.value)"
+                      class="input" :disabled="!selectedRegionIds.city">
+                      <option value="">-- Pilih Kecamatan --</option>
+                      <option v-for="d in districts" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label">Kelurahan / Desa *</label>
+                    <select :value="selectedRegionIds.village" @change="e => onVillageChange(e.target.value)"
+                      class="input" :disabled="!selectedRegionIds.district">
+                      <option value="">-- Pilih Kelurahan --</option>
+                      <option v-for="v in villages" :key="v.id" :value="v.id">{{ v.name }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="label">Kode Pos</label>
+                  <input v-model="stockOutForm.giveaway_postal_code" class="input" placeholder="Kode Pos" />
+                </div>
+
+                <div>
+                  <label class="label">Detail Alamat (Jalan, No. Rumah, RT/RW) *</label>
+                  <textarea v-model="stockOutForm.giveaway_address" class="input" rows="2"
+                    placeholder="Nama Jalan, Nomor Rumah, RT/RW..."></textarea>
+                </div>
+
+                <div>
+                  <label class="label">Catatan</label>
+                  <input v-model="stockOutForm.giveaway_notes" class="input" placeholder="Catatan giveaway..." />
                 </div>
               </div>
             </template>

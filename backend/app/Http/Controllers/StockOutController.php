@@ -74,7 +74,7 @@ class StockOutController extends Controller
         if ($request->category === 'shopee') {
             $rules['shopee_items'] = 'required|array|min:1';
             $rules['shopee_items.*.product_detail_id'] = 'required|exists:product_details,id';
-            // We replicate global info to items for backward compat, but validation remains
+            $rules['shopee_items.*.tracking_no'] = 'required|string|max:100';
 
             // Validate Global Fields
             $rules['shopee_receiver'] = 'required|string|max:255';
@@ -84,6 +84,20 @@ class StockOutController extends Controller
             $rules['shopee_city'] = 'required|string';
             $rules['shopee_district'] = 'required|string';
             $rules['shopee_village'] = 'required|string';
+            $rules['shopee_postal_code'] = 'nullable|string|max:10';
+        }
+
+        // Giveaway Validation
+        if ($request->category === 'giveaway') {
+            $rules['giveaway_receiver'] = 'required|string|max:255';
+            $rules['giveaway_phone'] = 'required|string|max:50';
+            $rules['giveaway_address'] = 'required|string';
+            $rules['giveaway_province'] = 'required|string';
+            $rules['giveaway_city'] = 'required|string';
+            $rules['giveaway_district'] = 'required|string';
+            $rules['giveaway_village'] = 'required|string';
+            $rules['giveaway_postal_code'] = 'nullable|string|max:10';
+            $rules['giveaway_notes'] = 'nullable|string';
         }
 
         $request->validate($rules);
@@ -142,6 +156,17 @@ class StockOutController extends Controller
                 'shopee_district' => $request->shopee_district,
                 'shopee_village' => $request->shopee_village,
                 'shopee_postal_code' => $request->shopee_postal_code,
+
+                // Giveaway
+                'giveaway_receiver' => $request->giveaway_receiver,
+                'giveaway_phone' => $request->giveaway_phone,
+                'giveaway_address' => $request->giveaway_address,
+                'giveaway_province' => $request->giveaway_province,
+                'giveaway_city' => $request->giveaway_city,
+                'giveaway_district' => $request->giveaway_district,
+                'giveaway_village' => $request->giveaway_village,
+                'giveaway_postal_code' => $request->giveaway_postal_code,
+                'giveaway_notes' => $request->giveaway_notes,
 
                 'notes' => $request->notes, // Generic notes
             ]);
