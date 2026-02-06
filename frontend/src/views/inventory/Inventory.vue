@@ -107,6 +107,11 @@ const stockOutForm = ref({
   shopee_receiver: '',
   shopee_phone: '',
   shopee_address: '',
+  shopee_province: '',
+  shopee_city: '',
+  shopee_district: '',
+  shopee_village: '',
+  shopee_postal_code: '',
   shopee_notes: '',
   shopee_tracking_no: '',
   notes: '',
@@ -140,7 +145,87 @@ onMounted(() => {
   productTypes.list().then(res => {
     typeList.value = res.data.data;
   }).catch(err => console.error("Failed to load types", err));
+
+  fetchProvinces();
 });
+
+// --- Region Logic ---
+const provinces = ref([]);
+const cities = ref([]);
+const districts = ref([]);
+const villages = ref([]);
+
+const selectedRegionIds = ref({
+  province: "",
+  city: "",
+  district: "",
+  village: ""
+});
+
+async function fetchProvinces() {
+  try {
+    const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json`);
+    provinces.value = await res.json();
+  } catch (e) { console.error(e); }
+}
+
+async function onProvinceChange(id) {
+  selectedRegionIds.value.province = id;
+  selectedRegionIds.value.city = "";
+  selectedRegionIds.value.district = "";
+  selectedRegionIds.value.village = "";
+  cities.value = []; districts.value = []; villages.value = [];
+
+  // Save Name
+  const p = provinces.value.find(x => x.id === id);
+  stockOutForm.value.shopee_province = p ? p.name : "";
+
+  if (id) {
+    try {
+      const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`);
+      cities.value = await res.json();
+    } catch (e) { console.error(e); }
+  }
+}
+
+async function onCityChange(id) {
+  selectedRegionIds.value.city = id;
+  selectedRegionIds.value.district = "";
+  selectedRegionIds.value.village = "";
+  districts.value = []; villages.value = [];
+
+  const c = cities.value.find(x => x.id === id);
+  stockOutForm.value.shopee_city = c ? c.name : "";
+
+  if (id) {
+    try {
+      const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`);
+      districts.value = await res.json();
+    } catch (e) { console.error(e); }
+  }
+}
+
+async function onDistrictChange(id) {
+  selectedRegionIds.value.district = id;
+  selectedRegionIds.value.village = "";
+  villages.value = [];
+
+  const d = districts.value.find(x => x.id === id);
+  stockOutForm.value.shopee_district = d ? d.name : "";
+
+  if (id) {
+    try {
+      const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`);
+      villages.value = await res.json();
+    } catch (e) { console.error(e); }
+  }
+}
+
+function onVillageChange(id) {
+  selectedRegionIds.value.village = id;
+  const v = villages.value.find(x => x.id === id);
+  stockOutForm.value.shopee_village = v ? v.name : "";
+}
 
 // Watcher untuk debounce search
 watch(searchQuery, debounce((newVal) => {
@@ -266,10 +351,21 @@ function resetStockOutForm() {
     shopee_receiver: '',
     shopee_phone: '',
     shopee_address: '',
+    shopee_province: '',
+    shopee_city: '',
+    shopee_district: '',
+    shopee_village: '',
+    shopee_postal_code: '',
     shopee_notes: '',
     shopee_tracking_no: '',
     notes: '',
   };
+
+  // Reset Region IDs
+  selectedRegionIds.value = { province: "", city: "", district: "", village: "" };
+  cities.value = [];
+  districts.value = [];
+  villages.value = [];
   proofImageFile.value = null;
   proofImagePreview.value = null;
   shopeeItemForms.value = [];
@@ -388,6 +484,16 @@ async function submitStockOut() {
         formData.append(`shopee_items[${index}][notes]`, stockOutForm.value.shopee_notes);
         formData.append(`shopee_items[${index}][tracking_no]`, stockOutForm.value.shopee_tracking_no);
       });
+
+      // Append Global Region Data
+      formData.append('shopee_receiver', stockOutForm.value.shopee_receiver);
+      formData.append('shopee_phone', stockOutForm.value.shopee_phone);
+      formData.append('shopee_address', stockOutForm.value.shopee_address);
+      formData.append('shopee_province', stockOutForm.value.shopee_province);
+      formData.append('shopee_city', stockOutForm.value.shopee_city);
+      formData.append('shopee_district', stockOutForm.value.shopee_district);
+      formData.append('shopee_village', stockOutForm.value.shopee_village);
+      formData.append('shopee_postal_code', stockOutForm.value.shopee_postal_code);
     } else {
       Object.keys(stockOutForm.value).forEach(key => {
         if (key !== 'proof_image' && stockOutForm.value[key] !== null && stockOutForm.value[key] !== '') {
@@ -909,10 +1015,53 @@ const editStockForm = ref({
                   </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="label">Provinsi *</label>
+                    <select :value="selectedRegionIds.province" @change="e => onProvinceChange(e.target.value)"
+                      class="input">
+                      <option value="">-- Pilih Provinsi --</option>
+                      <option v-for="p in provinces" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label">Kota/Kabupaten *</label>
+                    <select :value="selectedRegionIds.city" @change="e => onCityChange(e.target.value)" class="input"
+                      :disabled="!selectedRegionIds.province">
+                      <option value="">-- Pilih Kota --</option>
+                      <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="label">Kecamatan *</label>
+                    <select :value="selectedRegionIds.district" @change="e => onDistrictChange(e.target.value)"
+                      class="input" :disabled="!selectedRegionIds.city">
+                      <option value="">-- Pilih Kecamatan --</option>
+                      <option v-for="d in districts" :key="d.id" :value="d.id">{{ d.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="label">Kelurahan / Desa *</label>
+                    <select :value="selectedRegionIds.village" @change="e => onVillageChange(e.target.value)"
+                      class="input" :disabled="!selectedRegionIds.district">
+                      <option value="">-- Pilih Kelurahan --</option>
+                      <option v-for="v in villages" :key="v.id" :value="v.id">{{ v.name }}</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label class="label">Alamat Tujuan *</label>
+                  <label class="label">Kode Pos</label>
+                  <input v-model="stockOutForm.shopee_postal_code" class="input" placeholder="Kode Pos" />
+                </div>
+
+                <div>
+                  <label class="label">Detail Alamat (Jalan, No. Rumah, RT/RW) *</label>
                   <textarea v-model="stockOutForm.shopee_address" class="input" rows="2"
-                    placeholder="Alamat lengkap..."></textarea>
+                    placeholder="Nama Jalan, Nomor Rumah, RT/RW..."></textarea>
                 </div>
 
                 <div>

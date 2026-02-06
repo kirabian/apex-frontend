@@ -74,11 +74,16 @@ class StockOutController extends Controller
         if ($request->category === 'shopee') {
             $rules['shopee_items'] = 'required|array|min:1';
             $rules['shopee_items.*.product_detail_id'] = 'required|exists:product_details,id';
-            $rules['shopee_items.*.receiver'] = 'required|string|max:255';
-            $rules['shopee_items.*.phone'] = 'required|string|max:50';
-            $rules['shopee_items.*.address'] = 'required|string';
-            $rules['shopee_items.*.notes'] = 'nullable|string';
-            $rules['shopee_items.*.tracking_no'] = 'required|string|max:100';
+            // We replicate global info to items for backward compat, but validation remains
+
+            // Validate Global Fields
+            $rules['shopee_receiver'] = 'required|string|max:255';
+            $rules['shopee_phone'] = 'required|string|max:50';
+            $rules['shopee_address'] = 'required|string';
+            $rules['shopee_province'] = 'required|string';
+            $rules['shopee_city'] = 'required|string';
+            $rules['shopee_district'] = 'required|string';
+            $rules['shopee_village'] = 'required|string';
         }
 
         $request->validate($rules);
@@ -129,6 +134,14 @@ class StockOutController extends Controller
 
                 // Shopee (per-item data stored as JSON)
                 'shopee_items_data' => $shopeeItemsData,
+                'shopee_receiver' => $request->shopee_receiver,
+                'shopee_phone' => $request->shopee_phone,
+                'shopee_address' => $request->shopee_address,
+                'shopee_province' => $request->shopee_province,
+                'shopee_city' => $request->shopee_city,
+                'shopee_district' => $request->shopee_district,
+                'shopee_village' => $request->shopee_village,
+                'shopee_postal_code' => $request->shopee_postal_code,
 
                 'notes' => $request->notes, // Generic notes
             ]);
