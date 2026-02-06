@@ -343,33 +343,30 @@ async function submitStockIn() {
 const handleImeiInput = (index, event) => {
     const rawValue = event.target.value;
 
-    // Check if it contains separators (newline, comma, or space)
-    if (/[\n,\s]/.test(rawValue)) {
-        // Split by newline, comma, or whitespace
-        const imeis = rawValue.split(/[\n,\s]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+    // Split by any non-alphanumeric character (space, comma, newline, dash, etc.)
+    const imeis = rawValue.split(/[^a-zA-Z0-9]+/).filter(s => s.length > 0);
 
-        if (imeis.length > 0) {
-            // Set the first IMEI to the current field
-            imeiRows.value[index].imei = imeis[0];
+    // Only apply split logic if we detect MORE THAN ONE IMEI
+    // This allows typing "123 " (space) without immediately removing it,
+    // so the user can continue typing "123 456" which triggers the split.
+    if (imeis.length > 1) {
+        // Update current row to first IMEI
+        imeiRows.value[index].imei = imeis[0];
 
-            // If there are more IMEIs, add new rows
-            const newRows = imeis.slice(1).map(imei => ({
-                imei: imei,
-                condition: imeiRows.value[index].condition,
-                cost_price: imeiRows.value[index].cost_price,
-                selling_price: imeiRows.value[index].selling_price,
-                // Ensure other fields are initialized empty if needed
-                color: "",
-                ram: "",
-                storage: ""
-            }));
+        // Add remaining IMEIs as new rows
+        const newRows = imeis.slice(1).map(imei => ({
+            imei: imei,
+            condition: imeiRows.value[index].condition,
+            cost_price: imeiRows.value[index].cost_price,
+            selling_price: imeiRows.value[index].selling_price,
+            color: "",
+            ram: "",
+            storage: ""
+        }));
 
-            if (newRows.length > 0) {
-                imeiRows.value.splice(index + 1, 0, ...newRows);
-                toast.success(`${newRows.length} baris IMEI ditambahkan otomatis`);
-            }
+        if (newRows.length > 0) {
+            imeiRows.value.splice(index + 1, 0, ...newRows);
+            toast.success(`${newRows.length} baris IMEI ditambahkan otomatis`);
         }
     }
 };
@@ -423,7 +420,7 @@ onMounted(fetchInitialData);
                                 <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3>
                                 <div class="flex flex-col">
                                     <span class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name
-                                        }}</span>
+                                    }}</span>
                                     <span v-if="user.created_by" class="text-[10px] text-text-secondary/70">
                                         by: {{ user.created_by.username }}
                                     </span>
@@ -509,7 +506,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
