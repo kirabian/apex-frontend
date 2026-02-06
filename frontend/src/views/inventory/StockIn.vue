@@ -90,9 +90,22 @@ const uniqueTypeNames = computed(() => Array.from(new Set(filteredTypes.value.ma
 const availableSpecs = computed(() => {
     if (!selectedTypeName.value) return { rams: [], storages: [] };
     const matching = allowedTypes.value.filter(t => t.name === selectedTypeName.value);
+
+    const ramSet = new Set();
+    const storageSet = new Set();
+
+    matching.forEach(t => {
+        if (t.ram) {
+            t.ram.split(/[,/]+/).forEach(s => ramSet.add(s.trim()));
+        }
+        if (t.storage) {
+            t.storage.split(/[,/]+/).forEach(s => storageSet.add(s.trim()));
+        }
+    });
+
     return {
-        rams: Array.from(new Set(matching.map(t => t.ram).filter(Boolean))).sort((a, b) => parseInt(a) - parseInt(b)),
-        storages: Array.from(new Set(matching.map(t => t.storage).filter(Boolean))).sort((a, b) => parseInt(a) - parseInt(b))
+        rams: Array.from(ramSet).sort((a, b) => parseInt(a) - parseInt(b)),
+        storages: Array.from(storageSet).sort((a, b) => parseInt(a) - parseInt(b))
     };
 });
 
@@ -297,7 +310,11 @@ async function submitStockIn() {
         };
 
         if (itemType.value === 'hp') {
-            payload.imeis = imeiRows.value;
+            payload.storage = selectedStorage.value; // Send global storage selection
+            payload.imeis = imeiRows.value.map(row => ({
+                ...row,
+                imei: row.imei.replace(/[^a-zA-Z0-9]/g, '') // Sanitize IMEI (remove spaces/dashes)
+            }));
         } else {
             payload.quantity = nonHpForm.value.quantity;
         }
