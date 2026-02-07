@@ -32,9 +32,17 @@ class InventoryController extends Controller
 
             // Filter by Branch/Placement
             $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
-            if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
-                $query->where('placement_type', 'branch')
-                    ->where('placement_id', $user->branch_id);
+            if (!in_array($user->role, $unrestrictedRoles)) {
+                if ($user->branch_id) {
+                    $query->where('placement_type', 'branch')
+                        ->where('placement_id', $user->branch_id);
+                } elseif ($user->warehouse_id) {
+                    $query->where('placement_type', 'warehouse')
+                        ->where('placement_id', $user->warehouse_id);
+                } elseif ($user->online_shop_id) {
+                    $query->where('placement_type', 'online_shop')
+                        ->where('placement_id', $user->online_shop_id);
+                }
             }
             if ($request->has('branch_id')) {
                 $query->where('placement_type', 'branch')
@@ -82,10 +90,18 @@ class InventoryController extends Controller
             // BRANCH FILTER:
             $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
 
-            // If user is NOT in unrestricted roles AND has a branch_id, lock them to their branch
-            if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
-                $query->where('placement_type', 'branch')
-                    ->where('placement_id', $user->branch_id);
+            // If user is NOT in unrestricted roles AND has a placement, lock them to their placement
+            if (!in_array($user->role, $unrestrictedRoles)) {
+                if ($user->branch_id) {
+                    $query->where('placement_type', 'branch')
+                        ->where('placement_id', $user->branch_id);
+                } elseif ($user->warehouse_id) {
+                    $query->where('placement_type', 'warehouse')
+                        ->where('placement_id', $user->warehouse_id);
+                } elseif ($user->online_shop_id) {
+                    $query->where('placement_type', 'online_shop')
+                        ->where('placement_id', $user->online_shop_id);
+                }
             }
 
             // Optional: filter by specific branch (for super_admin or admin_produk viewing specific branch)
@@ -141,10 +157,71 @@ class InventoryController extends Controller
             });
 
             return response()->json($items);
+
         }
     }
 
-    // Stock In (Input Barang)
+    // Stock In History
+    public function stockInHistory(Request $request)
+    {
+        $user = Auth::user();
+        $type = $request->type ?? 'hp';
+
+        if ($type === 'non-hp') {
+            $query = InventoryLog::with(['product', 'user'])
+                ->where('type', 'in');
+
+            // SEARCH
+            if ($request->search) {
+                $search = $request->search;
+                $query->whereHas('product', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })->orWhere('description', 'like', "%{$search}%");
+            }
+        } else {
+            // HP (Product Details created)
+            $query = ProductDetail::with(['product', 'distributor', 'user']);
+
+            // SEARCH
+            if ($request->search) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('imei', 'like', "%{$search}%")
+                        ->orWhereHas('product', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%");
+                        });
+                });
+            }
+        }
+
+        // PLACEMENT FILTER (Same logic as index)
+        $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
+        if (!in_array($user->role, $unrestrictedRoles)) {
+            if ($user->branch_id) {
+                // For InventoryLog, we have branch_id. For ProductDetail, placement_type/id.
+                if ($type === 'non-hp') {
+                    $query->where('branch_id', $user->branch_id);
+                } else {
+                    $query->where('placement_type', 'branch')->where('placement_id', $user->branch_id);
+                }
+            } elseif ($user->warehouse_id) {
+                if ($type === 'non-hp') {
+                    // No warehouse_id in InventoryLog
+                } else {
+                    $query->where('placement_type', 'warehouse')->where('placement_id', $user->warehouse_id);
+                }
+            } elseif ($user->online_shop_id) {
+                if ($type === 'non-hp') {
+                    // No online_shop_id in InventoryLog
+                } else {
+                    $query->where('placement_type', 'online_shop')->where('placement_id', $user->online_shop_id);
+                }
+            }
+        }
+
+        return response()->json($query->latest()->paginate(20));
+    }
+
     public function stockIn(Request $request)
     {
         $request->validate([
@@ -247,7 +324,9 @@ class InventoryController extends Controller
                     ProductDetail::create([
                         'product_id' => $product->id,
                         'imei' => $item['imei'],
-                        'color' => $item['color'] ?? null,
+
+
+
                         'ram' => $request->ram ?? null, // Use parent spec
                         'storage' => $request->storage ?? null, // Use parent spec
                         'condition' => $item['condition'],

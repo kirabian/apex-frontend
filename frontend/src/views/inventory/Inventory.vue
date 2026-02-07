@@ -763,6 +763,17 @@ const editStockForm = ref({
           </button>
         </div>
 
+
+        <!-- History Buttons -->
+        <button class="btn btn-secondary" @click="router.push({ name: 'StockInHistory' })" title="Riwayat Masuk">
+          <Calendar :size="16" />
+          <span class="hidden sm:inline">Riwayat Masuk</span>
+        </button>
+        <button class="btn btn-secondary" @click="router.push({ name: 'StockOutHistory' })" title="Riwayat Keluar">
+          <ArrowDownUp :size="16" />
+          <span class="hidden sm:inline">Riwayat Keluar</span>
+        </button>
+
         <!-- Keluar Stok Button -->
         <button class="btn" :class="selectedItems.length > 0 ? 'btn-primary' : 'btn-secondary'"
           @click="openStockOutModal" :disabled="selectedItems.length === 0 || activeTab === 'non-hp'">

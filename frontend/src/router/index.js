@@ -59,6 +59,26 @@ const routes = [
                 }
             },
             {
+                path: 'inventory/history/in',
+                name: 'StockInHistory',
+                component: () => import('../views/inventory/StockInHistory.vue'),
+                meta: {
+                    title: 'Daftar Stok Masuk',
+                    menu: 'inventory',
+                    permissions: ['inventory.view']
+                }
+            },
+            {
+                path: 'inventory/history/out',
+                name: 'StockOutHistory',
+                component: () => import('../views/inventory/StockOutHistory.vue'),
+                meta: {
+                    title: 'Daftar Stok Keluar',
+                    menu: 'inventory',
+                    permissions: ['inventory.view']
+                }
+            },
+            {
                 path: 'inventory/stock-in',
                 name: 'StockIn',
                 component: () => import('../views/inventory/StockIn.vue'),
