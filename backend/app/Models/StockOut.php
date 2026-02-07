@@ -33,6 +33,21 @@ class StockOut extends Model
         'shopee_address',
         'shopee_notes',
         'shopee_tracking_no',
+        'shopee_province',
+        'shopee_city',
+        'shopee_district',
+        'shopee_village',
+        'shopee_postal_code',
+        // Giveaway
+        'giveaway_receiver',
+        'giveaway_phone',
+        'giveaway_address',
+        'giveaway_province',
+        'giveaway_city',
+        'giveaway_district',
+        'giveaway_village',
+        'giveaway_postal_code',
+        'giveaway_notes',
         // Shopee per-item data
         'shopee_items_data',
         // Meta
