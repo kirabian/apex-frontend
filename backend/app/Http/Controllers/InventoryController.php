@@ -25,7 +25,10 @@ class InventoryController extends Controller
             // ============================================
             // NON-HP (Quantity Based)
             // ============================================
-            $query = Inventory::with(['product']);
+            // ============================================
+            // NON-HP (Quantity Based)
+            // ============================================
+            $query = Inventory::with(['product', 'user']);
 
             // Filter by Branch/Placement
             $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
@@ -202,7 +205,8 @@ class InventoryController extends Controller
                     [
                         'product_id' => $product->id,
                         'placement_type' => $request->placement_type,
-                        'placement_id' => $request->placement_id
+                        'placement_id' => $request->placement_id,
+                        'user_id' => $ownerUserId // Separate inventory by user (account)
                     ],
                     ['quantity' => 0]
                 );
@@ -378,6 +382,9 @@ class InventoryController extends Controller
                 'is_active' => true,
                 'theme_color' => 'default',
             ]);
+
+            // Auto-create distribution location if needed? No, user just picks branch. 
+            // The inventory account acts within the branch.
 
             $newUser->assignRole($roleName);
 

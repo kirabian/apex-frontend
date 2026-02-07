@@ -13,8 +13,14 @@ class Inventory extends Model
         'product_id',
         'placement_type',
         'placement_id',
-        'quantity'
+        'quantity',
+        'user_id'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function product()
     {
