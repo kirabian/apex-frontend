@@ -189,8 +189,9 @@ async function onProvinceChange(id) {
   cities.value = []; districts.value = []; villages.value = [];
 
   // Save Name based on Category
-  const p = provinces.value.find(x => x.id === id);
+  const p = provinces.value.find(x => x.id == id);
   const name = p ? p.name : "";
+  console.log("Province Selected:", id, p, name);
 
   if (selectedStockOutCategory.value === 'shopee') {
     stockOutForm.value.shopee_province = name;
@@ -212,8 +213,9 @@ async function onCityChange(id) {
   selectedRegionIds.value.village = "";
   districts.value = []; villages.value = [];
 
-  const c = cities.value.find(x => x.id === id);
+  const c = cities.value.find(x => x.id == id);
   const name = c ? c.name : "";
+  console.log("City Selected:", id, c, name);
 
   if (selectedStockOutCategory.value === 'shopee') {
     stockOutForm.value.shopee_city = name;
@@ -234,8 +236,9 @@ async function onDistrictChange(id) {
   selectedRegionIds.value.village = "";
   villages.value = [];
 
-  const d = districts.value.find(x => x.id === id);
+  const d = districts.value.find(x => x.id == id);
   const name = d ? d.name : "";
+  console.log("District Selected:", id, d, name);
 
   if (selectedStockOutCategory.value === 'shopee') {
     stockOutForm.value.shopee_district = name;
@@ -253,8 +256,9 @@ async function onDistrictChange(id) {
 
 function onVillageChange(id) {
   selectedRegionIds.value.village = id;
-  const v = villages.value.find(x => x.id === id);
+  const v = villages.value.find(x => x.id == id);
   const name = v ? v.name : "";
+  console.log("Village Selected:", id, v, name);
 
   if (selectedStockOutCategory.value === 'shopee') {
     stockOutForm.value.shopee_village = name;
