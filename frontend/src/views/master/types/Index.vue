@@ -82,7 +82,7 @@ const getCategoryIcon = (cat) => {
 
 const getCategoryLabel = (cat) => {
     if (cat === 'imei') return 'HP / Gadget';
-    if (cat === 'non_imei') return 'Aksesoris';
+    if (cat === 'non_imei') return 'NON HP / NON IMEI';
     return 'Jasa Service';
 };
 

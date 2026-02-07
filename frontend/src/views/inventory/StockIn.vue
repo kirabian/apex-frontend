@@ -295,13 +295,13 @@ async function submitStockIn() {
                         const createResp = await productsApi.create({
                             name: selectedTypeName.value,
                             brand: brandName,
-                            type: 'hp',
+                            type: itemType.value,
                             brand_id: !selectedProduct.value ? selectedBrand.value : null,
                             type_name: !selectedProduct.value ? selectedTypeName.value : null,
                             ram: selectedRam.value || null,
                             storage: selectedStorage.value || null,
-                            category: 'HP / Gadget',
-                            has_imei: true,
+                            category: itemType.value === 'hp' ? 'HP / Gadget' : 'NON HP / NON IMEI',
+                            has_imei: itemType.value === 'hp',
                             sku: null
                         });
 
@@ -477,7 +477,7 @@ onMounted(fetchInitialData);
                 <button @click="itemType = 'non-hp'"
                     class="p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-4"
                     :class="itemType === 'non-hp' ? 'border-primary-500 bg-primary-500/10' : 'border-surface-700 bg-surface-900'">
-                    <Box :size="48" class="text-primary-500" /><span class="font-bold">Produk Biasa</span>
+                    <Box :size="48" class="text-primary-500" /><span class="font-bold">NON HP / NON IMEI</span>
                 </button>
             </div>
 

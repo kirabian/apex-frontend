@@ -804,7 +804,7 @@ const editStockForm = ref({
           ? 'bg-blue-600 text-white shadow'
           : 'text-text-secondary hover:bg-surface-700/50 hover:text-white'
           ">
-        {{ tab === 'hp' ? 'HP' : 'Non-HP' }}
+        {{ tab === 'hp' ? 'Unit / HP' : 'NON HP / NON IMEI' }}
       </button>
     </div>
 

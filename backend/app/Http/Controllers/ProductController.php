@@ -47,7 +47,7 @@ class ProductController extends Controller
         if (!$sku) {
             // Generate simple SKU: BRAND-RANDOM OR just UUID
             // Let's use simplified SKU: HP-TIMESTAMP-RAND
-            $prefix = $request->type === 'hp' ? 'HP' : 'PRD';
+            $prefix = $request->type === 'hp' ? 'HP' : 'ACC';
             $sku = $prefix . '-' . strtoupper(Str::random(8));
         }
 
