@@ -167,7 +167,7 @@ const getCategoryColor = (cat) => {
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex flex-col gap-1">
-                                    <div v-for="(detail, index) in item.details.slice(0, 3)" :key="index"
+                                    <div v-for="(detail, index) in (item.items || []).slice(0, 3)" :key="index"
                                         class="text-xs flex justify-between gap-4">
                                         <span class="text-text-secondary truncate max-w-[150px]">
                                             {{ detail.product ? detail.product.name : 'Unknown Product' }}
@@ -176,8 +176,8 @@ const getCategoryColor = (cat) => {
                                             {{ detail.imei || `Qty: ${detail.quantity}` }}
                                         </span>
                                     </div>
-                                    <div v-if="item.details.length > 3" class="text-xs text-primary-400 italic">
-                                        +{{ item.details.length - 3 }} item lainnya
+                                    <div v-if="(item.items || []).length > 3" class="text-xs text-primary-400 italic">
+                                        +{{ item.items.length - 3 }} item lainnya
                                     </div>
                                 </div>
                             </td>
