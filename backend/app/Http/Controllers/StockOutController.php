@@ -82,8 +82,8 @@ class StockOutController extends Controller
             $rules['shopee_address'] = 'required|string';
             $rules['shopee_province'] = 'required|string';
             $rules['shopee_city'] = 'required|string';
-            $rules['shopee_district'] = 'required|string';
-            $rules['shopee_village'] = 'required|string';
+            $rules['shopee_district'] = 'nullable|string';
+            $rules['shopee_village'] = 'nullable|string';
             $rules['shopee_postal_code'] = 'nullable|string|max:10';
         }
 
@@ -94,8 +94,8 @@ class StockOutController extends Controller
             $rules['giveaway_address'] = 'required|string';
             $rules['giveaway_province'] = 'required|string';
             $rules['giveaway_city'] = 'required|string';
-            $rules['giveaway_district'] = 'required|string';
-            $rules['giveaway_village'] = 'required|string';
+            $rules['giveaway_district'] = 'nullable|string';
+            $rules['giveaway_village'] = 'nullable|string';
             $rules['giveaway_postal_code'] = 'nullable|string|max:10';
             $rules['giveaway_notes'] = 'nullable|string';
         }

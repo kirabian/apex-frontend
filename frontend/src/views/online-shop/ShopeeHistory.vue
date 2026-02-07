@@ -82,13 +82,12 @@ const formatDate = (dateString) => {
 const formatAddress = (stockOut, detailAddress) => {
     const parts = [];
     if (detailAddress) parts.push(detailAddress);
-    
-    if (stockOut.shopee_village) parts.push(stockOut.shopee_village);
-    if (stockOut.shopee_district) parts.push(stockOut.shopee_district);
+
+    // District & Village moved to manual detail address
     if (stockOut.shopee_city) parts.push(stockOut.shopee_city);
     if (stockOut.shopee_province) parts.push(stockOut.shopee_province);
     if (stockOut.shopee_postal_code) parts.push(stockOut.shopee_postal_code);
-    
+
     return parts.join(', ');
 };
 
@@ -200,7 +199,7 @@ onMounted(() => {
                                             <div>
                                                 <p class="text-xs text-text-secondary">Penerima</p>
                                                 <p class="font-medium text-text-primary">{{ item.shopee_receiver || '-'
-                                                    }}</p>
+                                                }}</p>
                                             </div>
                                             <div>
                                                 <p class="text-xs text-text-secondary">No. Resi</p>
