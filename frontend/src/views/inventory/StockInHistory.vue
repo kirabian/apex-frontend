@@ -6,7 +6,7 @@ import {
 } from 'lucide-vue-next';
 import { inventory } from '../../api/axios';
 import { useToast } from '../../composables/useToast';
-import { formatDate } from '../../utils/format';
+import { formatDate } from '../../utils/formatters';
 
 const router = useRouter();
 const toast = useToast();
@@ -134,7 +134,7 @@ onMounted(() => {
                             <td class="px-6 py-4">
                                 <div>
                                     <div class="font-medium text-white">{{ item.product ? item.product.name : 'Unknown'
-                                        }}</div>
+                                    }}</div>
                                     <div class="text-xs text-text-secondary">{{ item.product ? item.product.sku : '-' }}
                                     </div>
                                 </div>

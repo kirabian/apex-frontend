@@ -6,7 +6,7 @@ import {
 } from 'lucide-vue-next';
 import { stockOut } from '../../api/axios';
 import { useToast } from '../../composables/useToast';
-import { formatDate } from '../../utils/format';
+import { formatDate } from '../../utils/formatters';
 
 const router = useRouter();
 const toast = useToast();
