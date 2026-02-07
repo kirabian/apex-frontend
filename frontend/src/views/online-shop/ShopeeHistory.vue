@@ -79,6 +79,19 @@ const formatDate = (dateString) => {
     });
 };
 
+const formatAddress = (stockOut, detailAddress) => {
+    const parts = [];
+    if (detailAddress) parts.push(detailAddress);
+    
+    if (stockOut.shopee_village) parts.push(stockOut.shopee_village);
+    if (stockOut.shopee_district) parts.push(stockOut.shopee_district);
+    if (stockOut.shopee_city) parts.push(stockOut.shopee_city);
+    if (stockOut.shopee_province) parts.push(stockOut.shopee_province);
+    if (stockOut.shopee_postal_code) parts.push(stockOut.shopee_postal_code);
+    
+    return parts.join(', ');
+};
+
 // Initial load
 onMounted(() => {
     fetchHistory();
@@ -160,7 +173,7 @@ onMounted(() => {
                                         <div v-if="shopeeItem.address"
                                             class="text-xs text-text-secondary pl-5 flex items-start gap-1">
                                             <MapPin :size="10" class="mt-0.5 shrink-0" />
-                                            <span class="line-clamp-1">{{ shopeeItem.address }}</span>
+                                            <span>{{ formatAddress(item, shopeeItem.address) }}</span>
                                         </div>
                                         <div v-if="shopeeItem.product_detail_id" class="mt-2 pl-5">
                                             <!-- We need to match product detail from items relation properly if possible. 
