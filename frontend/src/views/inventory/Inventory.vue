@@ -765,7 +765,7 @@ const editStockForm = ref({
 
         <!-- Keluar Stok Button -->
         <button class="btn" :class="selectedItems.length > 0 ? 'btn-primary' : 'btn-secondary'"
-          @click="openStockOutModal" :disabled="selectedItems.length === 0">
+          @click="openStockOutModal" :disabled="selectedItems.length === 0 || activeTab === 'non-hp'">
           <ArrowDownUp :size="16" />
           Keluar Stok
           <span v-if="selectedItems.length > 0" class="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
@@ -795,6 +795,17 @@ const editStockForm = ref({
           <p class="text-xl font-bold text-text-primary">{{ stat.value }}</p>
         </div>
       </div>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="flex space-x-1 rounded-xl bg-surface-800 p-1 w-fit">
+      <button v-for="tab in ['hp', 'non-hp']" :key="tab" @click="activeTab = tab"
+        class="w-32 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all duration-200" :class="activeTab === tab
+          ? 'bg-blue-600 text-white shadow'
+          : 'text-text-secondary hover:bg-surface-700/50 hover:text-white'
+          ">
+        {{ tab === 'hp' ? 'HP' : 'Non-HP' }}
+      </button>
     </div>
 
     <!-- Filters -->
@@ -854,7 +865,7 @@ const editStockForm = ref({
         <table class="table">
           <thead>
             <tr>
-              <th class="w-12">
+              <th class="w-12" v-if="activeTab === 'hp'">
                 <label class="flex items-center cursor-pointer">
                   <input type="checkbox" :checked="isAllSelected" :indeterminate.prop="isSomeSelected"
                     @change="toggleSelectAll" class="checkbox" />
@@ -862,12 +873,23 @@ const editStockForm = ref({
               </th>
               <th>SKU</th>
               <th>Produk</th>
-              <th>Kapasitas</th>
-              <th>IMEI</th>
-              <th>Lokasi</th>
-              <th>Distributor</th>
-              <th>Harga Jual</th>
-              <th>Status</th>
+
+              <!-- HP Columns -->
+              <template v-if="activeTab === 'hp'">
+                <th>Kapasitas</th>
+                <th>IMEI</th>
+                <th>Lokasi</th>
+                <th>Distributor</th>
+                <th>Harga Jual</th>
+                <th>Status</th>
+              </template>
+
+              <!-- Non-HP Columns -->
+              <template v-else>
+                <th>Lokasi</th>
+                <th>Stok</th>
+              </template>
+
               <th>Akun Inventory</th>
               <th class="text-center">Aksi</th>
             </tr>
@@ -888,7 +910,7 @@ const editStockForm = ref({
             <tr v-else v-for="item in filteredProducts" :key="item.id" @click="toggleSelect(item)"
               class="cursor-pointer transition-all hover:bg-surface-700/30"
               :class="isSelected(item) ? 'bg-primary-500/10' : ''">
-              <td @click.stop>
+              <td @click.stop v-if="activeTab === 'hp'">
                 <label class="flex items-center">
                   <input type="checkbox" :checked="isSelected(item)" @change="toggleSelect(item)" class="checkbox" />
                 </label>
@@ -899,7 +921,8 @@ const editStockForm = ref({
               <td>
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 bg-surface-700 rounded-lg flex items-center justify-center">
-                    <Smartphone :size="16" class="text-text-secondary" />
+                    <Smartphone v-if="activeTab === 'hp'" :size="16" class="text-text-secondary" />
+                    <Box v-else :size="16" class="text-text-secondary" />
                   </div>
                   <div>
                     <p class="font-medium text-text-primary">{{ item.product?.name }}</p>
@@ -907,41 +930,69 @@ const editStockForm = ref({
                   </div>
                 </div>
               </td>
-              <td class="text-sm">
-                <span class="bg-surface-800 px-3 py-1 rounded-lg text-text-secondary" v-if="item.storage">{{
-                  item.storage
-                }}</span>
-                <span v-else class="text-text-secondary">-</span>
-              </td>
-              <td class="font-mono text-sm">
-                <div class="bg-surface-700/50 px-2 py-1 rounded w-fit text-text-primary">{{ item.imei }}</div>
-              </td>
-              <td class="text-sm text-text-secondary">
-                <div v-if="item.placement_name" class="font-medium text-text-primary">
-                  {{ item.placement_name }}
-                  <span class="text-[10px] text-text-secondary block capitalize">
-                    {{ item.placement_type?.replace('_', ' ') }}
+
+              <!-- HP Specific Columns -->
+              <template v-if="activeTab === 'hp'">
+                <td class="text-sm">
+                  <span class="bg-surface-800 px-3 py-1 rounded-lg text-text-secondary" v-if="item.storage">{{
+                    item.storage
+                  }}</span>
+                  <span v-else class="text-text-secondary">-</span>
+                </td>
+                <td class="font-mono text-sm">
+                  <div class="bg-surface-700/50 px-2 py-1 rounded w-fit text-text-primary">{{ item.imei }}</div>
+                </td>
+                <td class="text-sm text-text-secondary">
+                  <div v-if="item.placement_name" class="font-medium text-text-primary">
+                    {{ item.placement_name }}
+                    <span class="text-[10px] text-text-secondary block capitalize">
+                      {{ item.placement_type?.replace('_', ' ') }}
+                    </span>
+                  </div>
+                  <div v-else>
+                    <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
+                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                  </div>
+                </td>
+                <td class="text-sm text-text-secondary">
+                  {{ item.distributor?.name || '-' }}
+                </td>
+                <td class="text-text-primary font-medium">
+                  {{ formatCurrency(item.selling_price) }}
+                </td>
+                <td>
+                  <span class="badge"
+                    :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
+                    {{ item.status }}
                   </span>
-                </div>
-                <div v-else>
-                  <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
-                  <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
-                </div>
-              </td>
-              <td class="text-sm text-text-secondary">
-                {{ item.distributor?.name || '-' }}
-              </td>
-              <td class="text-text-primary font-medium">
-                {{ formatCurrency(item.selling_price) }}
-              </td>
-              <td>
-                <span class="badge"
-                  :class="item.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-surface-600 text-surface-300'">
-                  {{ item.status }}
-                </span>
-              </td>
+                </td>
+              </template>
+
+              <!-- Non-HP Specific Columns -->
+              <template v-else>
+                <td class="text-sm text-text-secondary">
+                  <div v-if="item.placement_name" class="font-medium text-text-primary">
+                    {{ item.placement_name }}
+                    <span class="text-[10px] text-text-secondary block capitalize">
+                      {{ item.placement_type?.replace('_', ' ') }}
+                    </span>
+                  </div>
+                  <div v-else>
+                    <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
+                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="text-lg font-bold text-text-primary">{{ item.quantity }}</span>
+                  <span class="text-xs text-text-secondary ml-1">Pcs</span>
+                </td>
+              </template>
+
               <td>
                 <div class="flex flex-col">
+                  <!-- For Non-HP, user info might not be directly on item, but typically 'updated_by' or similar. 
+                             Inventory model doesn't strictly track owner like ProductDetail does. 
+                             We'll show '-' if not available or maybe the updated_at -->
                   <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name || '-'
                   }}</span>
                   <span class="text-[10px] text-text-secondary">{{ item.user?.username }}</span>
@@ -949,6 +1000,10 @@ const editStockForm = ref({
               </td>
               <td @click.stop>
                 <div class="flex items-center justify-center gap-2">
+                  <button v-if="activeTab === 'hp'" class="p-2 hover:bg-surface-700 rounded-lg transition-colors"
+                    @click="editItem(item)">
+                    <Edit :size="16" class="text-text-secondary" />
+                  </button>
                   <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Eye :size="16" class="text-text-secondary" />
                   </button>
