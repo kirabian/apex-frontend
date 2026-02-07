@@ -82,10 +82,12 @@ export const useInventoryStore = defineStore('inventory', () => {
     )
 
     // Actions
-    async function fetchProducts() {
+    async function fetchProducts(params = {}) {
         isLoading.value = true
         try {
-            const response = await import('../api/axios').then(m => m.inventory.list())
+            const m = await import('../api/axios');
+            const response = await m.inventory.list(params);
+
             // Backend returns pagination object { current_page, data: [...], ... }
             // We need the data array.
             products.value = response.data.data ? response.data.data : response.data

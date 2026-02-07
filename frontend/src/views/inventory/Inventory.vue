@@ -85,7 +85,22 @@ const showStockFilter = ref("all");
 const typeList = ref([]);
 const capacityOptions = ref([]);
 
-// Stock Out Selection State
+// Tab Switch
+const activeTab = ref("hp"); // 'hp' or 'non-hp'
+
+// Watch tab change to reload data
+watch(activeTab, () => {
+  // Use inventoryStore action if possible, or direct API
+  loadInventory();
+});
+
+async function loadInventory() {
+  // We need to modify the store fetching logic or bypass it partially for the active tab parameter
+  // Assuming inventoryStore.fetchProducts accepts params
+  await inventoryStore.fetchProducts({ type: activeTab.value });
+}
+
+
 const selectedItems = ref([]);
 const showStockOutModal = ref(false);
 const selectedStockOutCategory = ref(null);
@@ -147,7 +162,7 @@ const branches = ref([]);
 const warehouses = ref([]);
 
 onMounted(() => {
-  inventoryStore.fetchProducts();
+  loadInventory(); // Use new loader
   fetchCurrentBranch();
   fetchCurrentWarehouse();
   fetchBranches();

@@ -418,7 +418,7 @@ onMounted(fetchInitialData);
                                 <h3 class="font-bold text-text-primary">{{ user.full_name || user.name }}</h3>
                                 <div class="flex flex-col">
                                     <span class="text-xs text-text-secondary uppercase">{{ user.roles?.[0]?.name
-                                        }}</span>
+                                    }}</span>
                                     <span v-if="user.created_by" class="text-[10px] text-text-secondary/70">
                                         by: {{ user.created_by.username }}
                                     </span>
@@ -504,7 +504,7 @@ onMounted(fetchInitialData);
                     class="grid grid-cols-3 gap-3 bg-surface-900 rounded-2xl p-4 border border-surface-700 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                     <div class="px-2">Akun: <span class="text-text-primary">{{ placementName }}</span></div>
                     <div class="px-2 border-l border-surface-700">Tipe: <span class="text-text-primary">{{ itemType
-                            }}</span></div>
+                    }}</span></div>
                     <div class="px-2 border-l border-surface-700">Dist: <span class="text-text-primary">{{
                         selectedDistributorName }}</span></div>
                 </div>
@@ -520,11 +520,23 @@ onMounted(fetchInitialData);
                             <option value="">-- Pilih Tipe --</option>
                             <option v-for="n in uniqueTypeNames" :key="n" :value="n">{{ n }}</option>
                         </select></div>
-                    <div><label class="label text-[10px] uppercase">Kapasitas</label><select v-model="selectedStorage"
-                            :disabled="!selectedTypeName" class="input bg-surface-900 disabled:opacity-30">
+
+                    <!-- Kapasitas (HP Only) -->
+                    <div v-if="itemType === 'hp'"><label class="label text-[10px] uppercase">Kapasitas</label><select
+                            v-model="selectedStorage" :disabled="!selectedTypeName"
+                            class="input bg-surface-900 disabled:opacity-30">
                             <option value="">-- Semua --</option>
                             <option v-for="s in availableSpecs.storages" :key="s" :value="s">{{ s }}</option>
-                        </select></div>
+                        </select>
+                    </div>
+
+                    <!-- Quantity (Non-HP Only) -->
+                    <div v-if="itemType === 'non-hp'">
+                        <label class="label text-[10px] uppercase">Jumlah Stok (Pcs/Unit)</label>
+                        <input v-model.number="nonHpForm.quantity" type="number" min="1"
+                            class="input bg-surface-900 h-[42px]" placeholder="Jumlah..." />
+                    </div>
+
                     <div v-if="!selectedProduct && selectedTypeName"
                         class="col-span-full text-red-400 text-[10px] animate-pulse">
                         <XCircle :size="12" class="inline mr-1" /> Spek belum terdaftar, tapi sistem akan mencoba

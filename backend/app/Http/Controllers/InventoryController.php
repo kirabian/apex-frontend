@@ -19,76 +19,126 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = ProductDetail::with(['product', 'distributor', 'user']);
+        $type = $request->type ?? 'hp'; // Default to HP (ProductDetail)
 
-        // ============================================
-        // BRANCH FILTER:
-        // - Roles in $unrestrictedRoles can see ALL or filter by any branch
-        // - Other roles with branch_id are LOCKED to their branch
-        // ============================================
+        if ($type === 'non-hp') {
+            // ============================================
+            // NON-HP (Quantity Based)
+            // ============================================
+            $query = Inventory::with(['product']);
 
-        $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
-
-        // If user is NOT in unrestricted roles AND has a branch_id, lock them to their branch
-        if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
-            $query->where('placement_type', 'branch')
-                ->where('placement_id', $user->branch_id);
-        }
-
-        // Optional: filter by specific branch (for super_admin or admin_produk viewing specific branch)
-        if ($request->has('branch_id')) {
-            $query->where('placement_type', 'branch')
-                ->where('placement_id', $request->branch_id);
-        }
-
-        if ($request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('imei', 'like', "%{$search}%")
-                    ->orWhereHas('product', function ($sq) use ($search) {
-                        $sq->where('name', 'like', "%{$search}%")
-                            ->orWhere('sku', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        // Filter by Status (Default available)
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        } else {
-            $query->where('status', 'available');
-        }
-
-        // Filter by placement type (branch/warehouse/online_shop)
-        if ($request->has('placement_type')) {
-            $query->where('placement_type', $request->placement_type);
-        }
-
-        $items = $query->latest()->paginate(20);
-
-        // Transform results to include placement name
-        // This resolves "branch #6" to "PSTORE BIG JAKARTA"
-        $items->getCollection()->transform(function ($item) {
-            $item->placement_name = $item->placement ? $item->placement->name : null;
-
-            // For returned items, include proof_image and return details
-            if ($item->status === 'returned') {
-                $returnStockOut = $item->latestReturnStockOut();
-                if ($returnStockOut) {
-                    $item->proof_image = $returnStockOut->proof_image
-                        ? asset('storage/' . $returnStockOut->proof_image)
-                        : null;
-                    $item->customer_name = $returnStockOut->customer_name;
-                    $item->retur_issue = $returnStockOut->retur_issue;
-                    $item->retur_officer = $returnStockOut->retur_officer;
-                    $item->return_date = $returnStockOut->created_at;
-                }
+            // Filter by Branch/Placement
+            $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
+            if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
+                $query->where('placement_type', 'branch')
+                    ->where('placement_id', $user->branch_id);
+            }
+            if ($request->has('branch_id')) {
+                $query->where('placement_type', 'branch')
+                    ->where('placement_id', $request->branch_id);
             }
 
-            return $item;
-        });
+            // Search
+            if ($request->search) {
+                $search = $request->search;
+                $query->whereHas('product', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%");
+                });
+            }
 
-        return response()->json($items);
+            // Filter by Placement Type
+            if ($request->has('placement_type')) {
+                $query->where('placement_type', $request->placement_type);
+            }
+
+            $items = $query->latest()->paginate(20);
+
+            // Transform
+            $items->getCollection()->transform(function ($item) {
+                // Accessor for placement_name should be added to Inventory model or done here
+                // Inventory model typically doesn't have placement relation defined yet in typical setup, let's allow basic mapping
+                if ($item->placement_type == 'branch') {
+                    $item->placement_name = \App\Models\Branch::find($item->placement_id)?->name;
+                } elseif ($item->placement_type == 'warehouse') {
+                    $item->placement_name = \App\Models\Warehouse::find($item->placement_id)?->name;
+                } elseif ($item->placement_type == 'online_shop') {
+                    $item->placement_name = \App\Models\OnlineShop::find($item->placement_id)?->name;
+                }
+                return $item;
+            });
+
+            return response()->json($items);
+
+        } else {
+            // ============================================
+            // HP (IMEI Based) - Existing Logic
+            // ============================================
+            $query = ProductDetail::with(['product', 'distributor', 'user']);
+
+            // BRANCH FILTER:
+            $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
+
+            // If user is NOT in unrestricted roles AND has a branch_id, lock them to their branch
+            if (!in_array($user->role, $unrestrictedRoles) && $user->branch_id) {
+                $query->where('placement_type', 'branch')
+                    ->where('placement_id', $user->branch_id);
+            }
+
+            // Optional: filter by specific branch (for super_admin or admin_produk viewing specific branch)
+            if ($request->has('branch_id')) {
+                $query->where('placement_type', 'branch')
+                    ->where('placement_id', $request->branch_id);
+            }
+
+            if ($request->search) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('imei', 'like', "%{$search}%")
+                        ->orWhereHas('product', function ($sq) use ($search) {
+                            $sq->where('name', 'like', "%{$search}%")
+                                ->orWhere('sku', 'like', "%{$search}%");
+                        });
+                });
+            }
+
+            // Filter by Status (Default available)
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            } else {
+                $query->where('status', 'available');
+            }
+
+            // Filter by placement type (branch/warehouse/online_shop)
+            if ($request->has('placement_type')) {
+                $query->where('placement_type', $request->placement_type);
+            }
+
+            $items = $query->latest()->paginate(20);
+
+            // Transform results to include placement name
+            $items->getCollection()->transform(function ($item) {
+                $item->placement_name = $item->placement ? $item->placement->name : null;
+
+                // For returned items, include proof_image and return details
+                if ($item->status === 'returned') {
+                    $returnStockOut = $item->latestReturnStockOut();
+                    if ($returnStockOut) {
+                        $item->proof_image = $returnStockOut->proof_image
+                            ? asset('storage/' . $returnStockOut->proof_image)
+                            : null;
+                        $item->customer_name = $returnStockOut->customer_name;
+                        $item->retur_issue = $returnStockOut->retur_issue;
+                        $item->retur_officer = $returnStockOut->retur_officer;
+                        $item->return_date = $returnStockOut->created_at;
+                    }
+                }
+
+                return $item;
+            });
+
+            return response()->json($items);
+        }
     }
 
     // Stock In (Input Barang)
