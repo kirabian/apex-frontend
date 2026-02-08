@@ -134,7 +134,7 @@ onMounted(() => {
                             <td class="px-6 py-4">
                                 <div>
                                     <div class="font-medium text-white">{{ item.product ? item.product.name : 'Unknown'
-                                    }}</div>
+                                        }}</div>
                                     <div class="text-xs text-text-secondary">{{ item.product ? item.product.sku : '-' }}
                                     </div>
                                 </div>
@@ -172,8 +172,11 @@ onMounted(() => {
                                     </div>
                                 </div>
                                 <div v-else>
-                                    <!-- InventoryLog doesn't always have distributor relation directly, check description or assumption -->
-                                    <span class="text-text-secondary italic">See Description</span>
+                                    {{ item.distributor ? item.distributor.name : '-' }}
+                                    <div class="text-xs text-text-secondary"
+                                        v-if="!item.distributor && item.description">
+                                        {{ item.description }}
+                                    </div>
                                 </div>
                             </td>
 

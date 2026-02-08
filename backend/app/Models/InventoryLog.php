@@ -12,6 +12,7 @@ class InventoryLog extends Model
     protected $fillable = [
         'product_id',
         'branch_id',
+        'distributor_id',
         'user_id',
         'type',
         'quantity',
@@ -33,5 +34,10 @@ class InventoryLog extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function distributor()
+    {
+        return $this->belongsTo(Distributor::class);
     }
 }

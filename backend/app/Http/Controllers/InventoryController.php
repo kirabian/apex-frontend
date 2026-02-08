@@ -168,7 +168,7 @@ class InventoryController extends Controller
         $type = $request->type ?? 'hp';
 
         if ($type === 'non-hp') {
-            $query = InventoryLog::with(['product', 'user'])
+            $query = InventoryLog::with(['product', 'user', 'distributor'])
                 ->where('type', 'in');
 
             // SEARCH
@@ -296,11 +296,12 @@ class InventoryController extends Controller
                     'branch_id' => 1, // Fallback or need to make nullable if placement isn't branch
                     // TODO: Update InventoryLog to support polymorphic placement too? Or just use description for now.
                     // For now, let's assume we map placement_id -> branch_id if type is branch, or null.
-                    'user_id' => $user->id,
+                    'user_id' => $ownerUserId, // Use the Owner User ID (Inventory Account)
+                    'distributor_id' => $distributorId,
                     'type' => 'in',
                     'quantity' => $request->quantity,
                     'balance_after' => $inventory->quantity,
-                    'description' => "Stock In from Distributor " . ($request->distributor_id),
+                    'description' => "Stock In from Distributor",
                     'reference_id' => 'STOCK-IN-' . time()
                 ]);
             }
@@ -346,7 +347,8 @@ class InventoryController extends Controller
                     InventoryLog::create([
                         'product_id' => $product->id,
                         'branch_id' => 1,
-                        'user_id' => $user->id,
+                        'user_id' => $ownerUserId, // Use Owner User ID
+                        'distributor_id' => $distributorId,
                         'type' => 'in',
                         'quantity' => $inserted_count,
                         'balance_after' => ProductDetail::where('product_id', $product->id)->where('status', 'available')->count(),
