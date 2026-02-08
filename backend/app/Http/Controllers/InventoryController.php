@@ -179,7 +179,7 @@ class InventoryController extends Controller
                 })->orWhere('description', 'like', "%{$search}%");
             }
         } else {
-            // HP (Product Details created)
+            // HP (Product Details created) - This is logically Stock In too
             $query = ProductDetail::with(['product', 'distributor', 'user']);
 
             // SEARCH
@@ -216,6 +216,36 @@ class InventoryController extends Controller
                 } else {
                     $query->where('placement_type', 'online_shop')->where('placement_id', $user->online_shop_id);
                 }
+            }
+        }
+
+        return response()->json($query->latest()->paginate(20));
+    }
+
+    public function stockOutHistory(Request $request)
+    {
+        $user = Auth::user();
+        // Since HP Stock Out is handled by StockOutController (Receipt based), 
+        // this method primarily serves Non-HP (Inventory Log based) history.
+        // However, if we wanted to unify, we could... but let's stick to the pattern.
+
+        // This is ONLY for Non-HP logs for now, as HP logs are in StockOut model/table
+        $query = InventoryLog::with(['product', 'user', 'distributor'])
+            ->where('type', 'out');
+
+        // SEARCH
+        if ($request->search) {
+            $search = $request->search;
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhere('description', 'like', "%{$search}%");
+        }
+
+        // PLACEMENT FILTER
+        $unrestrictedRoles = ['super_admin', 'admin_produk', 'audit', 'analist', 'owner'];
+        if (!in_array($user->role, $unrestrictedRoles)) {
+            if ($user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
             }
         }
 
