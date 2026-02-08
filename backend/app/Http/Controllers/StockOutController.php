@@ -24,6 +24,13 @@ class StockOutController extends Controller
             $query->search($request->search);
         }
 
+        // DATE FILTER FOR INVENTORY ROLE (Current & Last Month Only)
+        $user = Auth::user();
+        if ($user && $user->hasRole('inventory')) {
+            $startDate = \Carbon\Carbon::now()->subMonth()->startOfMonth();
+            $query->where('created_at', '>=', $startDate);
+        }
+
         return response()->json(
             $query->latest()->paginate($request->per_page ?? 20)
         );
