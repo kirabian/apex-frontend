@@ -219,6 +219,12 @@ class InventoryController extends Controller
             }
         }
 
+        // DATE FILTER
+        if ($request->month && $request->year) {
+            $query->whereMonth('created_at', $request->month)
+                ->whereYear('created_at', $request->year);
+        }
+
         // DATE FILTER FOR INVENTORY ROLE (Current & Last Month Only)
         if ($user->hasRole('inventory')) {
             $startDate = \Carbon\Carbon::now()->subMonth()->startOfMonth();
@@ -253,6 +259,12 @@ class InventoryController extends Controller
             if ($user->branch_id) {
                 $query->where('branch_id', $user->branch_id);
             }
+        }
+
+        // DATE FILTER
+        if ($request->month && $request->year) {
+            $query->whereMonth('created_at', $request->month)
+                ->whereYear('created_at', $request->year);
         }
 
         // DATE FILTER FOR INVENTORY ROLE (Current & Last Month Only)

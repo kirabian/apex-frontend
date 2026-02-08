@@ -22,12 +22,36 @@ const pagination = ref({
     total: 0
 });
 
+// Month Filter
+const currentDate = new Date();
+const currentMonth = currentDate.getMonth() + 1;
+const currentYear = currentDate.getFullYear();
+const prevDate = new Date();
+prevDate.setMonth(prevDate.getMonth() - 1);
+const prevMonth = prevDate.getMonth() + 1;
+const prevYear = prevDate.getFullYear();
+
+const monthOptions = [
+    {
+        label: currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        value: { month: currentMonth, year: currentYear }
+    },
+    {
+        label: prevDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        value: { month: prevMonth, year: prevYear }
+    }
+];
+const selectedMonth = ref(monthOptions[0].value);
+
 const fetchData = async (page = 1) => {
     loading.value = true;
     try {
         const params = {
             page,
-            search: searchQuery.value
+            page,
+            search: searchQuery.value,
+            month: selectedMonth.value.month,
+            year: selectedMonth.value.year
         };
 
         let response;
@@ -52,7 +76,7 @@ const fetchData = async (page = 1) => {
     }
 };
 
-watch([searchQuery, activeTab], () => {
+watch([searchQuery, activeTab, selectedMonth], () => {
     fetchData(1);
 });
 
@@ -143,11 +167,20 @@ const getCategoryColor = (cat) => {
                     </button>
                 </div>
 
-                <!-- Search -->
-                <div class="relative w-full md:w-72">
-                    <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
-                    <input v-model="searchQuery" type="text" placeholder="Cari ID, Penerima, atau Item..."
-                        class="w-full bg-surface-900 border border-surface-700 rounded-xl py-2 pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder:text-text-secondary" />
+                <!-- Search & Month -->
+                <div class="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
+                    <select v-model="selectedMonth"
+                        class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/50 w-full md:w-48">
+                        <option v-for="(option, index) in monthOptions" :key="index" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+
+                    <div class="relative w-full md:w-72">
+                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
+                        <input v-model="searchQuery" type="text" placeholder="Cari ID, Penerima, atau Item..."
+                            class="w-full bg-surface-900 border border-surface-700 rounded-xl py-2 pl-10 pr-4 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all placeholder:text-text-secondary" />
+                    </div>
                 </div>
             </div>
         </div>
@@ -253,14 +286,14 @@ const getCategoryColor = (cat) => {
                                     <div class="flex flex-col">
                                         <span class="font-medium text-text-primary">{{ item.product?.name }}</span>
                                         <span class="text-xs text-text-secondary font-mono">{{ item.product?.sku
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex flex-col">
                                         <span class="text-red-400 font-bold mb-1">-{{ item.quantity }} Unit</span>
                                         <span class="text-xs text-text-secondary">Balance: {{ item.balance_after
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-text-secondary text-xs max-w-xs truncate">

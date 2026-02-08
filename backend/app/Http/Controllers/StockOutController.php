@@ -24,6 +24,14 @@ class StockOutController extends Controller
             $query->search($request->search);
         }
 
+        // DATE FILTER
+        if ($request->category !== 'recap_harian') { // Recap harian might not need this or handled differently
+            if ($request->month && $request->year) {
+                $query->whereMonth('created_at', $request->month)
+                    ->whereYear('created_at', $request->year);
+            }
+        }
+
         // DATE FILTER FOR INVENTORY ROLE (Current & Last Month Only)
         $user = Auth::user();
         if ($user && $user->hasRole('inventory')) {

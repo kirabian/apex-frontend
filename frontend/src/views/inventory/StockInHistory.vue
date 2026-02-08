@@ -21,13 +21,38 @@ const pagination = ref({
     total: 0
 });
 
+// Month Filter
+const currentDate = new Date();
+const currentMonth = currentDate.getMonth() + 1;
+const currentYear = currentDate.getFullYear();
+const prevDate = new Date();
+prevDate.setMonth(prevDate.getMonth() - 1);
+const prevMonth = prevDate.getMonth() + 1;
+const prevYear = prevDate.getFullYear();
+
+const monthOptions = [
+    {
+        label: currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        value: { month: currentMonth, year: currentYear }
+    },
+    {
+        label: prevDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        value: { month: prevMonth, year: prevYear }
+    }
+];
+const selectedMonth = ref(monthOptions[0].value);
+
 const fetchData = async (page = 1) => {
     loading.value = true;
     try {
         const params = {
             page,
             type: activeTab.value,
-            search: searchQuery.value
+            page,
+            type: activeTab.value,
+            search: searchQuery.value,
+            month: selectedMonth.value.month,
+            year: selectedMonth.value.year
         };
 
         const response = await inventory.historyIn(params);
@@ -45,7 +70,7 @@ const fetchData = async (page = 1) => {
     }
 };
 
-watch([activeTab, searchQuery], () => {
+watch([activeTab, searchQuery, selectedMonth], () => {
     fetchData(1);
 });
 
@@ -88,6 +113,15 @@ onMounted(() => {
                             : 'text-text-secondary hover:text-white'">
                         {{ tab === 'hp' ? 'Unit / HP' : 'NON HP / NON IMEI' }}
                     </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <select v-model="selectedMonth"
+                        class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+                        <option v-for="(option, index) in monthOptions" :key="index" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
                 </div>
 
                 <!-- Search -->
@@ -134,7 +168,7 @@ onMounted(() => {
                             <td class="px-6 py-4">
                                 <div>
                                     <div class="font-medium text-white">{{ item.product ? item.product.name : 'Unknown'
-                                        }}</div>
+                                    }}</div>
                                     <div class="text-xs text-text-secondary">{{ item.product ? item.product.sku : '-' }}
                                     </div>
                                 </div>

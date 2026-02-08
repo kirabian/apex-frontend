@@ -53,10 +53,32 @@ import { debounce } from "../../utils/debounce";
 // Local state
 const searchQuery = ref("");
 const debouncedSearch = ref("");
-const selectedCategory = ref("");
-const showStockFilter = ref("all");
+const selectedCategory = ref('');
+const selectedStockStatus = ref('all');
+// Month Filter
+const currentDate = new Date();
+const currentMonth = currentDate.getMonth() + 1;
+const currentYear = currentDate.getFullYear();
+const prevDate = new Date();
+prevDate.setMonth(prevDate.getMonth() - 1);
+const prevMonth = prevDate.getMonth() + 1;
+const prevYear = prevDate.getFullYear();
+
+const monthOptions = [
+  {
+    label: currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+    value: { month: currentMonth, year: currentYear }
+  },
+  {
+    label: prevDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+    value: { month: prevMonth, year: prevYear }
+  }
+];
+const selectedMonth = ref(monthOptions[0].value);
+
 const typeList = ref([]);
 const capacityOptions = ref([]);
+const showStockInModal = ref(false);
 
 // Tab Switch
 const activeTab = ref("hp"); // 'hp' or 'non-hp'
@@ -785,43 +807,53 @@ function getStockStatus(product) {
       </button>
     </div>
 
-    <!-- Filters -->
     <div class="card">
-      <div class="flex flex-wrap items-center gap-4">
+      <div class="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
         <!-- Search -->
-        <div class="relative w-full md:w-auto md:flex-1 min-w-[200px]">
+        <div class="relative w-full xl:w-auto xl:flex-1 min-w-[200px]">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
-          <input v-model="searchQuery" type="text" placeholder="Cari produk, SKU, atau brand..." class="input pl-10" />
+          <input v-model="searchQuery" type="text" placeholder="Cari produk, SKU, atau IMEI..."
+            class="input w-full pl-10" />
         </div>
 
-        <!-- Category Filter -->
-        <select v-model="selectedCategory" class="input w-full md:w-48">
-          <option value="">Semua Kategori</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.name">
-            {{ cat.name }}
-          </option>
-        </select>
+        <!-- Filters Wrapper -->
+        <div class="flex flex-col md:flex-row flex-wrap gap-3 w-full xl:w-auto items-start md:items-center">
+          <!-- Month Filter -->
+          <select v-model="selectedMonth" class="input w-full md:w-48 bg-surface-800">
+            <option v-for="(option, index) in monthOptions" :key="index" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
 
-        <!-- Stock Filter -->
-        <div class="flex w-full md:w-auto rounded-xl bg-surface-800 p-1 overflow-x-auto">
-          <button v-for="filter in [
-            { id: 'all', label: 'Semua' },
-            { id: 'low', label: 'Menipis' },
-            { id: 'out', label: 'Habis' },
-          ]" :key="filter.id" @click="showStockFilter = filter.id"
-            class="px-4 py-2 text-sm font-medium rounded-lg transition-colors" :class="showStockFilter === filter.id
-              ? 'bg-blue-600 text-white'
-              : 'text-text-secondary hover:text-text-primary'
-              ">
-            {{ filter.label }}
+          <!-- Category Filter -->
+          <select v-model="selectedCategory" class="input w-full md:w-48">
+            <option value="">Semua Kategori</option>
+            <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+              {{ cat.name }}
+            </option>
+          </select>
+
+          <!-- Stock Filter -->
+          <div class="flex w-full md:w-auto rounded-xl bg-surface-800 p-1 overflow-x-auto">
+            <button v-for="filter in [
+              { id: 'all', label: 'Semua' },
+              { id: 'low', label: 'Menipis' },
+              { id: 'out', label: 'Habis' },
+            ]" :key="filter.id" @click="selectedStockStatus = filter.id"
+              class="px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap" :class="selectedStockStatus === filter.id
+                ? 'bg-blue-600 text-white'
+                : 'text-text-secondary hover:text-text-primary'
+                ">
+              {{ filter.label }}
+            </button>
+          </div>
+
+          <!-- Export -->
+          <button class="btn btn-secondary w-full md:w-auto mt-2 md:mt-0">
+            <Download :size="16" />
+            Export
           </button>
         </div>
-
-        <!-- Export -->
-        <button class="btn btn-secondary">
-          <Download :size="16" />
-          Export
-        </button>
       </div>
     </div>
 
@@ -913,7 +945,7 @@ function getStockStatus(product) {
                 <td class="text-sm">
                   <span class="bg-surface-800 px-3 py-1 rounded-lg text-text-secondary" v-if="item.storage">{{
                     item.storage
-                  }}</span>
+                    }}</span>
                   <span v-else class="text-text-secondary">-</span>
                 </td>
                 <td class="font-mono text-sm">
@@ -928,7 +960,8 @@ function getStockStatus(product) {
                   </div>
                   <div v-else>
                     <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
-                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id
+                      }}</span>
                   </div>
                 </td>
                 <td class="text-sm text-text-secondary">
@@ -956,7 +989,8 @@ function getStockStatus(product) {
                   </div>
                   <div v-else>
                     <span class="capitalize">{{ item.placement_type?.replace('_', ' ') }}</span>
-                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id }}</span>
+                    <span v-if="item.placement_id" class="text-xs ml-1 text-surface-400">#{{ item.placement_id
+                      }}</span>
                   </div>
                 </td>
                 <td>
@@ -970,8 +1004,9 @@ function getStockStatus(product) {
                   <!-- For Non-HP, user info might not be directly on item, but typically 'updated_by' or similar. 
                              Inventory model doesn't strictly track owner like ProductDetail does. 
                              We'll show '-' if not available or maybe the updated_at -->
-                  <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name || '-'
-                  }}</span>
+                  <span class="text-sm font-medium text-text-primary">{{ item.user?.full_name || item.user?.name ||
+                    '-'
+                    }}</span>
                   <span class="text-[10px] text-text-secondary">{{ item.user?.username }}</span>
                 </div>
               </td>
