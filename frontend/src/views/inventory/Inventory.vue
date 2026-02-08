@@ -742,12 +742,12 @@ const editStockForm = ref({
 <template>
   <div class="space-y-6 animate-in">
     <!-- Header -->
-    <div class="flex justify-between items-end">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
       <div>
         <h1 class="text-2xl font-bold text-text-primary tracking-tight">Inventory</h1>
         <p class="text-text-secondary mt-1">Kelola stok produk di semua cabang</p>
       </div>
-      <div class="flex gap-3 items-center">
+      <div class="flex flex-wrap gap-2 items-center w-full md:w-auto">
         <!-- Return Toggle -->
         <div v-if="currentWarehouse && canToggleReturn"
           class="flex items-center gap-2 bg-surface-800 p-2 rounded-xl border border-surface-700 mr-2">
@@ -809,7 +809,7 @@ const editStockForm = ref({
     </div>
 
     <!-- Tab Switcher -->
-    <div class="flex space-x-1 rounded-xl bg-surface-800 p-1 w-fit">
+    <div class="flex space-x-1 rounded-xl bg-surface-800 p-1 w-full md:w-fit overflow-x-auto">
       <button v-for="tab in ['hp', 'non-hp']" :key="tab" @click="activeTab = tab"
         class="w-32 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all duration-200" :class="activeTab === tab
           ? 'bg-blue-600 text-white shadow'
@@ -823,13 +823,13 @@ const editStockForm = ref({
     <div class="card">
       <div class="flex flex-wrap items-center gap-4">
         <!-- Search -->
-        <div class="relative flex-1 min-w-[250px]">
+        <div class="relative w-full md:w-auto md:flex-1 min-w-[200px]">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" :size="18" />
           <input v-model="searchQuery" type="text" placeholder="Cari produk, SKU, atau brand..." class="input pl-10" />
         </div>
 
         <!-- Category Filter -->
-        <select v-model="selectedCategory" class="input w-48">
+        <select v-model="selectedCategory" class="input w-full md:w-48">
           <option value="">Semua Kategori</option>
           <option v-for="cat in categories" :key="cat.id" :value="cat.name">
             {{ cat.name }}
@@ -837,7 +837,7 @@ const editStockForm = ref({
         </select>
 
         <!-- Stock Filter -->
-        <div class="flex rounded-xl bg-surface-800 p-1">
+        <div class="flex w-full md:w-auto rounded-xl bg-surface-800 p-1 overflow-x-auto">
           <button v-for="filter in [
             { id: 'all', label: 'Semua' },
             { id: 'low', label: 'Menipis' },
@@ -871,8 +871,8 @@ const editStockForm = ref({
     </div>
 
     <!-- Table -->
-    <div class="card p-0">
-      <div class="table-container">
+    <div class="card p-0 overflow-hidden">
+      <div class="table-container overflow-x-auto">
         <table class="table">
           <thead>
             <tr>
@@ -1091,7 +1091,7 @@ const editStockForm = ref({
 
             <!-- Retur Form -->
             <template v-if="selectedStockOutCategory === 'retur'">
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="label">Nama Petugas *</label>
                   <input v-model="stockOutForm.retur_officer" class="input" placeholder="Nama petugas retur" />
@@ -1112,7 +1112,7 @@ const editStockForm = ref({
                   <img :src="proofImagePreview" class="h-24 rounded-xl object-cover border border-surface-600" />
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="label">Segel</label>
                   <input v-model="stockOutForm.retur_seal" class="input" placeholder="Nomor segel (opsional)" />
@@ -1151,7 +1151,7 @@ const editStockForm = ref({
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="label">Nama Penerima *</label>
                     <input v-model="stockOutForm.shopee_receiver" class="input" placeholder="Nama penerima" />
@@ -1162,7 +1162,7 @@ const editStockForm = ref({
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="label">Provinsi *</label>
                     <select :value="selectedRegionIds.province" @change="e => onProvinceChange(e.target.value)"
@@ -1230,7 +1230,7 @@ const editStockForm = ref({
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="label">Nama Customer *</label>
                     <input v-model="stockOutForm.giveaway_receiver" class="input" placeholder="Nama customer" />
@@ -1241,7 +1241,7 @@ const editStockForm = ref({
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="label">Provinsi *</label>
                     <select :value="selectedRegionIds.province" @change="e => onProvinceChange(e.target.value)"
@@ -1344,7 +1344,7 @@ const editStockForm = ref({
               <option v-for="cap in capacityOptions" :key="cap" :value="cap">{{ cap }}</option>
             </select>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="label">Harga Modal</label>
               <input v-model="editStockForm.cost_price" type="number" class="input" />
