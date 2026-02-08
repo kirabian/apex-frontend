@@ -7,36 +7,9 @@ import { formatCurrency, formatNumber } from "../../utils/formatters";
 
 // ... (existing code)
 
-function editItem(item) {
-  editStockForm.value = { ...item }; // Copy data item ke form
 
-  // Find matching product type to get storage options
-  const productName = item.product?.name || '';
-  const matchedType = typeList.value.find(t => t.name.toLowerCase() === productName.toLowerCase());
 
-  if (matchedType && matchedType.storage) {
-    capacityOptions.value = matchedType.storage.split(/[,/]+/).map(s => s.trim());
-  } else {
-    capacityOptions.value = ['64', '128', '256', '512', '1024', '1TB'];
-  }
 
-  showEditStockModal.value = true;
-}
-
-async function updateItem() {
-  isSubmitting.value = true;
-  try {
-    await inventoryApi.update(editStockForm.value.id, editStockForm.value);
-    toast.success("Data berhasil diperbarui");
-    showEditStockModal.value = false;
-    inventoryStore.fetchProducts(); // Reload lists
-  } catch (e) {
-    console.error(e);
-    toast.error("Gagal update: " + (e.response?.data?.message || e.message));
-  } finally {
-    isSubmitting.value = false;
-  }
-}
 import { Html5Qrcode } from "html5-qrcode";
 const router = useRouter();
 import {
@@ -49,7 +22,7 @@ import {
   Download,
   RefreshCw,
   Eye,
-  Edit,
+
   ChevronDown,
   TrendingUp,
   TrendingDown,
@@ -727,14 +700,7 @@ function getStockStatus(product) {
   return { label: "Tersedia", class: "bg-emerald-500/20 text-emerald-400" };
 }
 
-const showEditStockModal = ref(false);
-const editStockForm = ref({
-  imei: '',
-  storage: '',
-  cost_price: 0,
-  selling_price: 0,
-  status: 'available'
-});
+
 
 
 </script>
@@ -1011,10 +977,7 @@ const editStockForm = ref({
               </td>
               <td @click.stop>
                 <div class="flex items-center justify-center gap-2">
-                  <button v-if="activeTab === 'hp'" class="p-2 hover:bg-surface-700 rounded-lg transition-colors"
-                    @click="editItem(item)">
-                    <Edit :size="16" class="text-text-secondary" />
-                  </button>
+
                   <button class="p-2 hover:bg-surface-700 rounded-lg transition-colors">
                     <Eye :size="16" class="text-text-secondary" />
                   </button>
@@ -1328,52 +1291,7 @@ const editStockForm = ref({
         </div>
       </div>
     </div>
-    <div v-if="showEditStockModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-      <div class="bg-surface-800 rounded-2xl w-full max-w-lg p-6 animate-in zoom-in duration-200">
-        <h2 class="text-xl font-bold text-white mb-6">Edit Detail Stok</h2>
 
-        <div class="space-y-4">
-          <div>
-            <label class="label">IMEI</label>
-            <input v-model="editStockForm.imei" class="input font-mono" />
-          </div>
-          <div>
-            <label class="label">Kapasitas</label>
-            <select v-model="editStockForm.storage" class="input">
-              <option value="">- Tidak Ada -</option>
-              <option v-for="cap in capacityOptions" :key="cap" :value="cap">{{ cap }}</option>
-            </select>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="label">Harga Modal</label>
-              <input v-model="editStockForm.cost_price" type="number" class="input" />
-            </div>
-            <div>
-              <label class="label">Harga Jual</label>
-              <input v-model="editStockForm.selling_price" type="number" class="input" />
-            </div>
-          </div>
-          <div>
-            <label class="label">Status</label>
-            <select v-model="editStockForm.status" class="input capitalize">
-              <option value="available">Available</option>
-              <option value="sold">Sold</option>
-              <option value="retur">Retur</option>
-              <option value="missing">Missing</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-3 mt-8">
-          <button @click="showEditStockModal = false" class="btn btn-ghost text-text-secondary">Batal</button>
-          <button @click="updateItem" class="btn btn-primary" :disabled="isSubmitting">
-            <span v-if="isSubmitting">Menyimpan...</span>
-            <span v-else>Simpan Perubahan</span>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
